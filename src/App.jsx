@@ -506,7 +506,7 @@ const COJUR_SYSTEM = "Voce e advogado senior da Coordenadoria Juridica (COJUR) d
 /* === HELPER DE IA === */
 var iaCall = async function(userPrompt, maxTokens, systemOverride) {
   var sys = systemOverride || COJUR_SYSTEM;
-  var r = await fetch("/api/ai", {
+  var r = await fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -911,7 +911,7 @@ function PdfAIModal(props) {
   var analyze=function(b64,mime,fn){
     sLoad(true);sErr("");sResult("");sFname(fn);
     var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+proc.assunto+" | Tipo: "+proc.tipoPeca;
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem analise.");sLoad(false);}).catch(function(){sErr("Erro na analise.");sLoad(false);});
   };
   var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){analyze(ev.target.result.split(",")[1],f.type||"application/pdf",f.name);};r.readAsDataURL(f);};
@@ -950,7 +950,7 @@ function GmailSEIModal(props) {
     if(!texto.trim()){setErr("Cole o texto do email antes de analisar.");return;}
     setLoad(true);setErr("");setExtracted(null);
     var prompt="Analise o email abaixo e extraia as informações do processo judicial ou administrativo.\n\nEMAIL:\n"+texto+"\n\nRetorne APENAS um objeto JSON (não array) com:\n- assunto: assunto do email (string)\n- remetente: quem enviou (string)\n- data: data do email (string)\n- numeroSEI: número SEI se houver (string ou null)\n- numeroProcesso: número judicial se houver no formato XXXXXXX-XX.XXXX.X.XX.XXXX (string ou null)\n- tipoPeca: tipo de peça jurídica mencionada (string ou null)\n- prazo: data de prazo mencionada (string ou null)\n- tipo: 'jud' se for processo judicial/tribunal, 'adm' se for administrativo\n- grupo: 1 se mencionar novo prazo SEI atribuído, 2 se for email institucional importante\n- urgencia: 'alta' se mencionar prazo vencendo, 'media' se institucional, 'normal' para demais\n- resumo: 1 frase descrevendo o que o email solicita ou comunica\n\nSeja preciso. SOMENTE JSON, sem markdown.";
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
@@ -1016,7 +1016,7 @@ function IANovoProcessoModal(iaNP){
     if(!descricao.trim())return;
     setLoad(true);setErr("");setResult(null);
     var prompt="Assistente juridico da COJUR/CFM. Extraia dados do processo descrito. Retorne APENAS JSON com: num, numeroSEI, assunto, tribunal, tipoAcao, tipoPeca, parteContraria, prazoFinal (YYYY-MM-DD), status, impacto (1-5), complexidade (1-5), proxProv, obs. Use null para campos desconhecidos.\n\nDescricao: "+descricao;
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
   var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
@@ -1066,7 +1066,7 @@ function RelatorioSemanalModal(rsP){
     var realizados_semana=(st.realizados||[]).slice(0,5);
     var dados="Periodo: "+semana+"\nProcessos criticos (<=5du): "+criticos.length+"\nEm execucao: "+em_exec.length+"\nRealizados recentes: "+realizados_semana.length+"\nTotal no acervo: "+([...st.adm,...st.jud].length)+"\n\nProcessos criticos:\n"+criticos.slice(0,5).map(function(p,i){return (i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+p.diasRestantes+"du";}).join("\n")+"\n\nEm execucao:\n"+em_exec.slice(0,3).map(function(p,i){return (i+1)+". "+p.assunto+" ("+Math.min(100,Number(p.progresso)||0)+"%)";}).join("\n");
     var prompt="Voce e advogado senior da COJUR/CFM. Gere um resumo semanal de producao conciso e profissional. Sem travesSao.\n\nDados:\n"+dados+"\n\nFormato: (1) Status geral da semana; (2) Prioridades para proxima semana; (3) Alertas criticos; (4) Recomendacao de foco. Seja direto, maximo 200 palavras.";
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
@@ -1194,7 +1194,7 @@ function SEIImportModal(seiP){
     if(!numSEI.trim())return;
     setLoad(true);setErr("");setResult(null);
     var prompt="Voce e assistente juridico da COJUR/CFM. O usuario informou o numero SEI: "+numSEI+". Com base neste numero, extraia as informacoes possiveis sobre o processo administrativo no sistema SEI do CFM. O formato padrao e: XX.X.XXXXXXX-X (ex: 26.0.000123456-7). Retorne APENAS JSON com: numeroSEI, assunto (inferido do numero ou contexto CFM), orgao (Conselho Federal de Medicina), tipoPeca (tipo de ato mais provavel), status (Ativo), obs (instrucoes para o usuario verificar os demais campos manualmente no SEI). Use null para campos desconhecidos.";
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:400,messages:[{role:"user",content:prompt}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:400,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
       try{var obj=JSON.parse(txt);obj.numeroSEI=numSEI;setResult(obj);setLoad(false);}
@@ -1591,7 +1591,7 @@ function PDFImportModal(pdfP){
     }).then(function(text){
       setExtractedText(text);
       var prompt = "Voce e assistente juridico da COJUR/CFM especializado em Direito Administrativo e Processual Civil. Analise o documento juridico abaixo e extraia TODOS os campos possiveis para cadastro no sistema de gestao processual.\n\nRetorne APENAS um objeto JSON com os campos: num (numero do processo judicial no formato CNJ), numeroSEI (numero SEI no formato XX.X.XXXXXXX-X), assunto (tema central em ate 100 chars), tribunal (TRF-1 a TRF-6 ou STJ ou STF ou outro), orgao (vara ou gabinete), tipoAcao (tipo da acao judicial), tipoPeca (tipo da peca juridica: Contestacao, Apelacao, Agravo Interno, Manifestacao, Parecer Juridico, etc), parteContraria (nome completo da parte adversa), prazoFinal (data YYYY-MM-DD se houver), pubDJe (data publicacao DJe YYYY-MM-DD), impacto (1 a 5), complexidade (1 a 5), proxProv (proxima providencia necessaria), obs (resumo executivo em 2 frases), status (Ativo). Use null para campos nao encontrados.\n\nDocumento:\n" + text.substring(0, 8000);
-      return fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+      return fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:prompt}]})});
     }).then(function(r){return r.json();})
     .then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
@@ -2763,7 +2763,7 @@ function IAPainel({st,ss,sp}){
     });
     if(!isWorkDay){resumo+="\n(Hoje é fim de semana — plano para próxima segunda-feira)";}
     var iaPrompt="Você é assistente jurídico da COJUR/CFM. Planeje o dia de João Gabriel.\n\n"+resumo+"\nREGRAS:\n- Horário fixo: "+H_INI+" às "+H_FIM+" ("+H_DIA+"h úteis)\n- Respeite eventos fixos que bloqueiam tempo\n- Estimativas: Parecer=2-3h, Agravo=2h, Contraminuta=2h, Manifestação=1-2h, Embargos=45min, Ofício=30min, Despacho=15min\n- Reserve 15min final para revisão\n- Sem travessão no texto. Seja direto.\n\nFormato obrigatório:\n📅 PLANO DO DIA — [data]\n🕒 "+H_INI+" às "+H_FIM+"\n\n[lista de tarefas]:\n⬜ HH:MM-HH:MM · [tarefa] · [tempo] · [prioridade]\n\n📊 RESUMO:\n- Tarefas: X\n- Tempo alocado: Xh\n- Críticos cobertos: X\n[alerta se houver críticos fora do horário]";
-    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();setPlano(txt||"Plano não gerado.");setLoad(false);})
     .catch(function(){setPlano("Erro ao gerar plano.");setLoad(false);});
@@ -3464,7 +3464,7 @@ function IATplModal({proc,onClose}){
       "Use linguagem juridica formal e seja preciso."
     ];
     var prompt=lines.join("\n");
-    fetch("/api/ai",{
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
