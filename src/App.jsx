@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 import { useState, useMemo, useEffect, useReducer, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, ChevronRight, ChevronLeft, Plus, Filter, Inbox, Settings, BarChart3, Zap, Shield, Target, Activity, Layers, MapPin, Plane, Gavel, X, ChevronDown, CalendarDays, Scale, FolderOpen, LayoutDashboard, Timer, Tag, Flame, Edit3, Trash2, Columns3, LayoutGrid, Table2, GripVertical, Save, PenLine, Download, StickyNote, DollarSign, Eye, Link, Pencil, BarChart2 } from "lucide-react";
@@ -507,43 +507,34 @@ const supabase = (_sbUrl && _sbKey) ? createClient(_sbUrl, _sbKey) : null;
 const USER_ID = 'joao_gabriel_cojur'; // identificador fixo — altere se quiser multi-usuário
 
 const dbGet = async function() {
-  // Tenta Supabase primeiro
+  // 1. Tenta localStorage primeiro (instantâneo)
+  let local = null;
+  try { local = localStorage.getItem(STORE_KEY); } catch(e) {}
+
+  // 2. Tenta Supabase (mais recente = vencedor)
   if (supabase) {
     try {
-      const { data, error } = await supabase
-        .from('nexus_state')
-        .select('data')
-        .eq('user_id', USER_ID)
-        .single();
-      if (!error && data) return data.data;
+      const { data, error } = await Promise.race([
+        supabase.from('nexus_state').select('data').eq('user_id', USER_ID).single(),
+        new Promise(function(res){ setTimeout(function(){ res({data:null,error:'timeout'}); }, 3000); })
+      ]);
+      if (!error && data && data.data) return data.data;
     } catch(e) {}
   }
-  // Fallback: window.storage (artifact Claude)
-  if (typeof window !== 'undefined' && window.storage) {
-    try {
-      const r = await window.storage.get(STORE_KEY);
-      return r ? r.value : null;
-    } catch(e) {}
-  }
-  // Fallback final: localStorage
-  try { return localStorage.getItem(STORE_KEY); } catch(e) {}
-  return null;
+  return local;
 };
 
 const dbSet = async function(value) {
-  // Salva no Supabase
+  // Salva localmente sempre
+  try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
+  // Sincroniza no Supabase em background
   if (supabase) {
     try {
-      await supabase
-        .from('nexus_state')
-        .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() });
+      supabase.from('nexus_state')
+        .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() })
+        .then(function(){}).catch(function(){});
     } catch(e) {}
   }
-  // Também salva localmente como backup
-  if (typeof window !== 'undefined' && window.storage) {
-    try { await window.storage.set(STORE_KEY, value); } catch(e) {}
-  }
-  try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
 };
 
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
@@ -3058,10 +3049,7 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
-        const result = await Promise.race([
-          dbGet(),
-          new Promise(function(res){ setTimeout(function(){ res(null); }, 800); })
-        ]);
+        const result = await dbGet();
         if (!cancelled && result) {
           const restored = rehydrate(typeof result === 'string' ? result : JSON.stringify(result));
           dp({ type: "LOAD", state: restored });
