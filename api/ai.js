@@ -1,4 +1,3 @@
-// Vercel Serverless Function — GPT-5.4
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -12,7 +11,6 @@ module.exports = async function handler(req, res) {
 
   try {
     const { messages, max_tokens, system } = req.body;
-
     const msgs = system
       ? [{ role: 'system', content: system }, ...messages]
       : messages;
@@ -24,17 +22,14 @@ module.exports = async function handler(req, res) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-5.4',
+        model: 'gpt-4o',
         max_tokens: max_tokens || 1000,
         messages: msgs,
       }),
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'Erro na API' });
-    }
+    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'Erro na API' });
 
     const text = data.choices?.[0]?.message?.content || '';
     return res.status(200).json({ content: [{ type: 'text', text }] });
