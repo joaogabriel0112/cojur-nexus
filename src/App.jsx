@@ -1594,7 +1594,7 @@ function StatsModal(stP){
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           {[["Total acervo",all.length,"#00e5ff"],["Realizados",real.length,"#00ff88"],["Críticos (≤5du)",criticos,"#ff2e5b"],["Sem mov. (≥7d)",semMov,"#ffb800"]].map(function(item){return(
             <div key={item[0]} style={{padding:"14px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",textAlign:"center"}}>
-              <div style={{fontSize:11,color:K.dim,marginBottom:6,textTransform:"uppercase",fontSize:9,letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
+              <div style={{fontSize:9,color:K.dim,marginBottom:6,textTransform:"uppercase",letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
               <div style={{fontSize:28,fontWeight:800,color:item[2],fontFamily:"Orbitron,monospace"}}>{item[1]}</div>
             </div>
           );})}
@@ -2388,7 +2388,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
           </div>}
           {isJ&&(function(){var prazo=p.pubDJe?calcPrazoDJe(p.pubDJe,p.intersticio||15):null;var du=prazo?diffD(prazo,NOW):null;var sys=getTribSistema(p.tribunal);return(
             <div style={{marginBottom:22}}>
-              <div style={lblSt} onClick={function(){if(setDjeProc&&isJ)setDjeProc(p);}} title="Clique para buscar DJe automaticamente" style={{cursor:isJ?"pointer":"default"}}>Sistema · DJe · Protocolo {isJ?"(clique p/ buscar DJe)":""}</div>
+              <div style={{...lblSt,cursor:isJ?"pointer":"default"}} onClick={function(){if(setDjeProc&&isJ)setDjeProc(p);}} title="Clique para buscar DJe automaticamente">Sistema · DJe · Protocolo {isJ?"(clique p/ buscar DJe)":""}</div>
               {p.num&&<div style={{marginBottom:8,padding:"8px 14px",borderRadius:10,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}}>Nº Judicial</span>
                   <span style={{fontFamily:"'JetBrains Mono',monospace",color:"#00e5ff",fontWeight:700,fontSize:13}}>{p.num}</span>
@@ -2924,7 +2924,7 @@ function CorrecaoPg({st,dp,ss}){
                 <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Pronto p/ Protocolo"}});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:11,border:"1px solid rgba(0,255,136,.35)",background:"rgba(0,255,136,.08)",color:"#00ff88",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                   <Upload size={12}/>Mover p/ Protocolar
                 </button>
-                <button onClick={function(){}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(255,184,0,.25)",background:"rgba(255,184,0,.06)",color:"#ffb800",fontSize:10,fontWeight:700,cursor:"pointer"}} onClick={()=>ss(p)}>
+                <button onClick={function(){ss(p);}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(255,184,0,.25)",background:"rgba(255,184,0,.06)",color:"#ffb800",fontSize:10,fontWeight:700,cursor:"pointer"}}>
                   <PenLine size={12}/>Ver processo
                 </button>
               </div>
@@ -3179,11 +3179,11 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       {/* SIDEBAR */}
-      <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, overflow: "hidden", position:"relative" }}>
+      <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, position:"relative" }}>
         <div style={{ padding: col ? "18px 10px" : "18px 18px", borderBottom: "1px solid rgba(0,212,255,.1)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background:"linear-gradient(135deg, rgba(0,229,255,.06), rgba(168,85,247,.04))" }} onClick={() => sCol(!col)}>
           <CFMMark size={38} />
           {!col && <div style={{minWidth:0}}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, letterSpacing:".15px", textShadow:"0 0 12px rgba(0,229,255,.5)",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px" }}>COJUR</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, letterSpacing:"1px", textShadow:"0 0 12px rgba(0,229,255,.5)",fontFamily:"Orbitron, sans-serif" }}>COJUR</div>
             <div style={{ fontSize: 9, color: "#00d4ff", fontWeight: 700, letterSpacing: "1.6px", textTransform: "uppercase", textShadow:"0 0 8px rgba(0,229,255,.7)",fontFamily:"Orbitron, sans-serif" }}>CFM · NEXUS</div>
           </div>}
         </div>
@@ -3245,7 +3245,7 @@ export default function App() {
             <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:17}}>✏️</button>
             <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
             <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
-            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>>🤖</button>
+            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>🤖</button>
             <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:15}}>☰</button>
             <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
               {darkMode?<Sun size={17} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={17} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
@@ -3263,7 +3263,7 @@ export default function App() {
       {showGmail&&<GmailSEIModal dp={dp} onClose={function(){setShowGmail(false);}}/>}
       {minutaProc!==null&&<MinutaModal proc={minutaProc} onClose={function(){setMinutaProc(null);}}/> }
       {showStats&&<StatsModal st={st} onClose={function(){setShowStats(false);}}/> }
-      {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }}
+      {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
