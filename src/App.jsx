@@ -1,3 +1,4 @@
+import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useState, useMemo, useEffect, useReducer, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
