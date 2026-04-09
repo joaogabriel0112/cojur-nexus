@@ -499,42 +499,39 @@ const D_INBOX=[];
 const STORE_KEY = "cojur-nexus-state";
 
 /* ═══ SUPABASE CLIENT ═══ */
-const _sbUrl = typeof window !== 'undefined' ? (window.__SB_URL__ || import.meta.env?.VITE_SUPABASE_URL || '') : '';
-const _sbKey = typeof window !== 'undefined' ? (window.__SB_KEY__ || import.meta.env?.VITE_SUPABASE_ANON_KEY || '') : '';
-const supabase = (_sbUrl && _sbKey) ? createClient(_sbUrl, _sbKey) : null;
+const supabase = createClient(
+  "https://vcxastdcsbzdsfcdbtan.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjeGFzdGRjc2J6ZHNmY2RidGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MjEzMTEsImV4cCI6MjA5MTI5NzMxMX0.DooE1OfcYeDnTor1d40N6ndTnUtP3U7waNkB8tqQn-k"
+);
 
 /* ═══ SUPABASE STORAGE ADAPTER ═══ */
 const USER_ID = 'joao_gabriel_cojur'; // identificador fixo — altere se quiser multi-usuário
 
 const dbGet = async function() {
-  // 1. Tenta localStorage primeiro (instantâneo)
-  let local = null;
-  try { local = localStorage.getItem(STORE_KEY); } catch(e) {}
-
-  // 2. Tenta Supabase (mais recente = vencedor)
-  if (supabase) {
-    try {
-      const { data, error } = await Promise.race([
-        supabase.from('nexus_state').select('data').eq('user_id', USER_ID).single(),
-        new Promise(function(res){ setTimeout(function(){ res({data:null,error:'timeout'}); }, 3000); })
-      ]);
-      if (!error && data && data.data) return data.data;
-    } catch(e) {}
-  }
-  return local;
+  // Tenta Supabase primeiro (dados sincronizados entre dispositivos)
+  try {
+    const { data, error } = await Promise.race([
+      supabase.from('nexus_state').select('data').eq('user_id', USER_ID).single(),
+      new Promise(function(res){ setTimeout(function(){ res({data:null,error:'timeout'}); }, 3000); })
+    ]);
+    if (!error && data && data.data) {
+      try { localStorage.setItem(STORE_KEY, data.data); } catch(e) {}
+      return data.data;
+    }
+  } catch(e) {}
+  // Fallback: localStorage
+  try { return localStorage.getItem(STORE_KEY); } catch(e) { return null; }
 };
 
 const dbSet = async function(value) {
-  // Salva localmente sempre
+  // Salva localmente primeiro (instantâneo)
   try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
   // Sincroniza no Supabase em background
-  if (supabase) {
-    try {
-      supabase.from('nexus_state')
-        .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() })
-        .then(function(){}).catch(function(){});
-    } catch(e) {}
-  }
+  try {
+    supabase.from('nexus_state')
+      .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() })
+      .then(function(){}).catch(function(){});
+  } catch(e) {}
 };
 
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
