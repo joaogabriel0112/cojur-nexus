@@ -1,4 +1,5 @@
-import React from 'react';
+import 
+        {p.tipo==="jud"&&React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();setArgumentosProc(p);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(251,146,60,.22)",background:"rgba(251,146,60,.05)",color:"#fb923c",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"Argumentos IA");},null)}React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useState, useMemo, useEffect, useReducer, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -393,8 +394,8 @@ const recalc=p=>{const pf=toD(p.prazoFinal);const dr=bizDiff(pf,NOW);const tipoP
 
 /* ═══ DATA ═══ */
 let _nid=100;const nid=()=>"N"+(++_nid);
-const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,...ov});
-const mkJ=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",tribunal:"TRF-1",orgao:"Justiça Federal",responsavel:"João Gabriel",linkRef:"",linkSEI:"",tipoAcao:"Ação Ordinária",tipoPeca:"Manifestação",parteContraria:"",prazoFinal:addD(NOW,30),pubDJe:null,intersticio:15,status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,destaque:"",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"jud",motivoAcompanhamento:"",progresso:0,...ov});
+const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,horasTrabalhadas:0,..ov});
+const mkJ=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",tribunal:"TRF-1",orgao:"Justiça Federal",responsavel:"João Gabriel",linkRef:"",linkSEI:"",tipoAcao:"Ação Ordinária",tipoPeca:"Manifestação",parteContraria:"",prazoFinal:addD(NOW,30),pubDJe:null,intersticio:15,status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,destaque:"",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"jud",motivoAcompanhamento:"",progresso:0,horasTrabalhadas:0,...ov});
 
 
 /* ═══ SEI → JUDICIAL LINK UTILS ═══ */
@@ -498,6 +499,26 @@ const D_INBOX=[];
 
 /* ═══ PERSISTENCE ═══ */
 const STORE_KEY = "cojur-nexus-state";
+const COJUR_SYSTEM = "Voce e advogado senior da Coordenadoria Juridica (COJUR) do Conselho Federal de Medicina (CFM), em Brasilia. Seu trabalho envolve litigios judiciais no TRF-1 e tribunais superiores, pareceres juridicos, oficios e pecas administrativas. REGRAS ABSOLUTAS: 1) PROIBIDO travesSao — use virgula ou ponto; 2) Linguagem tecnica, objetiva, sem redundancias; 3) Norma + Fato + Consequencia em cada conclusao juridica; 4) Resolucoes do CFM tem prioridade normativa maxima; 5) Estrutura: Relatorio / Fundamentos / Conclusao; 6) Sem preamblulos, va direto ao ponto.";
+
+
+
+
+/* === HELPER DE IA === */
+var iaCall = async function(userPrompt, maxTokens, systemOverride) {
+  var sys = systemOverride || COJUR_SYSTEM;
+  var r = await fetch("/api/ai", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      messages: [{role: "user", content: userPrompt}],
+      max_tokens: maxTokens || 1200,
+      system: sys
+    })
+  });
+  var d = await r.json();
+  return (d.content || []).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();
+};
 
 /* ═══ SUPABASE CLIENT ═══ */
 const supabase = createClient(
@@ -527,12 +548,29 @@ const dbGet = async function() {
 const dbSet = async function(value) {
   // Salva localmente primeiro (instantâneo)
   try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
-  // Sincroniza no Supabase em background
+  // Guarda histórico de versões (últimas 3)
   try {
-    supabase.from('nexus_state')
-      .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() })
-      .then(function(){}).catch(function(){});
+    var hist = JSON.parse(localStorage.getItem('""" + HIST_KEY + """') || '[]');
+    hist.unshift({ ts: new Date().toISOString(), data: value });
+    if(hist.length > 3) hist = hist.slice(0, 3);
+    localStorage.setItem('""" + HIST_KEY + """', JSON.stringify(hist));
   } catch(e) {}
+  // Sincroniza no Supabase em background
+  if(supabase) {
+    try {
+      supabase.from('nexus_state')
+        .upsert({ user_id: USER_ID, data: value, updated_at: new Date().toISOString() })
+        .then(function(){}).catch(function(){});
+    } catch(e) {}
+  }
+};
+
+const getVersionHistory = function(){
+  try { return JSON.parse(localStorage.getItem('""" + HIST_KEY + """') || '[]'); } catch(e) { return []; }
+};
+
+const restoreVersion = function(data, dpFn){
+  try { var st = rehydrate(data); dpFn({type:'LOAD', state: st}); } catch(e) {}
 };
 
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
@@ -874,7 +912,7 @@ function PdfAIModal(props) {
   var analyze=function(b64,mime,fn){
     sLoad(true);sErr("");sResult("");sFname(fn);
     var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+proc.assunto+" | Tipo: "+proc.tipoPeca;
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem analise.");sLoad(false);}).catch(function(){sErr("Erro na analise.");sLoad(false);});
   };
   var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){analyze(ev.target.result.split(",")[1],f.type||"application/pdf",f.name);};r.readAsDataURL(f);};
@@ -913,7 +951,7 @@ function GmailSEIModal(props) {
     if(!texto.trim()){setErr("Cole o texto do email antes de analisar.");return;}
     setLoad(true);setErr("");setExtracted(null);
     var prompt="Analise o email abaixo e extraia as informações do processo judicial ou administrativo.\n\nEMAIL:\n"+texto+"\n\nRetorne APENAS um objeto JSON (não array) com:\n- assunto: assunto do email (string)\n- remetente: quem enviou (string)\n- data: data do email (string)\n- numeroSEI: número SEI se houver (string ou null)\n- numeroProcesso: número judicial se houver no formato XXXXXXX-XX.XXXX.X.XX.XXXX (string ou null)\n- tipoPeca: tipo de peça jurídica mencionada (string ou null)\n- prazo: data de prazo mencionada (string ou null)\n- tipo: 'jud' se for processo judicial/tribunal, 'adm' se for administrativo\n- grupo: 1 se mencionar novo prazo SEI atribuído, 2 se for email institucional importante\n- urgencia: 'alta' se mencionar prazo vencendo, 'media' se institucional, 'normal' para demais\n- resumo: 1 frase descrevendo o que o email solicita ou comunica\n\nSeja preciso. SOMENTE JSON, sem markdown.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
@@ -932,532 +970,7 @@ function GmailSEIModal(props) {
   /* ── ABA 2: Busca automática via Gmail MCP ───────────────────────────── */
   var buscarGmail=function(){
     setLoad(true);setErr("");setEmails([]);
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",max_tokens:3000,
-      messages:[{role:"user",content:"Use o Gmail para buscar emails recentes (últimos 30 dias). Identifique: GRUPO 1 — emails com 'Comunico a atribuição de novo prazo em seu nome no âmbito do sistema SEI'. GRUPO 2 — emails de TRF, STJ, STF, TRT, OAB, AGU, CNJ, CFM, CRM, MP sobre processos, prazos, decisões, intimações. Para cada email retorne JSON: [{assunto, remetente, data, numeroSEI, numeroProcesso, tipoPeca, prazo, tipo (jud/adm), grupo (1/2), urgencia (alta/media/normal), resumo}]. APENAS array JSON."}],
-      mcp_servers:[{type:"url",url:"https://gmail.mcp.claude.com/mcp",name:"gmail"}]
-    })})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      var txt=(d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("").replace(/```json|```/g,"").trim();
-      try{
-        var a=JSON.parse(txt);
-        if(Array.isArray(a)&&a.length>0){setEmails(a);setLoad(false);}
-        else{setErr("Nenhum email relevante encontrado. Tente a aba 'Colar Email' para importar manualmente.");setLoad(false);}
-      }catch(e){
-        setErr("O Gmail MCP não retornou dados neste ambiente. Use a aba 'Colar Email' — cole o texto do email e a IA extrai as informações automaticamente.");
-        setLoad(false);
-      }
-    })
-    .catch(function(e){
-      setErr("Erro de conexão. Use a aba 'Colar Email' como alternativa.");
-      setLoad(false);
-    });
-  };
-
-  var importarObj=function(em){
-    var isJ=em.tipo==="jud"||(em.numeroProcesso&&em.numeroProcesso.length>10);
-    if(isJ){dp({type:"ADD_J",proc:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
-    else{dp({type:"ADD_A",proc:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
-    setAdded(function(p){var n=Object.assign({},p);n[em.assunto||"x"]=true;return n;});
-  };
-
-  var tabStyle=function(t){return {flex:1,padding:"9px 8px",borderRadius:11,border:tab===t?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.12)",background:tab===t?"rgba(0,229,255,.12)":"rgba(0,229,255,.03)",color:tab===t?"#00e5ff":K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .2s"};};
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:22,width:"100%",maxWidth:680,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-
-        {/* Header */}
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <span style={{fontSize:22}}>📧</span>
-          <div>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Gmail SEI</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>Importe processos a partir de emails do SEI/tribunais</div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
-          <button onClick={function(){setTab("colar");setErr("");setExtracted(null);}} style={tabStyle("colar")}>📋 Colar Email (recomendado)</button>
-          <button onClick={function(){setTab("auto");setErr("");setEmails([]);}} style={tabStyle("auto")}>🔍 Busca Automática</button>
-        </div>
-
-        {/* Erro */}
-        {err&&<div style={{padding:"10px 14px",borderRadius:11,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:14,lineHeight:1.6}}>{err}</div>}
-
-        {/* ABA: Colar Email */}
-        {tab==="colar"&&<div>
-          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",fontSize:11,color:K.dim,marginBottom:12,lineHeight:1.6}}>
-            <span style={{color:"#00e5ff",fontWeight:700}}>Como usar: </span>
-            Abra o email no Gmail, selecione todo o texto (Ctrl+A), copie (Ctrl+C) e cole aqui abaixo. A IA extrai os dados automaticamente.
-          </div>
-          <textarea
-            value={texto}
-            onChange={function(e){setTexto(e.target.value);}}
-            placeholder={"Cole aqui o texto completo do email SEI ou do tribunal...\n\nExemplo:\nDe: sei@cfm.org.br\nAssunto: Comunico a atribuição de novo prazo...\n\nComunico que foi atribuído novo prazo..."}
-            style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}
-          />
-          {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>🧠</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Extraindo informações...</div></div>}
-          {!loading&&!extracted&&<button onClick={extrairEmail} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>🧠 Analisar email com IA</button>}
-          {extracted&&!loading&&<div>
-            <div style={{padding:"14px 16px",borderRadius:14,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",marginBottom:12}}>
-              <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Dados extraídos pela IA</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {[["Assunto",extracted.assunto],["Remetente",extracted.remetente],["Data",extracted.data],["Tipo",extracted.tipo==="jud"?"Judicial":"Administrativo"],["Nº SEI",extracted.numeroSEI||"—"],["Nº Processo",extracted.numeroProcesso||"—"],["Tipo de Peça",extracted.tipoPeca||"—"],["Prazo",extracted.prazo||"—"]].map(function(item,i){return(
-                  <div key={i} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.025)"}}>
-                    <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{item[0]}</div>
-                    <div style={{fontSize:12,color:K.txt,fontWeight:600,wordBreak:"break-word"}}>{item[1]||"—"}</div>
-                  </div>
-                );})}
-              </div>
-              {extracted.resumo&&<div style={{marginTop:10,padding:"8px 10px",borderRadius:8,background:"rgba(0,229,255,.06)",fontSize:11,color:"#94a3b8",fontStyle:"italic"}}>{extracted.resumo}</div>}
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={function(){importarObj(extracted);}} disabled={added[extracted.assunto||"x"]} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:added[extracted.assunto||"x"]?"#00ff88":"#00e5ff",borderColor:added[extracted.assunto||"x"]?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)",background:added[extracted.assunto||"x"]?"rgba(0,255,136,.1)":"rgba(0,229,255,.1)"}}>
-                {added[extracted.assunto||"x"]?"✅ Processo importado!":"➕ Importar processo"}
-              </button>
-              <button onClick={function(){setExtracted(null);setTexto("");setErr("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Novo email</button>
-            </div>
-          </div>}
-        </div>}
-
-        {/* ABA: Busca Automática */}
-        {tab==="auto"&&<div>
-          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(255,184,0,.06)",border:"1px solid rgba(255,184,0,.2)",fontSize:11,color:K.dim,marginBottom:14,lineHeight:1.6}}>
-            <span style={{color:"#ffb800",fontWeight:700}}>Requer conector Gmail ativo: </span>
-            Acesse Configurações → Conectores no Claude.ai e confirme que o Gmail está conectado. Se não funcionar, use a aba "Colar Email".
-          </div>
-          {!loading&&!emails.length&&<div style={{textAlign:"center",padding:"24px 0"}}>
-            <div style={{fontSize:38,marginBottom:10}}>📬</div>
-            <div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:14}}>Buscar emails com prazos SEI no Gmail</div>
-            <button onClick={buscarGmail} style={{...btnPrim,padding:"11px 22px",justifyContent:"center"}}>🔍 Buscar Gmail</button>
-          </div>}
-          {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:10}}>📧</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Acessando Gmail...</div></div>}
-          {emails.length>0&&(function(){
-            var g1=emails.filter(function(e){return e.grupo===1||e.grupo==="1";});
-            var g2=emails.filter(function(e){return e.grupo!==1&&e.grupo!=="1";});
-            var EM=function(em,i){
-              var isJ=em.tipo==="jud"||(em.numeroProcesso&&em.numeroProcesso.length>10);
-              var done=added[em.assunto||"x"]; var alta=em.urgencia==="alta";
-              var canI=em.grupo===1||em.grupo==="1";
-              return(
-                <div key={i} style={{padding:"11px 14px",borderRadius:12,background:done?"rgba(0,255,136,.04)":alta?"rgba(255,46,91,.04)":"rgba(255,255,255,.025)",border:done?"1px solid rgba(0,255,136,.25)":alta?"1px solid rgba(255,46,91,.3)":"1px solid rgba(255,255,255,.07)",display:"flex",gap:12,alignItems:"flex-start",marginBottom:8}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",gap:5,marginBottom:5,flexWrap:"wrap"}}>
-                      <Bd color={isJ?K.pu:K.ac}>{isJ?"Judicial":"Adm"}</Bd>
-                      {alta&&<Bd color={K.cr}>URGENTE</Bd>}
-                      {em.prazo&&<Bd color={K.wa}>{em.prazo}</Bd>}
-                      {done&&<Bd color={K.su}>Importado</Bd>}
-                    </div>
-                    <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:3}}>{em.assunto}</div>
-                    {em.resumo&&<div style={{fontSize:11,color:"#94a3b8",fontStyle:"italic",marginBottom:3}}>{em.resumo}</div>}
-                    {em.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>SEI: {em.numeroSEI}</div>}
-                    {em.numeroProcesso&&<div style={{fontSize:10,color:"#b84dff",fontFamily:"'JetBrains Mono',monospace"}}>Proc: {em.numeroProcesso}</div>}
-                    <div style={{fontSize:10,color:K.dim,marginTop:3}}>{em.remetente} · {em.data}</div>
-                  </div>
-                  {canI&&<button onClick={function(){importarObj(em);}} disabled={done} style={{padding:"7px 12px",borderRadius:10,border:done?"1px solid rgba(0,255,136,.3)":"1px solid rgba(0,229,255,.3)",background:done?"rgba(0,255,136,.06)":"rgba(0,229,255,.08)",color:done?"#00ff88":"#00e5ff",fontSize:11,fontWeight:700,cursor:done?"default":"pointer",flexShrink:0,fontFamily:"inherit"}}>{done?"Importado":"+ Importar"}</button>}
-                </div>
-              );
-            };
-            return(
-              <div>
-                {g1.length>0&&<div style={{marginBottom:14}}>
-                  <div style={{fontSize:10,color:"#ff2e5b",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif",display:"flex",alignItems:"center",gap:8}}>
-                    <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"#ff2e5b",flexShrink:0}}/>
-                    Novos Prazos SEI ({g1.length})
-                  </div>
-                  {g1.map(EM)}
-                </div>}
-                {g2.length>0&&<div style={{marginBottom:10}}>
-                  <div style={{fontSize:10,color:"#ffb800",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif"}}>Emails Importantes ({g2.length})</div>
-                  {g2.map(EM)}
-                </div>}
-                <button onClick={buscarGmail} style={{...btnGhost,marginTop:4,width:"100%",justifyContent:"center",fontSize:11}}>Atualizar</button>
-              </div>
-            );
-          })()}
-        </div>}
-      </div>
-    </div>
-  );
-}
-
-
-
-/* === RELATORIO DE PRODUCAO === */
-function RelatorioModal(props) {
-  var st=props.st, onClose=props.onClose;
-  var s1=useState(false),loading=s1[0],sLoad=s1[1];
-  var s2=useState(""),result=s2[0],sResult=s2[1];
-  var s3=useState(false),copied=s3[0],sCopied=s3[1];
-  var gerar=function(){
-    sLoad(true);sResult("");
-    var total=[...st.adm,...st.jud].length;
-    var real=(st.realizados||[]);
-    var mes=new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-    var dados="Mes: "+mes+"\nTotal processos: "+total+"\nRealizados: "+real.length+"\nJudiciais: "+st.jud.length+"\nAdministrativos: "+st.adm.length+"\nSustentacoes: "+st.sust.length+"\nReunioes: "+st.reun.length;
-    var lista=real.slice(0,15).map(function(p,i){return (i+1)+". "+p.assunto+" ("+p.tipoPeca+", "+(p.tipo==="jud"?"Judicial":"Adm")+")";}).join("\n");
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
-    .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem relatorio.");sLoad(false);}).catch(function(){sResult("Erro ao gerar.");sLoad(false);});
-  };
-  var copy=function(){try{navigator.clipboard.writeText(result).then(function(){sCopied(true);setTimeout(function(){sCopied(false);},2500);});}catch(e){}};
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.83)",backdropFilter:"blur(10px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"32px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:22,width:"100%",maxWidth:700,padding:26,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-          <span style={{fontSize:22}}>📊</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Relatório de Produção Mensal</h3><div style={{fontSize:11,color:K.dim,marginTop:2}}>Gerado por IA com base nos dados do COJUR Nexus</div></div>
-        </div>
-        {!result&&!loading&&<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:42,marginBottom:12}}>📊</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:5}}>Gerar relatório do mês</div><div style={{fontSize:12,color:K.dim,marginBottom:20}}>{(st.realizados||[]).length} realizados · {[...st.adm,...st.jud].length} no acervo</div><button onClick={gerar} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>Gerar Relatório IA</button></div>}
-        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:10}}>📊</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Gerando relatório...</div></div>}
-        {result&&<div><div style={{padding:"14px",borderRadius:13,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:400,overflowY:"auto",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:10}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00e5ff"}}>{copied?"Copiado!":"Copiar Relatório"}</button><button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Regenerar</button></div></div>}
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══ TEMPLATES DE PROCESSO ═══ */
-var TEMPLATES_JUD = [
-  {label:"Mandado de Segurança",vals:{tipoAcao:"Mandado de Segurança",tipoPeca:"Informações em MS",intersticio:10,impacto:4,complexidade:3,custas:false}},
-  {label:"Ação Ordinária",vals:{tipoAcao:"Ação Ordinária",tipoPeca:"Contestação",intersticio:15,impacto:3,complexidade:3}},
-  {label:"Agravo Interno TRF",vals:{tipoAcao:"Agravo Interno",tipoPeca:"Agravo Interno",intersticio:15,impacto:4,complexidade:4,custas:false}},
-  {label:"Recurso Especial STJ",vals:{tipoAcao:"Recurso Especial",tipoPeca:"Recurso Especial",tribunal:"STJ",intersticio:15,impacto:5,complexidade:5,custas:true}},
-  {label:"Embargos de Declaração",vals:{tipoAcao:"Embargos de Declaração",tipoPeca:"Embargos de Declaração",intersticio:5,impacto:2,complexidade:2,custas:false}},
-  {label:"Apelação",vals:{tipoAcao:"Apelação",tipoPeca:"Apelação",intersticio:15,impacto:4,complexidade:4,custas:true}},
-  {label:"Sustentação Oral",vals:{tipoAcao:"Sustentação Oral",tipoPeca:"Sustentação Oral",impacto:5,complexidade:4,custas:false,sustentacao:true}},
-];
-var TEMPLATES_ADM = [
-  {label:"Parecer Jurídico",vals:{tipoPeca:"Parecer Jurídico",fase:"Elaboração",impacto:3,complexidade:3}},
-  {label:"Ofício para MPF",vals:{tipoPeca:"Ofício",fase:"Elaboração",impacto:3,complexidade:2}},
-  {label:"Despacho de Andamento",vals:{tipoPeca:"Despacho de Andamento",fase:"Triagem",impacto:1,complexidade:1}},
-  {label:"Análise de Resolução CFM",vals:{tipoPeca:"Parecer Jurídico",fase:"Elaboração",impacto:4,complexidade:4}},
-];
-
-
-/* ═══ RESUMO DE DECISÃO JUDICIAL ═══ */
-function DecisaoModal({onClose}) {
-  var sLoad=useState(false);var loading=sLoad[0],setLoad=sLoad[1];
-  var sTexto=useState("");var texto=sTexto[0],setTexto=sTexto[1];
-  var sResult=useState("");var result=sResult[0],setResult=sResult[1];
-  var sCopied=useState(false);var copied=sCopied[0],setCopied=sCopied[1];
-
-  var analisar=function(){
-    if(!texto.trim())return;
-    setLoad(true);setResult("");
-    var prompt="Você é advogado sênior da COJUR/CFM. Analise a decisão judicial abaixo e forneça:\n\n1. TIPO DE DECISÃO: (Sentença/Acórdão/Decisão interlocutória/Despacho)\n2. RESULTADO: Resumo em 2 frases do que foi decidido\n3. PRÓXIMA PROVIDÊNCIA: Ação concreta e imediata para a COJUR\n4. PRAZO: Prazo para recurso ou manifestação (com fundamento legal)\n5. ARGUMENTOS A REBATER: Se desfavorável, quais argumentos precisam ser contestados\n6. NÍVEL DE RISCO: Crítico/Médio/Baixo para o CFM — com justificativa\n\nDecisão:\n"+texto+"\n\nSeja direto, técnico e objetivo. Sem travessão.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})})
-    .then(function(r){return r.json();})
-    .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
-    .catch(function(){setResult("Erro na análise.");setLoad(false);});
-  };
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.25)",borderRadius:22,width:"100%",maxWidth:700,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <span style={{fontSize:22}}>⚖️</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Resumo de Decisão Judicial</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Cole o texto da decisão — IA extrai tipo, prazo, providência e risco</div></div>
-        </div>
-        <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da decisão judicial, acórdão ou despacho...\n\nExemplo: VISTOS. Trata-se de ação ordinária proposta..."}
-          style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#b84dff"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>⚖️</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Analisando decisão...</div></div>}
-        {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#b84dff",borderColor:"rgba(168,85,247,.4)",background:"rgba(168,85,247,.1)"}}>⚖️ Analisar Decisão com IA</button>}
-        {result&&!loading&&<div>
-          <div style={{padding:"14px",borderRadius:13,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.2)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",marginBottom:12}}>{result}</div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#b84dff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(168,85,247,.35)",background:copied?"rgba(0,255,136,.08)":"rgba(168,85,247,.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Análise"}</button>
-            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Nova decisão</button>
-          </div>
-        </div>}
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══ REVISÃO DE PEÇA ═══ */
-function RevisaoModal({onClose}) {
-  var sLoad=useState(false);var loading=sLoad[0],setLoad=sLoad[1];
-  var sTexto=useState("");var texto=sTexto[0],setTexto=sTexto[1];
-  var sResult=useState("");var result=sResult[0],setResult=sResult[1];
-  var sCopied=useState(false);var copied=sCopied[0],setCopied=sCopied[1];
-
-  var revisar=function(){
-    if(!texto.trim())return;
-    setLoad(true);setResult("");
-    var prompt="Você é advogado sênior especializado em Direito Administrativo e Processual Civil, revisor de peças jurídicas da COJUR/CFM.\n\nRevise a peça abaixo e aponte:\n\n1. ERROS FORMAIS: problemas de formatação, estrutura, numeração de dispositivos\n2. ERROS TÉCNICOS: referências legais incorretas, argumentos juridicamente fracos ou equivocados\n3. MELHORIAS SUGERIDAS: trechos que podem ser reforçados, argumentos adicionais pertinentes\n4. LINGUAGEM: uso de travessão (proibido na COJUR), informalidades, redundâncias\n5. PONTUAÇÃO: ≤10 (necessita revisão profunda), 10-14 (ajustes pontuais), 15-18 (boa qualidade), 19-20 (excelente)\n\nPeça:\n"+texto+"\n\nSeja específico, cite os trechos problemáticos. Sem travessão na sua resposta.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1400,messages:[{role:"user",content:prompt}]})})
-    .then(function(r){return r.json();})
-    .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
-    .catch(function(){setResult("Erro na revisão.");setLoad(false);});
-  };
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.2)",borderRadius:22,width:"100%",maxWidth:760,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <span style={{fontSize:22}}>✏️</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Revisão de Peça Jurídica</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Cole o rascunho — IA revisa erros formais, técnicos e de linguagem</div></div>
-        </div>
-        <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da peça jurídica para revisão...\n\nExemplo: EXCELENTÍSSIMO SENHOR DESEMBARGADOR FEDERAL...\n\nVem respeitosamente à presença de Vossa Excelência o CONSELHO FEDERAL DE MEDICINA..."}
-          style={{...inpSt,minHeight:200,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00ff88"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>✏️</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Revisando peça...</div></div>}
-        {!loading&&!result&&<button onClick={revisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#00ff88",borderColor:"rgba(0,255,136,.4)",background:"rgba(0,255,136,.08)"}}>✏️ Revisar Peça com IA</button>}
-        {result&&!loading&&<div>
-          <div style={{padding:"14px",borderRadius:13,background:"rgba(0,255,136,.05)",border:"1px solid rgba(0,255,136,.15)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto",marginBottom:12}}>{result}</div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00ff88",borderColor:copied?"rgba(0,255,136,.5)":"rgba(0,255,136,.35)",background:"rgba(0,255,136,.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Revisão"}</button>
-            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Revisar outra peça</button>
-          </div>
-        </div>}
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══ TIMELINE 30 DIAS ═══ */
-function TimelinePg({st,ss}) {
-  var all=[...st.adm,...st.jud].filter(function(p){return p.prazoFinal&&p.diasRestantes>=0&&p.diasRestantes<=30;}).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
-  var hoje=new Date();
-  var dias=Array.from({length:31},function(_,i){return i;});
-  return(
-    <div className="cj-pg">
-      <div className="cj-up" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-        <span style={{fontSize:24}}>📅</span>
-        <div>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:K.txt,fontFamily:"Orbitron,sans-serif"}}>Timeline de Prazos</h2>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Próximos 30 dias úteis · {all.length} processo{all.length!==1?"s":""} com prazo</div>
-        </div>
-      </div>
-      {all.length===0&&<div style={{textAlign:"center",padding:60,color:K.dim}}><div style={{fontSize:48,marginBottom:16}}>✅</div><div style={{fontSize:16,fontWeight:700,color:K.txt}}>Nenhum prazo nos próximos 30 dias úteis</div></div>}
-      {all.length>0&&<div>
-        {/* Ruler */}
-        <div style={{position:"relative",marginBottom:8,height:32,display:"flex",alignItems:"flex-end"}}>
-          {[0,5,10,15,20,25,30].map(function(d){return(
-            <div key={d} style={{position:"absolute",left:(d/30*100)+"%",transform:"translateX(-50%)",fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{d===0?"Hoje":d+"du"}</div>
-          );})}
-        </div>
-        {/* Track */}
-        <div style={{position:"relative",height:8,borderRadius:999,background:"rgba(255,255,255,.06)",marginBottom:24,overflow:"visible"}}>
-          <div style={{position:"absolute",left:0,top:-2,bottom:-2,width:2,background:"#00e5ff",borderRadius:999,boxShadow:"0 0 8px #00e5ff"}}/>
-          {all.map(function(p,i){
-            var left=(p.diasRestantes/30)*100;
-            var cor=uC(p.diasRestantes);
-            return <div key={p.id} style={{position:"absolute",left:left+"%",transform:"translateX(-50%)",width:10,height:10,borderRadius:"50%",background:cor,boxShadow:"0 0 8px "+cor,border:"2px solid rgba(0,0,0,.5)",top:-1,cursor:"pointer",zIndex:i+1}} onClick={function(){ss(p);}} title={p.assunto+" — "+p.diasRestantes+"du"}/>;
-          })}
-        </div>
-        {/* Cards por faixa */}
-        {[[0,0,"🚨","Vencidos/Hoje","#ff2e5b"],[1,5,"🔥","Próximos 5 dias úteis","#ff2e5b"],[6,10,"⚡","6 a 10 dias úteis","#ffb800"],[11,20,"📋","11 a 20 dias úteis","#00e5ff"],[21,30,"🗓","21 a 30 dias úteis","#94a3b8"]].map(function(faixa){
-          var emoji=faixa[2],label=faixa[3],cor=faixa[4];
-          var procs=all.filter(function(p){return p.diasRestantes>=faixa[0]&&p.diasRestantes<=faixa[1];});
-          if(!procs.length)return null;
-          return(
-            <div key={label} style={{marginBottom:16}}>
-              <div style={{fontSize:11,color:cor,fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>{emoji} {label} ({procs.length})</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
-                {procs.map(function(p){return(
-                  <div key={p.id} onClick={function(){ss(p);}} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+cor+"33",cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
-                    <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:cor,boxShadow:"0 0 6px "+cor}}/>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                      <div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Adm"}</div>
-                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
-                    </div>
-                    <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-                    <div style={{fontSize:10,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
-                  </div>
-                );})}
-              </div>
-            </div>
-          );
-        })}
-      </div>}
-    </div>
-  );
-}
-
-
-/* ═══ CHECKLIST PRÉ-PROTOCOLO ═══ */
-var CHECKLIST_ITEMS = [
-  {id:"num",label:"Número do processo correto e completo"},
-  {id:"cab",label:"Cabeçalho com destinatário correto"},
-  {id:"qual",label:"Qualificação do CFM como réu/interessado"},
-  {id:"req",label:"Pedido (requerimento) claro e fundamentado"},
-  {id:"ref",label:"Referências legais corretas (Lei, art., §)"},
-  {id:"ass",label:"Assinatura digital do advogado responsável"},
-  {id:"cus",label:"Custas processuais verificadas"},
-  {id:"ane",label:"Documentos anexos conferidos"},
-  {id:"pra",label:"Prazo processual ainda vigente"},
-  {id:"trav",label:"Sem uso de travessão no texto"},
-];
-function ChecklistModal({proc,onConfirm,onClose}) {
-  var sCheck=useState({});var checks=sCheck[0],setCheck=sCheck[1];
-  var all_ok=CHECKLIST_ITEMS.every(function(it){return checks[it.id];});
-  var ok_count=CHECKLIST_ITEMS.filter(function(it){return checks[it.id];}).length;
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
-          <span style={{fontSize:22}}>📋</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Checklist Pré-Protocolo</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&(proc.num||proc.assunto)}</div></div>
-          <div style={{marginLeft:"auto",fontSize:14,fontWeight:800,color:all_ok?"#00ff88":"#ffb800",fontFamily:"Orbitron,monospace"}}>{ok_count}/{CHECKLIST_ITEMS.length}</div>
-        </div>
-        <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,.06)",marginBottom:18,overflow:"hidden"}}>
-          <div style={{height:"100%",width:(ok_count/CHECKLIST_ITEMS.length*100)+"%",background:all_ok?"#00ff88":"#ffb800",boxShadow:"0 0 8px "+(all_ok?"#00ff88":"#ffb800"),transition:"width .3s"}}/>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-          {CHECKLIST_ITEMS.map(function(it){return(
-            <label key={it.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:checks[it.id]?"rgba(0,255,136,.07)":"rgba(255,255,255,.025)",border:"1px solid "+(checks[it.id]?"rgba(0,255,136,.3)":"rgba(255,255,255,.08)"),cursor:"pointer",transition:"all .2s"}}>
-              <input type="checkbox" checked={!!checks[it.id]} onChange={function(e){setCheck(function(p){var n=Object.assign({},p);n[it.id]=e.target.checked;return n;});}} style={{width:18,height:18,accentColor:"#00ff88",flexShrink:0}}/>
-              <span style={{fontSize:13,color:checks[it.id]?K.dim:K.txt,textDecoration:checks[it.id]?"line-through":"none",fontWeight:checks[it.id]?400:500}}>{it.label}</span>
-            </label>
-          );})}
-        </div>
-        <button onClick={onConfirm} disabled={!all_ok} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",opacity:all_ok?1:0.45,color:"#00ff88",borderColor:"rgba(0,255,136,.5)",background:"rgba(0,255,136,.1)",cursor:all_ok?"pointer":"not-allowed",fontSize:13,fontWeight:800}}>
-          {all_ok?"📤 Confirmar Protocolo — Tudo verificado!":"Complete todos os itens para confirmar"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══ TIPO DE PEÇA — mapa de cores ═══ */
-var PECA_COR = {
-  // Defesa/inicial
-  "Contestação":"#00e5ff","Reconvenção":"#00e5ff","Exceção de Incompetência":"#94a3b8",
-  // Recursos 1G→2G
-  "Apelação":"#f59e0b","Apelação Adesiva":"#f59e0b","Agravo de Instrumento":"#fb923c","Agravo Retido":"#fb923c",
-  // Recursos tribunais
-  "Agravo Interno":"#f97316","Embargos de Declaração":"#a78bfa","Embargos Infringentes":"#a78bfa","Embargos de Divergência":"#a78bfa",
-  // Recursos excepcionais
-  "Recurso Especial":"#c084fc","Agravo em Recurso Especial":"#c084fc",
-  "Recurso Extraordinário":"#e879f9","Agravo em Recurso Extraordinário":"#e879f9","Recurso Ordinário Constitucional":"#e879f9",
-  // MS e incidentes
-  "Informações em MS":"#06b6d4","Contrarrazões":"#38bdf8","Contraminuta":"#38bdf8",
-  "Impugnação ao Cumprimento de Sentença":"#f43f5e","Exceção de Pré-Executividade":"#f43f5e",
-  "Embargos à Execução":"#f43f5e","Embargos de Terceiro":"#fb7185",
-  // Tutelas
-  "Manifestação sobre Tutela":"#34d399","Pedido de Efeito Suspensivo":"#34d399","Petição Cautelar":"#6ee7b7",
-  // Manifestações gerais
-  "Manifestação":"#64748b","Petição Simples":"#64748b","Memorial":"#8b5cf6","Memoriais":"#8b5cf6",
-  "Alegações Finais":"#8b5cf6","Razões de Recurso":"#f59e0b","Contrarrazões de Recurso":"#38bdf8",
-  // Orais
-  "Sustentação Oral":"#b84dff",
-  // Execução
-  "Cumprimento de Sentença":"#f43f5e","Impugnação ao Cumprimento":"#f43f5e","Cálculos de Liquidação":"#fb7185",
-  // Admin
-  "Parecer Jurídico":"#00ff88","Ofício":"#22d3ee","Nota Técnica":"#86efac","Despacho de Andamento":"#94a3b8",
-  // Outro
-  "Outro":"#64748b"
-};
-var getPecaCor=function(tp){return PECA_COR[tp]||"#64748b";};
-var getPecaLabel=function(tp){
-  var abbrev={"Contestação":"CONTEST.","Apelação":"APEL.","Apelação Adesiva":"APEL.ADES.","Agravo de Instrumento":"AG.INST.","Agravo Retido":"AG.RET.","Agravo Interno":"AG.INT.","Embargos de Declaração":"EMBS.DEC.","Embargos Infringentes":"EMBS.INF.","Embargos de Divergência":"EMBS.DIV.","Recurso Especial":"RESP","Agravo em Recurso Especial":"AG.RESP","Recurso Extraordinário":"RE","Agravo em Recurso Extraordinário":"AG.RE","Recurso Ordinário Constitucional":"ROC","Informações em MS":"INFO.MS","Contrarrazões":"CTR.RAZ.","Contraminuta":"CTR.MIN.","Impugnação ao Cumprimento de Sentença":"IMP.CUM.","Exceção de Pré-Executividade":"EXC.PRE.","Embargos à Execução":"EMBS.EX.","Embargos de Terceiro":"EMBS.TER.","Manifestação sobre Tutela":"TUTE.","Pedido de Efeito Suspensivo":"EF.SUSP.","Petição Cautelar":"CAU.","Manifestação":"MANIF.","Petição Simples":"PET.","Memorial":"MEM.","Memoriais":"MEM.","Alegações Finais":"ALEG.FIN.","Razões de Recurso":"RAZ.REC.","Contrarrazões de Recurso":"CTR.REC.","Sustentação Oral":"SUST.","Cumprimento de Sentença":"CUM.SENT.","Impugnação ao Cumprimento":"IMP.CUM.","Cálculos de Liquidação":"CALC.","Parecer Jurídico":"PARECER","Ofício":"OFÍCIO","Nota Técnica":"NT","Despacho de Andamento":"DESP.","Reconvenção":"RECONV.","Exceção de Incompetência":"EXC.INC."};
-  return abbrev[tp]||tp.substring(0,8).toUpperCase();
-};
-
-
-/* ═══ GERADOR DE MINUTA COMPLETA ═══ */
-function MinutaModal({proc, onClose}) {
-  var sTipo=useState(proc&&proc.tipoPeca||"Contestação");var tipoMinuta=sTipo[0],setTipoMinuta=sTipo[1];
-  var sLoad=useState(false);var loading=sLoad[0],setLoad=sLoad[1];
-  var sMinuta=useState("");var minuta=sMinuta[0],setMinuta=sMinuta[1];
-  var sCopied=useState(false);var copied=sCopied[0],setCopied=sCopied[1];
-  var sObs=useState("");var obsExtra=sObs[0],setObs=sObs[1];
-
-  var gerar=function(){
-    setLoad(true);setMinuta("");
-    var ctx="";
-    if(proc){
-      ctx="Processo: "+(proc.num||"—")+" | SEI: "+(proc.numeroSEI||"—")+" | Assunto: "+proc.assunto+" | Parte contrária: "+(proc.parteContraria||"—")+" | Tribunal: "+(proc.tribunal||"—")+" | Tipo de ação: "+(proc.tipoAcao||"—")+" | Próxima providência: "+(proc.proxProv||"—")+" | Observações: "+(proc.obs||"—");
-    }
-    var instrucoes="REGRAS OBRIGATÓRIAS DE ESTILO COJUR/CFM:\n1. PROIBIDO travessão (use vírgula ou ponto)\n2. Use estrutura: RELATÓRIO, FUNDAMENTOS e CONCLUSÃO\n3. Cite NORMA + FATO + CONSEQUÊNCIA JURÍDICA em cada argumento\n4. Linguagem técnica, objetiva, sem redundâncias\n5. Parágrafos numerados quando houver mais de 3\n6. Endereçamento formal ao tribunal correspondente";
-    var prompt="Você é advogado sênior do Conselho Federal de Medicina (CFM) especializado em Direito Administrativo e Processual Civil. Redija uma minuta completa de "+tipoMinuta+" seguindo rigorosamente as regras da COJUR/CFM.\n\n"+instrucoes+"\n\nContexto do processo:\n"+ctx+(obsExtra?"\n\nInstruções adicionais:\n"+obsExtra:"")+"\n\nRedija a peça completa, incluindo cabeçalho formal, qualificação das partes, fundamentos jurídicos (indicando os artigos aplicáveis) e pedido final. A peça deve estar pronta para revisão e protocolo.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})})
-    .then(function(r){return r.json();})
-    .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setMinuta(t||"Sem resultado.");setLoad(false);})
-    .catch(function(){setMinuta("Erro ao gerar. Verifique sua conexão.");setLoad(false);});
-  };
-
-  var copy=function(){try{navigator.clipboard.writeText(minuta).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.25)",borderRadius:22,width:"100%",maxWidth:820,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-          <span style={{fontSize:24}}>📝</span>
-          <div>
-            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Gerador de Minuta Completa</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&proc.assunto||"Peça jurídica"} · {proc&&proc.num||"Novo processo"}</div>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
-          <div>
-            <label style={lblSt}>Tipo de Peça</label>
-            <select style={inpSt} value={tipoMinuta} onChange={function(e){setTipoMinuta(e.target.value);}}>
-              {TIPOS_PECA.map(function(tp){return <option key={tp} value={tp} style={{background:K.modal}}>{tp}</option>;})}
-            </select>
-          </div>
-          <div>
-            <label style={lblSt}>Instruções adicionais (opcional)</label>
-            <textarea style={{...inpSt,minHeight:60,resize:"vertical",fontSize:11}} value={obsExtra} onChange={function(e){setObs(e.target.value);}} placeholder="Ex: Incluir pedido de tutela de urgência, enfatizar Lei 12.842/2013..."/>
-          </div>
-        </div>
-        <div style={{padding:"10px 14px",borderRadius:11,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",marginBottom:14,fontSize:11,color:K.dim,lineHeight:1.6}}>
-          <span style={{color:"#00e5ff",fontWeight:700}}>Padrão COJUR: </span>
-          Sem travessão · NORMA+FATO+CONSEQUÊNCIA · Estrutura: Relatório / Fundamentos / Conclusão · Linguagem técnica CFM
-        </div>
-        {!loading&&!minuta&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"13px",fontSize:14,letterSpacing:".3px"}}>
-          📝 Gerar Minuta Completa de {tipoMinuta}
-        </button>}
-        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}>
-          <div className="cj-pulse" style={{fontSize:38,marginBottom:12}}>📝</div>
-          <div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Redigindo {tipoMinuta}...</div>
-          <div style={{fontSize:11,color:K.dim,marginTop:6}}>Pode levar 20-30 segundos — peça completa sendo gerada</div>
-        </div>}
-        {minuta&&!loading&&<div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Minuta gerada · {tipoMinuta}</div>
-            <div style={{fontSize:10,color:K.dim}}>{minuta.length} caracteres</div>
-          </div>
-          <textarea readOnly value={minuta} style={{...inpSt,minHeight:420,resize:"vertical",fontSize:11,lineHeight:1.7,fontFamily:"inherit",marginBottom:12}}/>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"11px",color:copied?"#00ff88":"#00e5ff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)",background:copied?"rgba(0,255,136,.08)":"rgba(0,229,255,.08)"}}>
-              {copied?"✅ Copiado!":"📋 Copiar Minuta"}
-            </button>
-            <button onClick={gerar} style={{...btnGhost,padding:"11px 16px",fontSize:12}}>🔄 Regenerar</button>
-          </div>
-        </div>}
-      </div>
-    </div>
-  );
-}
-
-
-function DjeAutoModal(djeP){
-  var proc=djeP.proc,dp=djeP.dp,onClose=djeP.onClose;
-  var s1=useState(false);var loading=s1[0],setLoad=s1[1];
-  var s2=useState(null);var result=s2[0],setResult=s2[1];
-  var s3=useState("");var err=s3[0],setErr=s3[1];
-  var s4=useState(proc&&proc.num||"");var numero=s4[0],setNumero=s4[1];
-  var s5=useState(proc&&proc.tribunal||"TRF-1");var trib=s5[0],setTrib=s5[1];
-  var buscar=function(){
-    setLoad(true);setErr("");setResult(null);
-    var prompt="Pesquise no DJe a publicação mais recente do processo "+numero+" no "+trib+". Retorne JSON: {dataDJe, tipoAto, prazo, intersticio, resumo, encontrado}.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})})
-    .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Não encontrado. Verifique o número.");setLoad(false);}}).catch(function(){setErr("Erro de conexão.");setLoad(false);});
+    setLoad(false); setErr("A busca automática do Gmail funciona apenas no Claude.ai. Use a aba Colar Email para importar manualmente.");
   };
   var aplicar=function(){if(!result||!result.dataDJe)return;dp({type:"UPD",id:proc.id,isAdm:false,ch:{pubDJe:result.dataDJe,intersticio:result.intersticio||15}});onClose();};
   return(
@@ -1504,7 +1017,7 @@ function IANovoProcessoModal(iaNP){
     if(!descricao.trim())return;
     setLoad(true);setErr("");setResult(null);
     var prompt="Assistente juridico da COJUR/CFM. Extraia dados do processo descrito. Retorne APENAS JSON com: num, numeroSEI, assunto, tribunal, tipoAcao, tipoPeca, parteContraria, prazoFinal (YYYY-MM-DD), status, impacto (1-5), complexidade (1-5), proxProv, obs. Use null para campos desconhecidos.\n\nDescricao: "+descricao;
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
   var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
@@ -1554,7 +1067,7 @@ function RelatorioSemanalModal(rsP){
     var realizados_semana=(st.realizados||[]).slice(0,5);
     var dados="Periodo: "+semana+"\nProcessos criticos (<=5du): "+criticos.length+"\nEm execucao: "+em_exec.length+"\nRealizados recentes: "+realizados_semana.length+"\nTotal no acervo: "+([...st.adm,...st.jud].length)+"\n\nProcessos criticos:\n"+criticos.slice(0,5).map(function(p,i){return (i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+p.diasRestantes+"du";}).join("\n")+"\n\nEm execucao:\n"+em_exec.slice(0,3).map(function(p,i){return (i+1)+". "+p.assunto+" ("+Math.min(100,Number(p.progresso)||0)+"%)";}).join("\n");
     var prompt="Voce e advogado senior da COJUR/CFM. Gere um resumo semanal de producao conciso e profissional. Sem travesSao.\n\nDados:\n"+dados+"\n\nFormato: (1) Status geral da semana; (2) Prioridades para proxima semana; (3) Alertas criticos; (4) Recomendacao de foco. Seja direto, maximo 200 palavras.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
@@ -1629,6 +1142,570 @@ function StatsModal(stP){
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+function VersionHistoryModal(vhP){
+  var dp=vhP.dp,onClose=vhP.onClose;
+  var hist=getVersionHistory();
+  var fmt2=function(iso){try{return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return iso;}};
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.25)",borderRadius:22,width:"100%",maxWidth:480,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+          <span style={{fontSize:22}}>🕐</span>
+          <div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Histórico de Versões</h3>
+          <div style={{fontSize:11,color:K.dim}}>Últimas 3 versões salvas automaticamente</div></div>
+        </div>
+        {!hist.length&&<div style={{textAlign:"center",padding:"32px 0",color:K.dim,fontSize:13}}>Nenhuma versão salva ainda. Faça alguma alteração no app primeiro.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {hist.map(function(v,i){
+            var parsed=null;try{parsed=rehydrate(v.data);}catch(e){}
+            var total=parsed?([...(parsed.adm||[]),...(parsed.jud||[])].length):0;
+            return(
+              <div key={i} style={{padding:"14px 16px",borderRadius:14,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.18)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#b84dff",fontFamily:"Orbitron,monospace"}}>{fmt2(v.ts)}</div>
+                  <div style={{fontSize:10,color:K.dim}}>{total} processos</div>
+                </div>
+                <div style={{fontSize:11,color:K.dim,marginBottom:10}}>{i===0?"Versão mais recente":"Versão anterior"}</div>
+                <button onClick={function(){if(window.confirm("Restaurar esta versão? O estado atual será substituído.")){restoreVersion(v.data,dp);onClose();}}} style={{...btnGhost,padding:"6px 14px",fontSize:11,color:"#b84dff",borderColor:"rgba(168,85,247,.35)"}}>Restaurar esta versão</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function SEIImportModal(seiP){
+  var dp=seiP.dp,onClose=seiP.onClose;
+  var s1=useState("");var numSEI=s1[0],setNumSEI=s1[1];
+  var s2=useState(false);var loading=s2[0],setLoad=s2[1];
+  var s3=useState(null);var result=s3[0],setResult=s3[1];
+  var s4=useState("");var err=s4[0],setErr=s4[1];
+
+  var buscar=function(){
+    if(!numSEI.trim())return;
+    setLoad(true);setErr("");setResult(null);
+    var prompt="Voce e assistente juridico da COJUR/CFM. O usuario informou o numero SEI: "+numSEI+". Com base neste numero, extraia as informacoes possiveis sobre o processo administrativo no sistema SEI do CFM. O formato padrao e: XX.X.XXXXXXX-X (ex: 26.0.000123456-7). Retorne APENAS JSON com: numeroSEI, assunto (inferido do numero ou contexto CFM), orgao (Conselho Federal de Medicina), tipoPeca (tipo de ato mais provavel), status (Ativo), obs (instrucoes para o usuario verificar os demais campos manualmente no SEI). Use null para campos desconhecidos.";
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:400,messages:[{role:"user",content:prompt}]})})
+    .then(function(r){return r.json();}).then(function(d){
+      var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
+      try{var obj=JSON.parse(txt);obj.numeroSEI=numSEI;setResult(obj);setLoad(false);}
+      catch(e){setErr("Nao foi possivel extrair dados. Verifique o numero SEI.");setLoad(false);}
+    }).catch(function(){setErr("Erro de conexao.");setLoad(false);});
+  };
+
+  var salvar=function(){
+    if(!result)return;
+    var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});
+    dp({type:"ADD_A",proc:clean});
+    onClose();
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.25)",borderRadius:22,width:"100%",maxWidth:500,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <span style={{fontSize:22}}>SEI</span>
+          <div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Importar pelo numero SEI</h3>
+          <div style={{fontSize:11,color:K.dim,marginTop:2}}>A IA preenche os campos com base no numero</div></div>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={lblSt}>Numero SEI</label>
+          <input style={inpSt} value={numSEI} onChange={function(e){setNumSEI(e.target.value);}} placeholder="26.0.000123456-7" onKeyDown={function(e){if(e.key==="Enter")buscar();}}/>
+        </div>
+        <div style={{padding:"8px 12px",borderRadius:9,background:"rgba(255,184,0,.06)",border:"1px solid rgba(255,184,0,.15)",fontSize:11,color:"#ffb800",marginBottom:12}}>
+          Importante: o SEI do CFM nao tem API publica. A IA vai pre-preencher o que conseguir inferir pelo numero. Revise os campos antes de salvar.
+        </div>
+        {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:10}}>{err}</div>}
+        {!loading&&!result&&<button onClick={buscar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>Buscar pelo SEI</button>}
+        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:24,marginBottom:8}}>SEI</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Consultando...</div></div>}
+        {result&&<div>
+          <div style={{padding:"12px 14px",borderRadius:12,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.15)",marginBottom:12}}>
+            {Object.entries(result).filter(function(e){return e[1]&&e[1]!=="null";}).map(function(e){return(
+              <div key={e[0]} style={{display:"flex",gap:8,marginBottom:6}}>
+                <span style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",minWidth:90,marginTop:2}}>{e[0]}</span>
+                <span style={{fontSize:12,color:K.txt}}>{String(e[1])}</span>
+              </div>
+            );})}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={salvar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",fontSize:12}}>Cadastrar processo</button>
+            <button onClick={function(){setResult(null);}} style={{...btnGhost,padding:"10px 12px",fontSize:12}}>Corrigir</button>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   IA BRIEFING MATINAL — Prioridades e plano estratégico do dia
+════════════════════════════════════════════════════════════════════ */
+function BriefingMatinalModal(bP){
+  var st=bP.st,onClose=bP.onClose;
+  var s1=useState(false);var loading=s1[0],setLoad=s1[1];
+  var s2=useState("");var result=s2[0],setResult=s2[1];
+  var s3=useState(false);var copied=s3[0],setCopied=s3[1];
+
+  var gerar=function(){
+    setLoad(true);setResult("");
+    var all=[...st.adm,...st.jud];
+    var hoje=new Date();
+    var diasSemana=["Domingo","Segunda","Terca","Quarta","Quinta","Sexta","Sabado"];
+    var diaNome=diasSemana[hoje.getDay()];
+    var criticos=all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=3&&!["Concluido","Arquivado"].includes(p.status);});
+    var urgentes=all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=7&&!["Concluido","Arquivado"].includes(p.status);});
+    var emExec=all.filter(function(p){return p.status==="Em Execucao";});
+    var semAcao=all.filter(function(p){return !p.proxProv&&p.status==="Ativo";});
+
+    var dados="DATA: "+diaNome+", "+hoje.toLocaleDateString("pt-BR")+"\n\n";
+    dados+="PROCESSOS CRITICOS (<=3 dias uteis):\n";
+    criticos.forEach(function(p,i){dados+=(i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+p.diasRestantes+"du | Tribunal: "+(p.tribunal||"N/A")+"\n";});
+    dados+="\nURGENTES (<=7 dias uteis): "+urgentes.length+" processos\n";
+    dados+="EM EXECUCAO AGORA: "+emExec.map(function(p){return p.assunto+"("+(p.progresso||0)+"%)";}).join(", ")||"Nenhum";
+    dados+="\nSEM PROXIMA PROVIDENCIA: "+semAcao.length+" processos\n";
+    dados+="TOTAL ACERVO ATIVO: "+all.filter(function(p){return!["Concluido","Arquivado"].includes(p.status);}).length;
+
+    var prompt=dados+"\n\nGere um BRIEFING MATINAL completo para o advogado da COJUR/CFM. Inclua:\n1. STATUS GERAL DO DIA (2 frases)\n2. FOCO ABSOLUTO (o que NAO pode deixar de fazer hoje — maximo 3 itens com justificativa)\n3. PLANO DE TRABALHO HORARIO (distribua as tarefas criticas e urgentes no horario 08h-18h considerando que cada peca leva entre 1h-3h)\n4. ALERTAS JURIDICOS (prazos processuais que podem ser fatais se perdidos)\n5. RECOMENDACAO ESTRATEGICA (1 decisao que mudaria mais o cenario hoje)\n\nSeja cirurgico, direto e acionavel. Sem introducoes. Maximo 350 palavras.";
+
+    iaCall(prompt, 1200).then(function(t){setResult(t);setLoad(false);}).catch(function(){setResult("Erro ao gerar briefing.");setLoad(false);});
+  };
+
+  var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2000);});}catch(e){}};
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:720,padding:26,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
+          <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(0,229,255,.2),rgba(168,85,247,.15))",border:"1px solid rgba(0,229,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🌅</div>
+          <div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,background:"linear-gradient(90deg,#00e5ff,#b84dff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron,sans-serif"}}>Briefing Matinal</h3>
+            <div style={{fontSize:11,color:K.dim,marginTop:2}}>IA analisa todo o acervo e monta seu plano estrategico do dia</div>
+          </div>
+        </div>
+        {!result&&!loading&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"14px",fontSize:14,letterSpacing:".3px"}}>Gerar Briefing do Dia</button>}
+        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:12}}>🌅</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Analisando acervo e montando seu dia...</div></div>}
+        {result&&<div>
+          <div style={{padding:"18px",borderRadius:14,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.1)",fontSize:13,color:K.txt,lineHeight:1.85,whiteSpace:"pre-wrap",marginBottom:14,maxHeight:500,overflowY:"auto"}}>{result}</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00e5ff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)"}}>{copied?"Copiado!":"Copiar Briefing"}</button>
+            <button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Regenerar</button>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   IA GESTOR DE TEMPO — calcula carga real e redistribui semana
+════════════════════════════════════════════════════════════════════ */
+function GestorTempoModal(gtP){
+  var st=gtP.st,onClose=gtP.onClose;
+  var s1=useState(false);var loading=s1[0],setLoad=s1[1];
+  var s2=useState("");var result=s2[0],setResult=s2[1];
+  var HORAS_PECA={"Parecer Juridico":3,"Agravo Interno":2.5,"Contestacao":2.5,"Contraminuta":2,"Apelacao":2.5,"Recurso Especial":3,"Manifestacao":1.5,"Embargos de Declaracao":1,"Oficio":0.5,"Despacho de Andamento":0.3,"Informacoes em MS":2,"Cumprimento de Sentenca":1.5,"Memoriais":2,"Sustentacao Oral":3};
+  var getPecaH=function(tp){for(var k in HORAS_PECA){if(tp&&tp.includes(k.split(" ")[0]))return HORAS_PECA[k];}return 1.5;};
+
+  var gerar=function(){
+    setLoad(true);setResult("");
+    var all=[...st.adm,...st.jud].filter(function(p){return!["Concluido","Arquivado","Suspenso"].includes(p.status);});
+    var totalH=all.reduce(function(a,p){return a+getPecaH(p.tipoPeca);},0);
+    var criticos=all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;});
+    var hCriticos=criticos.reduce(function(a,p){return a+getPecaH(p.tipoPeca);},0);
+
+    var lista=all.sort(function(a,b){return a.diasRestantes-b.diasRestantes;}).slice(0,15).map(function(p,i){
+      return (i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+getPecaH(p.tipoPeca)+"h estimadas | "+p.diasRestantes+"du | Status: "+p.status;
+    }).join("\n");
+
+    var prompt="GESTAO DE TEMPO COJUR/CFM\n\nTOTAL ACERVO ATIVO: "+all.length+" processos = "+totalH.toFixed(1)+"h estimadas\nCRITICOS (<= 5du): "+criticos.length+" processos = "+hCriticos.toFixed(1)+"h\nCAPACIDADE DISPONIVEL: ~20h/semana (4h/dia, 5 dias)\n\nTOP 15 por urgencia:\n"+lista+"\n\nFaca um plano de trabalho semanal realista (Segunda a Sexta). Para cada dia, indique:\n- Quais processos trabalhar (com justificativa)\n- Horas estimadas\n- O que adiar ou delegar se necessario\n- Alertas de sobrecarga\n\nSeja realista: se a carga supera a capacidade, diga claramente o que nao vai ser possivel fazer esta semana. Maximo 400 palavras.";
+
+    iaCall(prompt, 1400).then(function(t){setResult(t);setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.2)",borderRadius:22,width:"100%",maxWidth:720,padding:26,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
+          <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(0,255,136,.15),rgba(0,255,136,.06))",border:"1px solid rgba(0,255,136,.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>⏱</div>
+          <div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Gestor de Tempo</h3>
+            <div style={{fontSize:11,color:K.dim,marginTop:2}}>Carga real da semana com plano distribuido por dia</div>
+          </div>
+        </div>
+        {!result&&!loading&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"14px",fontSize:13,color:"#00ff88",borderColor:"rgba(0,255,136,.4)",background:"rgba(0,255,136,.08)"}}>Calcular Carga e Gerar Plano Semanal</button>}
+        {loading&&<div style={{textAlign:"center",padding:"28px 0",color:"#00ff88"}}><div className="cj-pulse" style={{fontSize:32,marginBottom:10}}>⏱</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Calculando carga e distribuindo semana...</div></div>}
+        {result&&<div style={{padding:"16px",borderRadius:14,background:"rgba(0,255,136,.03)",border:"1px solid rgba(0,255,136,.1)",fontSize:13,color:K.txt,lineHeight:1.85,whiteSpace:"pre-wrap",maxHeight:520,overflowY:"auto"}}>{result}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   IA ARGUMENTOS — gera os argumentos juridicos do processo
+════════════════════════════════════════════════════════════════════ */
+function ArgumentosModal(aP){
+  var proc=aP.proc,onClose=aP.onClose;
+  var s1=useState(false);var loading=s1[0],setLoad=s1[1];
+  var s2=useState("");var result=s2[0],setResult=s2[1];
+  var s3=useState(false);var copied=s3[0],setCopied=s3[1];
+  var s4=useState(proc&&proc.tipoPeca||"Contestacao");var tipo=s4[0],setTipo=s4[1];
+  var s5=useState("");var contexto=s5[0],setContexto=s5[1];
+
+  var gerar=function(){
+    setLoad(true);setResult("");
+    var ctx=proc?"Processo: "+(proc.num||"—")+" | Tipo de acao: "+(proc.tipoAcao||"—")+" | Parte contraria: "+(proc.parteContraria||"—")+" | Tribunal: "+(proc.tribunal||"—")+" | Assunto: "+(proc.assunto||"—")+" | Obs: "+(proc.obs||"—"):"";
+    var prompt="CFM COJUR — Processo: "+ctx+(contexto?"\n\nContexto adicional: "+contexto:"")+"\n\nGere os ARGUMENTOS JURIDICOS para "+tipo+". Estruture assim:\n\n1. TESE CENTRAL (1 paragrafo — a posicao juridica do CFM em 2-3 frases)\n\n2. FUNDAMENTOS NORMATIVOS (liste as normas aplicaveis: Constituicao Federal, CPC, leis especificas, resolucoes CFM — com artigos exatos)\n\n3. ARGUMENTOS PRINCIPAIS (3-5 argumentos, cada um com: a) fundamento legal, b) aplicacao ao caso concreto, c) conclusao parcial)\n\n4. REFUTACAO ANTECIPADA (principais contraargumentos da parte adversa e como rebater)\n\n5. PEDIDO SUGERIDO (texto do pedido final)\n\nUse a triada Norma + Fato + Consequencia. Sem travesSao.";
+
+    iaCall(prompt, 2000).then(function(t){setResult(t);setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
+  };
+
+  var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2000);});}catch(e){}};
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(251,146,60,.25)",borderRadius:22,width:"100%",maxWidth:780,padding:26,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+          <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(251,146,60,.18),rgba(251,146,60,.06))",border:"1px solid rgba(251,146,60,.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>⚖</div>
+          <div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#fb923c",fontFamily:"Orbitron,sans-serif"}}>Gerador de Argumentos</h3>
+            <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc?proc.assunto:"Selecione um processo"}</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          <div>
+            <label style={lblSt}>Tipo de Peca</label>
+            <select style={inpSt} value={tipo} onChange={function(e){setTipo(e.target.value);}}>
+              {TIPOS_PECA.map(function(t){return <option key={t} value={t} style={{background:K.modal}}>{t}</option>;})}
+            </select>
+          </div>
+          <div>
+            <label style={lblSt}>Contexto adicional (opcional)</label>
+            <input style={inpSt} value={contexto} onChange={function(e){setContexto(e.target.value);}} placeholder="Ex: decisao desfavoravel em 1G, pedido de liminar..."/>
+          </div>
+        </div>
+        {!result&&!loading&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"13px",fontSize:13,color:"#fb923c",borderColor:"rgba(251,146,60,.4)",background:"rgba(251,146,60,.08)"}}>Gerar Argumentos Juridicos</button>}
+        {loading&&<div style={{textAlign:"center",padding:"28px 0",color:"#fb923c"}}><div className="cj-pulse" style={{fontSize:32,marginBottom:10}}>⚖</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Construindo argumentacao juridica...</div></div>}
+        {result&&<div>
+          <div style={{padding:"16px",borderRadius:14,background:"rgba(251,146,60,.04)",border:"1px solid rgba(251,146,60,.1)",fontSize:13,color:K.txt,lineHeight:1.85,whiteSpace:"pre-wrap",marginBottom:12,maxHeight:500,overflowY:"auto"}}>{result}</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#fb923c",borderColor:copied?"rgba(0,255,136,.4)":"rgba(251,146,60,.35)"}}>{copied?"Copiado!":"Copiar Argumentos"}</button>
+            <button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Regenerar</button>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   IA COACH CFM — consultoria juridica especializada
+════════════════════════════════════════════════════════════════════ */
+function CoachCFMModal(cP){
+  var onClose=cP.onClose;
+  var s1=useState([]);var msgs=s1[0],setMsgs=s1[1];
+  var s2=useState("");var input=s2[0],setInput=s2[1];
+  var s3=useState(false);var loading=s3[0],setLoad=s3[1];
+  var endRef=React.useRef(null);
+
+  React.useEffect(function(){if(endRef.current)endRef.current.scrollIntoView({behavior:"smooth"});},[msgs]);
+
+  var enviar=function(){
+    if(!input.trim()||loading)return;
+    var userMsg={role:"user",content:input.trim()};
+    var newMsgs=[...msgs,userMsg];
+    setMsgs(newMsgs);setInput("");setLoad(true);
+    var prompt=newMsgs.map(function(m){return(m.role==="user"?"Usuario: ":"Coach: ")+m.content;}).join("\n\n");
+    iaCall(prompt,1000,"Voce e o Coach Juridico da COJUR/CFM — especialista em Direito Administrativo, Direito Medico, Processual Civil e regulamentacao do sistema CFM/CRM. Responda com precisao tecnica e objetividade. Cite artigos de lei quando relevante. Proibido traveSSao. Responda sempre em portugues.").then(function(t){setMsgs(function(prev){return [...prev,{role:"assistant",content:t}];});setLoad(false);}).catch(function(){setLoad(false);});
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.9)",backdropFilter:"blur(16px)",zIndex:1700,display:"flex",justifyContent:"center",alignItems:"center",padding:"16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.3)",borderRadius:22,width:"100%",maxWidth:740,height:"80vh",display:"flex",flexDirection:"column",position:"relative",overflow:"hidden"}}>
+        <div style={{padding:"18px 22px 14px",borderBottom:"1px solid rgba(168,85,247,.15)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{fontSize:22}}>🧑‍⚖️</div>
+            <div><div style={{fontSize:14,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Coach Juridico COJUR</div><div style={{fontSize:10,color:K.dim}}>Especialista em Direito Administrativo, Medico e Processual Civil</div></div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"16px 22px",display:"flex",flexDirection:"column",gap:12}}>
+          {!msgs.length&&<div style={{textAlign:"center",padding:"40px 20px"}}>
+            <div style={{fontSize:32,marginBottom:12}}>🧑‍⚖️</div>
+            <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:8}}>Como posso ajudar?</div>
+            <div style={{fontSize:11,color:K.dim,lineHeight:1.7}}>Pergunte sobre: prazos processuais, competencia, resolucoes CFM, redacao de pecas, estrategia processual, duvidas de Direito Administrativo...</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginTop:16}}>
+              {["Qual o prazo para Agravo Interno no TRF-1?","Como estruturar Informacoes em Mandado de Seguranca?","Qual a hierarquia normativa das resolucoes CFM?","Como calcular prazo recursal em dias uteis?"].map(function(q){return(
+                <button key={q} onClick={function(){setInput(q);}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(168,85,247,.25)",background:"rgba(168,85,247,.06)",color:"#c4b5fd",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>{q}</button>
+              );})}
+            </div>
+          </div>}
+          {msgs.map(function(m,i){
+            var isUser=m.role==="user";
+            return(
+              <div key={i} style={{display:"flex",justifyContent:isUser?"flex-end":"flex-start"}}>
+                <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:isUser?"14px 14px 4px 14px":"14px 14px 14px 4px",background:isUser?"rgba(168,85,247,.15)":"rgba(255,255,255,.04)",border:"1px solid "+(isUser?"rgba(168,85,247,.3)":"rgba(255,255,255,.08)"),fontSize:13,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                  {!isUser&&<div style={{fontSize:9,color:"#b84dff",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Coach COJUR</div>}
+                  {m.content}
+                </div>
+              </div>
+            );
+          })}
+          {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",fontSize:13,color:K.dim}}>Analisando...</div></div>}
+          <div ref={endRef}/>
+        </div>
+        <div style={{padding:"14px 22px",borderTop:"1px solid rgba(168,85,247,.15)",flexShrink:0,display:"flex",gap:10}}>
+          <input value={input} onChange={function(e){setInput(e.target.value);}} onKeyDown={function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();enviar();}}} placeholder="Pergunte qualquer coisa sobre direito, CFM, prazos, estrategia..." style={{...inpSt,flex:1,margin:0}}/>
+          <button onClick={enviar} disabled={!input.trim()||loading} style={{...btnPrim,padding:"10px 18px",flexShrink:0,opacity:(!input.trim()||loading)?0.5:1}}>Enviar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   IA RASCUNHO RAPIDO — gera peca simples em segundos
+════════════════════════════════════════════════════════════════════ */
+function RascunhoRapidoModal(rrP){
+  var onClose=rrP.onClose;
+  var s1=useState("Despacho de Andamento");var tipo=s1[0],setTipo=s1[1];
+  var s2=useState("");var contexto=s2[0],setContexto=s2[1];
+  var s3=useState(false);var loading=s3[0],setLoad=s3[1];
+  var s4=useState("");var result=s4[0],setResult=s4[1];
+  var s5=useState(false);var copied=s5[0],setCopied=s5[1];
+
+  var TIPOS_RAPIDOS=["Despacho de Andamento","Oficio","Petição Simples","Manifestação","Requerimento","Nota de Encaminhamento","Certidao de Prazo","Informacao ao Superior"];
+
+  var gerar=function(){
+    setLoad(true);setResult("");
+    var prompt="Gere um "+tipo+" completo e pronto para uso. Contexto/instrucoes: "+contexto+". O documento deve estar em formato final, com cabecalho formal ao orgao ou autoridade destinataria, texto tecnico objetivo, e fechamento. Maximo 300 palavras. Sem travesSao. Pronto para protocolo.";
+    iaCall(prompt,800).then(function(t){setResult(t);setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
+  };
+
+  var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2000);});}catch(e){}};
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.86)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(34,211,238,.22)",borderRadius:22,width:"100%",maxWidth:680,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <div style={{width:44,height:44,borderRadius:14,background:"rgba(34,211,238,.12)",border:"1px solid rgba(34,211,238,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>⚡</div>
+          <div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"#22d3ee",fontFamily:"Orbitron,sans-serif"}}>Rascunho Rapido</h3><div style={{fontSize:11,color:K.dim}}>Peca simples pronta em segundos</div></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div>
+            <label style={lblSt}>Tipo de documento</label>
+            <select style={inpSt} value={tipo} onChange={function(e){setTipo(e.target.value);}}>
+              {TIPOS_RAPIDOS.map(function(t){return <option key={t} value={t} style={{background:K.modal}}>{t}</option>;})}
+            </select>
+          </div>
+          <div>
+            <label style={lblSt}>Contexto / instrucoes</label>
+            <input style={inpSt} value={contexto} onChange={function(e){setContexto(e.target.value);}} placeholder="Ex: encaminhar processo 123 ao Dr. Joao Paulo para revisao"/>
+          </div>
+        </div>
+        {!result&&!loading&&<button onClick={gerar} disabled={!contexto.trim()} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:13,color:"#22d3ee",borderColor:"rgba(34,211,238,.4)",background:"rgba(34,211,238,.08)",opacity:!contexto.trim()?0.5:1}}>Gerar {tipo}</button>}
+        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#22d3ee"}}><div className="cj-pulse" style={{fontSize:28,marginBottom:8}}>⚡</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Redigindo...</div></div>}
+        {result&&<div>
+          <div style={{padding:"14px",borderRadius:12,background:"rgba(34,211,238,.04)",border:"1px solid rgba(34,211,238,.1)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",marginBottom:12,maxHeight:400,overflowY:"auto"}}>{result}</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"9px",color:copied?"#00ff88":"#22d3ee",borderColor:copied?"rgba(0,255,136,.4)":"rgba(34,211,238,.35)"}}>{copied?"Copiado!":"Copiar"}</button>
+            <button onClick={gerar} style={{...btnGhost,padding:"9px 12px",fontSize:12}}>Regenerar</button>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+
+/* === PDF IMPORT MODAL === */
+function PDFImportModal(pdfP){
+  var dp=pdfP.dp,onClose=pdfP.onClose;
+  var s1=useState(false);var loading=s1[0],setLoad=s1[1];
+  var s2=useState(null);var result=s2[0],setResult=s2[1];
+  var s3=useState("");var err=s3[0],setErr=s3[1];
+  var s4=useState(null);var fileName=s4[0],setFileName=s4[1];
+  var s5=useState("jud");var tipo=s5[0],setTipo=s5[1];
+  var s6=useState("");var extractedText=s6[0],setExtractedText=s6[1];
+  var s7=useState(false);var dragging=s7[0],setDragging=s7[1];
+
+  var extractTextFromPDF = function(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var typedarray = new Uint8Array(e.target.result);
+        if(window.pdfjsLib){
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          window.pdfjsLib.getDocument({data: typedarray}).promise.then(function(pdf){
+            var totalPages = Math.min(pdf.numPages, 10);
+            var textPromises = [];
+            for(var i=1; i<=totalPages; i++){
+              textPromises.push(pdf.getPage(i).then(function(page){
+                return page.getTextContent().then(function(content){
+                  return content.items.map(function(item){return item.str;}).join(' ');
+                });
+              }));
+            }
+            Promise.all(textPromises).then(function(pages){
+              resolve(pages.join('\n\n--- PAGINA ---\n\n'));
+            }).catch(reject);
+          }).catch(reject);
+        } else {
+          reject(new Error('PDF.js nao carregado'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  var analisar = function(file){
+    if(!file) return;
+    setFileName(file.name);
+    setLoad(true);setErr("");setResult(null);setExtractedText("");
+    // Load pdf.js if not loaded
+    var loadPDFJS = new Promise(function(resolve){
+      if(window.pdfjsLib){ resolve(); return; }
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = resolve;
+      script.onerror = function(){ resolve(); };
+      document.head.appendChild(script);
+    });
+    loadPDFJS.then(function(){
+      return extractTextFromPDF(file);
+    }).then(function(text){
+      setExtractedText(text);
+      var prompt = "Voce e assistente juridico da COJUR/CFM especializado em Direito Administrativo e Processual Civil. Analise o documento juridico abaixo e extraia TODOS os campos possiveis para cadastro no sistema de gestao processual.\n\nRetorne APENAS um objeto JSON com os campos: num (numero do processo judicial no formato CNJ), numeroSEI (numero SEI no formato XX.X.XXXXXXX-X), assunto (tema central em ate 100 chars), tribunal (TRF-1 a TRF-6 ou STJ ou STF ou outro), orgao (vara ou gabinete), tipoAcao (tipo da acao judicial), tipoPeca (tipo da peca juridica: Contestacao, Apelacao, Agravo Interno, Manifestacao, Parecer Juridico, etc), parteContraria (nome completo da parte adversa), prazoFinal (data YYYY-MM-DD se houver), pubDJe (data publicacao DJe YYYY-MM-DD), impacto (1 a 5), complexidade (1 a 5), proxProv (proxima providencia necessaria), obs (resumo executivo em 2 frases), status (Ativo). Use null para campos nao encontrados.\n\nDocumento:\n" + text.substring(0, 8000);
+      return fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+    }).then(function(r){return r.json();})
+    .then(function(d){
+      var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
+      try{
+        var obj=JSON.parse(txt);
+        setResult(obj);
+        setLoad(false);
+      }catch(e){
+        setErr("Nao foi possivel extrair os dados. Tente com outro PDF.");
+        setLoad(false);
+      }
+    }).catch(function(e){
+      setErr("Erro: "+e.message);
+      setLoad(false);
+    });
+  };
+
+  var handleFile = function(file){
+    if(!file) return;
+    if(file.type!=="application/pdf"&&!file.name.endsWith('.pdf')){
+      setErr("Envie apenas arquivos PDF.");
+      return;
+    }
+    analisar(file);
+  };
+
+  var salvar = function(){
+    if(!result)return;
+    var clean={};
+    Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null"&&result[k]!==undefined)clean[k]=result[k];});
+    if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}
+    else{dp({type:"ADD_A",proc:clean});}
+    onClose();
+  };
+
+  var campos=[
+    ["Nº Processo","num"],["Nº SEI","numeroSEI"],["Assunto","assunto"],
+    ["Tribunal","tribunal"],["Órgão","orgao"],["Tipo de Ação","tipoAcao"],
+    ["Tipo de Peça","tipoPeca"],["Parte Contrária","parteContraria"],
+    ["Prazo Final","prazoFinal"],["Pub. DJe","pubDJe"],
+    ["Próxima Providência","proxProv"],["Observações","obs"]
+  ];
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:740,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
+
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
+          <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(255,46,91,.2),rgba(255,46,91,.06))",border:"1px solid rgba(255,46,91,.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>PDF</div>
+          <div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,background:"linear-gradient(90deg,#ff2e5b,#ff6b8a)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron,sans-serif"}}>Importar Processo via PDF</h3>
+            <div style={{fontSize:11,color:K.dim,marginTop:3}}>A IA le o documento e preenche todos os campos automaticamente</div>
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          {[["jud","Processo Judicial"],["adm","Processo Administrativo"]].map(function(it){return(
+            <button key={it[0]} onClick={function(){setTipo(it[0]);}} style={{flex:1,padding:"8px",borderRadius:11,border:tipo===it[0]?"1px solid rgba(255,46,91,.5)":"1px solid rgba(255,255,255,.08)",background:tipo===it[0]?"rgba(255,46,91,.1)":"transparent",color:tipo===it[0]?"#ff6b8a":K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{it[1]}</button>
+          );})}
+        </div>
+
+        {!result&&!loading&&<div
+          onDragOver={function(e){e.preventDefault();setDragging(true);}}
+          onDragLeave={function(){setDragging(false);}}
+          onDrop={function(e){e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}
+          onClick={function(){document.getElementById('pdf-upload-input').click();}}
+          style={{border:"2px dashed "+(dragging?"rgba(255,46,91,.6)":"rgba(255,46,91,.25)"),borderRadius:18,padding:"44px 24px",textAlign:"center",cursor:"pointer",background:dragging?"rgba(255,46,91,.06)":"rgba(255,46,91,.02)",transition:"all .2s",marginBottom:12}}>
+          <div style={{fontSize:40,marginBottom:12}}>📄</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#ff6b8a",marginBottom:6}}>Arraste o PDF aqui ou clique para selecionar</div>
+          <div style={{fontSize:11,color:K.dim}}>Petição, acórdão, decisão, intimação, despacho — qualquer documento jurídico em PDF</div>
+          <input id="pdf-upload-input" type="file" accept=".pdf,application/pdf" style={{display:"none"}} onChange={function(e){handleFile(e.target.files[0]);}}/>
+        </div>}
+
+        {loading&&<div style={{textAlign:"center",padding:"40px 0"}}>
+          <div className="cj-pulse" style={{fontSize:40,marginBottom:14}}>📄</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#ff6b8a",fontFamily:"Orbitron,sans-serif",marginBottom:6}}>Analisando {fileName}...</div>
+          <div style={{fontSize:11,color:K.dim}}>Extraindo texto e identificando campos do processo</div>
+        </div>}
+
+        {err&&<div style={{padding:"12px 14px",borderRadius:12,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff6b8a",fontSize:12,marginBottom:12}}>{err}
+          <button onClick={function(){setErr("");setFileName(null);}} style={{marginLeft:10,background:"none",border:"none",color:"#ff6b8a",cursor:"pointer",fontSize:11,textDecoration:"underline"}}>Tentar novamente</button>
+        </div>}
+
+        {result&&!loading&&<div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",borderRadius:12,background:"rgba(0,255,136,.05)",border:"1px solid rgba(0,255,136,.2)"}}>
+            <span style={{fontSize:16}}>✅</span>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#00ff88"}}>Campos extraídos com sucesso</div>
+              <div style={{fontSize:11,color:K.dim}}>{fileName} · Revise os dados antes de salvar</div>
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+            {campos.map(function(item){
+              var val=result[item[1]];
+              if(!val||val==="null")return null;
+              return(
+                <div key={item[1]} style={{padding:"10px 12px",borderRadius:11,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)"}}>
+                  <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>{item[0]}</div>
+                  <div style={{fontSize:12,color:K.txt,fontWeight:600,wordBreak:"break-word"}}>{String(val)}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={salvar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"12px",fontSize:13,fontWeight:800,background:"linear-gradient(135deg,rgba(255,46,91,.2),rgba(255,46,91,.08))",borderColor:"rgba(255,46,91,.4)",color:"#ff6b8a"}}>
+              Cadastrar processo
+            </button>
+            <button onClick={function(){setResult(null);setFileName(null);setErr("");}} style={{...btnGhost,padding:"12px 16px",fontSize:12}}>Novo PDF</button>
+          </div>
+        </div>}
       </div>
     </div>
   );
@@ -1722,7 +1799,7 @@ const F_JUD=[
   {key:"sustentacao",label:"Sustentação Vinculada",type:"checkbox",checkLabel:"Criar automaticamente evento na agenda de sustentação oral"},
   {key:"destaque",label:"Destaque / Observação Importante",type:"textarea",full:true},
   {key:"obs",label:"Observações Gerais",type:"textarea",full:true},
-  {key:"progresso",label:"Progresso da elaboração (0-100%)",type:"number",ph:"0"},
+  {key:"progresso",label:"Progresso da elaboração (0-100%)",type:"number",ph:"0"},{key:"horasTrabalhadas",label:"Horas trabalhadas na peça",type:"number",ph:"0"},
   {key:"motivoAcompanhamento",label:"Motivo do Acompanhamento",type:"textarea",full:true,ph:"Motivo pelo qual este processo está em acompanhamento..."},
 ];
 const F_REUN=[{key:"titulo",label:"Título",full:true},{key:"data",label:"Data",type:"date"},{key:"hora",label:"Horário",ph:"14:00"},{key:"local",label:"Local"},{key:"obs",label:"Observações",type:"textarea",full:true}];
@@ -2687,7 +2764,7 @@ function IAPainel({st,ss,sp}){
     });
     if(!isWorkDay){resumo+="\n(Hoje é fim de semana — plano para próxima segunda-feira)";}
     var iaPrompt="Você é assistente jurídico da COJUR/CFM. Planeje o dia de João Gabriel.\n\n"+resumo+"\nREGRAS:\n- Horário fixo: "+H_INI+" às "+H_FIM+" ("+H_DIA+"h úteis)\n- Respeite eventos fixos que bloqueiam tempo\n- Estimativas: Parecer=2-3h, Agravo=2h, Contraminuta=2h, Manifestação=1-2h, Embargos=45min, Ofício=30min, Despacho=15min\n- Reserve 15min final para revisão\n- Sem travessão no texto. Seja direto.\n\nFormato obrigatório:\n📅 PLANO DO DIA — [data]\n🕒 "+H_INI+" às "+H_FIM+"\n\n[lista de tarefas]:\n⬜ HH:MM-HH:MM · [tarefa] · [tempo] · [prioridade]\n\n📊 RESUMO:\n- Tarefas: X\n- Tempo alocado: Xh\n- Críticos cobertos: X\n[alerta se houver críticos fora do horário]";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
+    fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();setPlano(txt||"Plano não gerado.");setLoad(false);})
     .catch(function(){setPlano("Erro ao gerar plano.");setLoad(false);});
@@ -3043,6 +3120,16 @@ export default function App() {
   const [showBackup, setShowBackup] = useState(false);
   const [djeProc, setDjeProc] = useState(null);
   const [showIANovo, setShowIANovo] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSEIImport, setShowSEIImport] = useState(false);
+  const [showPDFImport, setShowPDFImport] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [showGestorTempo, setShowGestorTempo] = useState(false);
+  const [showArgumentos, setShowArgumentos] = useState(false);
+  const [showCoach, setShowCoach] = useState(false);
+  const [showRascunho, setShowRascunho] = useState(false);
+  const [argumentosProc, setArgumentosProc] = useState(null);
+  const [voiceActive, setVoiceActive] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -3113,6 +3200,28 @@ export default function App() {
   const handleEditSave = form => { dp({ type: "UPD", id: editForm.id, isAdm: editForm.tipo === "adm", ch: form }); sEF(null); };
   const handleEditDel = () => { dp({ type: "DEL_P", id: editForm.id }); sEF(null); };
 
+  // Request notification permission on first load
+  useEffect(function(){
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Browser notification for critical deadlines
+  useEffect(function(){
+    if(prazoUrgente&&prazoUrgente.length>0 && 'Notification' in window && Notification.permission === 'granted'){
+      var p = prazoUrgente[0];
+      try {
+        new Notification('COJUR NEXUS — PRAZO CRITICO', {
+          body: p.assunto + (p.diasRestantes===0?' — VENCE HOJE':' — '+p.diasRestantes+'du restantes'),
+          icon: '/icon.svg',
+          tag: 'cojur-prazo-'+p.id,
+          requireInteraction: true
+        });
+      } catch(e) {}
+    }
+  }, [prazoUrgente&&prazoUrgente.length]);
+
   // Sound alert for critical deadlines
   useEffect(function(){
     if(prazoUrgente&&prazoUrgente.length>0){
@@ -3131,6 +3240,39 @@ export default function App() {
     }
   },[prazoUrgente&&prazoUrgente.length]);
 
+  // Supabase Realtime — sync between devices
+  useEffect(function(){
+    if(!supabase) return;
+    var channel = supabase
+      .channel('nexus-changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'nexus_state',
+        filter: 'user_id=eq.joao_gabriel_cojur'
+      }, function(payload){
+        if(payload.new && payload.new.data){
+          try {
+            var incoming = rehydrate(payload.new.data);
+            dp0({type:'LOAD', state: incoming});
+          } catch(e) {}
+        }
+      })
+      .subscribe();
+    return function(){ supabase.removeChannel(channel); };
+  }, []);
+
+  const startVoice = function(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ alert('Busca por voz nao disponivel neste navegador.'); return; }
+    var r = new SR();
+    r.lang = 'pt-BR'; r.interimResults = false; r.maxAlternatives = 1;
+    setVoiceActive(true);
+    r.onresult = function(e){ setSq(e.results[0][0].transcript); setVoiceActive(false); };
+    r.onerror = function(){ setVoiceActive(false); };
+    r.onend = function(){ setVoiceActive(false); };
+    r.start();
+  };
   const rP = () => {
     const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode };
     switch (pg) {
@@ -3217,6 +3359,7 @@ export default function App() {
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
             <input style={{ ...inpSt, paddingLeft: 40, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
+              <button onClick={startVoice} title="Busca por voz (pt-BR)" style={{background:"none",border:"none",cursor:"pointer",padding:"4px",color:voiceActive?"#ff2e5b":K.dim,fontSize:15,display:"flex",alignItems:"center"}}>🎤</button>
             {so && sq && sr.length > 0 && (
               <div className="cj-sc" style={{ position: "absolute", top: 44, left: 0, right: 0, background: K.modal, border: `1px solid ${K.brd}`, borderRadius: 12, padding: 8, zIndex: 100, maxHeight: 400, overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,.5)" }}>
                 {sr.map(p => (
@@ -3243,7 +3386,13 @@ export default function App() {
             <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:17}}>✏️</button>
             <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
             <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
+            <button onClick={function(){setShowBriefing(true);}} title="Briefing Matinal IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.25)",background:"rgba(0,229,255,.08)",cursor:"pointer",fontSize:16}}>🌅</button>
+            <button onClick={function(){setShowCoach(true);}} title="Coach Juridico COJUR" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.06)",cursor:"pointer",fontSize:16}}>🧑‍⚖️</button>
+            <button onClick={function(){setShowRascunho(true);}} title="Rascunho Rapido" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(34,211,238,.2)",background:"rgba(34,211,238,.05)",cursor:"pointer",fontSize:16}}>⚡</button>
+            <button onClick={function(){setShowPDFImport(true);}} title="Importar processo via PDF — IA extrai todos os campos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(255,46,91,.25)",background:"rgba(255,46,91,.06)",cursor:"pointer",fontSize:15}}>📄</button>
+            <button onClick={function(){setShowSEIImport(true);}} title="Importar pelo numero SEI" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(34,211,238,.2)",background:"rgba(34,211,238,.05)",cursor:"pointer",fontSize:13,fontWeight:700,color:"#22d3ee",fontFamily:"Orbitron,monospace"}}>SEI</button>
             <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>🤖</button>
+            <button onClick={function(){setShowHistory(true);}} title="Histórico de versões" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:15}}>🕐</button>
             <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:15}}>☰</button>
             <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
               {darkMode?<Sun size={17} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={17} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
@@ -3264,6 +3413,14 @@ export default function App() {
       {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
+      {showHistory&&<VersionHistoryModal dp={dp} onClose={function(){setShowHistory(false);}}/> }
+      {showSEIImport&&<SEIImportModal dp={dp} onClose={function(){setShowSEIImport(false);}}/> }
+      {showPDFImport&&<PDFImportModal dp={dp} onClose={function(){setShowPDFImport(false);}}/> }
+      {showBriefing&&<BriefingMatinalModal st={st} onClose={function(){setShowBriefing(false);}}/> }
+      {showGestorTempo&&<GestorTempoModal st={st} onClose={function(){setShowGestorTempo(false);}}/> }
+      {showCoach&&<CoachCFMModal onClose={function(){setShowCoach(false);}}/> }
+      {showRascunho&&<RascunhoRapidoModal onClose={function(){setShowRascunho(false);}}/> }
+      {argumentosProc!==null&&<ArgumentosModal proc={argumentosProc} onClose={function(){setArgumentosProc(null);}}/> }
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
       {showRevisao&&<RevisaoModal onClose={function(){setShowRevisao(false);}}/>}
@@ -3308,7 +3465,7 @@ function IATplModal({proc,onClose}){
       "Use linguagem juridica formal e seja preciso."
     ];
     var prompt=lines.join("\n");
-    fetch("https://api.anthropic.com/v1/messages",{
+    fetch("/api/ai",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
@@ -3390,7 +3547,7 @@ const ExecucaoPg=({st,dp,ss})=>{
                 </div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{p.assunto}</div>
                 {p.proxProv&&<div style={{fontSize:12,color:K.ac,background:"rgba(0,229,255,.05)",borderRadius:8,padding:"6px 10px",border:"1px solid rgba(0,229,255,.1)"}}><span style={{fontSize:10,color:K.dim,marginRight:6}}>Próxima:</span>{p.proxProv}</div>}
-                {(function(){var pct=Math.min(100,Math.max(0,Number(p.progresso)||0));var cor=pct>=100?"#00ff88":pct>=60?"#00e5ff":pct>=30?"#ffb800":"#ff2e5b";return(<div style={{marginTop:10}}>
+                {(function(){var pct=Math.min(100,Math.max(0,Number(p.progresso)||0));var hrs=Number(p.horasTrabalhadas)||0;var cor=pct>=100?"#00ff88":pct>=60?"#00e5ff":pct>=30?"#ffb800":"#ff2e5b";return(<div style={{marginTop:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Progresso da elaboração</div>
                     <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{pct}%{pct>=100?" ✅":""}</div>
@@ -3399,7 +3556,12 @@ const ExecucaoPg=({st,dp,ss})=>{
                     <div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,"+cor+"88,"+cor+")",borderRadius:999,boxShadow:"0 0 8px "+cor,transition:"width .5s"}}/>
                   </div>
                   <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                    {[0,25,50,75,100].map(function(v){return(
+                    {(function(){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:8}},
+                    React.createElement("span",{style:{fontSize:9,color:K.dim,textTransform:"uppercase",fontWeight:700}},"Horas trabalhadas"),
+                    React.createElement("input",{type:"number",value:Number(p.horasTrabalhadas)||0,min:0,step:0.5,onChange:function(e){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{horasTrabalhadas:Number(e.target.value)||0}});},onClick:function(e){e.stopPropagation();},style:{width:60,padding:"2px 6px",borderRadius:6,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",color:"#00e5ff",fontSize:12,fontFamily:"Orbitron,monospace",textAlign:"center"}}),
+                    React.createElement("span",{style:{fontSize:10,color:K.dim}},"h")
+                  );})()}
+                  {[0,25,50,75,100].map(function(v){return(
                       <button key={v} onClick={function(e){e.stopPropagation();dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{progresso:v}});}} style={{padding:"3px 8px",borderRadius:6,border:"1px solid "+(pct===v?cor+"66":"rgba(255,255,255,.1)"),background:pct===v?cor+"20":"transparent",color:pct===v?cor:K.dim,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{v}%</button>
                     );})}
                   </div>
