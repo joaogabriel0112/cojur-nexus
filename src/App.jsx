@@ -1,5 +1,4 @@
-import 
-        {p.tipo==="jud"&&React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();setArgumentosProc(p);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(251,146,60,.22)",background:"rgba(251,146,60,.05)",color:"#fb923c",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"Argumentos IA");},null)}React from 'react';
+import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useState, useMemo, useEffect, useReducer, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
