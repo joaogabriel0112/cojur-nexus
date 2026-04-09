@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#020516"/>
+  <rect x="16" y="16" width="160" height="160" rx="30" fill="#041828" stroke="#00e5ff" stroke-width="2"/>
+  <text x="96" y="80" font-family="Arial" font-weight="bold" font-size="28" fill="#00e5ff" text-anchor="middle">COJUR</text>
+  <text x="96" y="115" font-family="Arial" font-weight="bold" font-size="16" fill="#7dd3fc" text-anchor="middle">NEXUS</text>
+  <text x="96" y="148" font-family="Arial" font-size="12" fill="#334155" text-anchor="middle">CFM</text>
+</svg>
