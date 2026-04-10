@@ -522,11 +522,11 @@ var dbGet = async function(){
 var dbSet = async function(value){
   try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
   try {
-    await fetch(STATE_URL, {
+    fetch(STATE_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({data: value})
-    });
+    }).catch(function(){});
   } catch(e) {}
 };
 
@@ -3056,38 +3056,43 @@ export default function App() {
     return function(){ cancelled = true; };
   }, []);
 
-  // Save state to persistent storage on every change
+  // Save to localStorage on every change (fast, synchronous)
   useEffect(() => {
     if (!loaded) return;
-    var data = null;
-    try { data = serialize(st); } catch(e) { return; }
-    if (!data) return;
-    // 1. Save to localStorage immediately (synchronous, 100% reliable)
-    try { localStorage.setItem(STORE_KEY, data); } catch(e) {}
-    // 2. Sync to Supabase (async, best-effort)
-    fetch(STATE_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({data: data})
-    }).catch(function(){});
+    try {
+      var data = serialize(st);
+      localStorage.setItem(STORE_KEY, data);
+    } catch(e) {}
   }, [st, loaded]);
 
-  // Save on page close/refresh (beforeunload)
+  // Sync to Supabase every 10 seconds
   useEffect(() => {
-    var handleUnload = function() {
-      if (!loaded) return;
-      var data = null;
-      try { data = serialize(st); } catch(e) { return; }
-      if (!data) return;
-      try { localStorage.setItem(STORE_KEY, data); } catch(e) {}
-      // Use sendBeacon for reliable save on page close
+    if (!loaded) return;
+    var interval = setInterval(function() {
       try {
+        var data = serialize(st);
+        fetch(STATE_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({data: data})
+        }).catch(function(){});
+      } catch(e) {}
+    }, 10000);
+    return function() { clearInterval(interval); };
+  }, [st, loaded]);
+
+  // Save to Supabase on page close
+  useEffect(() => {
+    var saveNow = function() {
+      try {
+        var data = serialize(st);
+        localStorage.setItem(STORE_KEY, data);
         navigator.sendBeacon(STATE_URL, new Blob([JSON.stringify({data: data})], {type:'application/json'}));
       } catch(e) {}
     };
-    window.addEventListener('beforeunload', handleUnload);
-    return function() { window.removeEventListener('beforeunload', handleUnload); };
-  }, [st, loaded]);
+    window.addEventListener('beforeunload', saveNow);
+    return function() { window.removeEventListener('beforeunload', saveNow); };
+  }, [st]);
 
   // Sync selected process with state
   useEffect(() => {
