@@ -161,6 +161,14 @@ const injectCSS = () => {
 /* ═══ BASE ═══ */
 .cj-up{animation:cjUp .35s ease both}
 .cj-sc{animation:cjSc .22s ease both}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,46,91,.4)}50%{box-shadow:0 0 0 6px rgba(255,46,91,0)}}
+@keyframes countDown{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
+.cj-page-enter{animation:fadeInUp .2s ease}
+.cj-card-hover:hover{transform:translateY(-2px)!important;transition:all .18s ease!important}
+.cj-ring-pulse{animation:ringPulse 1.5s ease-in-out infinite}
 .cj-pulse{animation:cjPulse 1.8s ease infinite}
 .cj-st>*{animation:cjUp .35s ease both}
 .cj-st>:nth-child(1){animation-delay:.03s}.cj-st>:nth-child(2){animation-delay:.06s}
@@ -1260,14 +1268,24 @@ function TimelinePg({st,ss}) {
               <div style={{fontSize:11,color:cor,fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>{emoji} {label} ({procs.length})</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
                 {procs.map(function(p){return(
-                  <div key={p.id} onClick={function(){ss(p);}} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+cor+"33",cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
+                  <div key={p.id} onClick={function(){ss(p);}} className={"cj-card-hover"+(p.diasRestantes===0?" cj-ring-pulse":"")} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+(p.diasRestantes===0?"#ff2e5b":cor+"33"),cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";e.currentTarget.style.background="linear-gradient(135deg,rgba(3,7,28,.98),rgba(2,5,18,.99))";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:cor,boxShadow:"0 0 6px "+cor}}/>
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,borderRadius:"0 0 14px 14px",background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.25)"}}/>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                       <div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Adm"}</div>
-                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
+                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace",animation:p.diasRestantes===0?"countDown 2s ease-in-out infinite":"none"}}>
+                        {p.diasRestantes===0?(function(){var h=17-liveTime.getHours();var m=60-liveTime.getMinutes();if(h<0||h>8)return"HOJE";return h+"h"+String(m).padStart(2,"0")+"min";})():p.diasRestantes+"du"}
+                      </div>
                     </div>
                     <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
                     <div style={{fontSize:10,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
+                      {(p.progresso!=null&&p.progresso>0)&&(
+                        <div style={{marginTop:6}}>
+                          <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+                            <div style={{height:"100%",width:Math.min(100,Number(p.progresso)||0)+"%",background:Number(p.progresso)>=100?"#00ff88":cor,borderRadius:2,transition:"width .4s ease"}}/>
+                          </div>
+                        </div>
+                      )}
                   </div>
                 );})}
               </div>
@@ -1938,6 +1956,145 @@ function EmailAlertModal(eaP){
   );
 }
 
+
+/* === TOAST NOTIFICATIONS === */
+var _toastId = 0;
+var _toastSetFn = null;
+var showToast = function(msg, type) {
+  if (!_toastSetFn) return;
+  var id = ++_toastId;
+  var cor = type === 'success' ? '#00ff88' : type === 'error' ? '#ff2e5b' : type === 'warn' ? '#ffb800' : '#00e5ff';
+  var icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warn' ? '⚠' : 'ℹ';
+  _toastSetFn(function(prev) { return [...prev, {id, msg, cor, icon}]; });
+  setTimeout(function() {
+    _toastSetFn(function(prev) { return prev.filter(function(t) { return t.id !== id; }); });
+  }, 3000);
+};
+
+function ToastContainer() {
+  var s = React.useState([]); var toasts = s[0], setToasts = s[1];
+  React.useEffect(function() { _toastSetFn = setToasts; return function() { _toastSetFn = null; }; }, []);
+  if (!toasts.length) return null;
+  return React.createElement('div', {
+    style: {position:'fixed', bottom:24, right:24, zIndex:9999, display:'flex', flexDirection:'column', gap:8, pointerEvents:'none'}
+  }, toasts.map(function(t) {
+    return React.createElement('div', {key: t.id, style: {
+      display:'flex', alignItems:'center', gap:10, padding:'10px 16px',
+      background:'rgba(2,5,22,.97)', border:'1px solid '+t.cor+'44',
+      borderRadius:12, minWidth:260, maxWidth:380,
+      boxShadow:'0 8px 32px rgba(0,0,0,.6)',
+      animation:'slideIn .2s ease'
+    }},
+      React.createElement('span', {style:{color:t.cor, fontWeight:800, fontSize:14, flexShrink:0}}, t.icon),
+      React.createElement('span', {style:{color:'#e2e8f0', fontSize:12, fontFamily:'inherit', lineHeight:1.4}}, t.msg)
+    );
+  }));
+}
+
+
+/* === COMMAND PALETTE === */
+function CmdPalette(cpP) {
+  var st=cpP.st, dp=cpP.dp, onClose=cpP.onClose, sPg=cpP.sPg, sSel=cpP.sSel, setShowQuickAdd=cpP.setShowQuickAdd;
+  var s1=React.useState(""); var q=s1[0],setQ=s1[1];
+  var s2=React.useState(0); var sel=s2[0],setSel=s2[1];
+  var ref=React.useRef(null);
+  React.useEffect(function(){ if(ref.current) ref.current.focus(); }, []);
+
+  var all=[...(st.adm||[]),...(st.jud||[])];
+  var PAGES=[
+    {icon:"⊞",label:"Dashboard",action:function(){sPg("dashboard");onClose();}},
+    {icon:"⚖️",label:"Processos Judiciais",action:function(){sPg("jud");onClose();}},
+    {icon:"📁",label:"Processos Administrativos",action:function(){sPg("adm");onClose();}},
+    {icon:"🏃",label:"Em Execução",action:function(){sPg("exec");onClose();}},
+    {icon:"📅",label:"Calendário",action:function(){sPg("cal");onClose();}},
+    {icon:"📊",label:"Estatísticas",action:function(){sPg("stats");onClose();}},
+  ];
+  var ACTIONS=[
+    {icon:"⚡",label:"Cadastro rápido de processo",action:function(){setShowQuickAdd(true);onClose();}},
+    {icon:"🏷️",label:"Gerenciar etiquetas",action:function(){cpP.setShowEtiquetas(true);onClose();}},
+    {icon:"💾",label:"Salvar agora no Supabase",action:function(){try{cpP.syncToSupabase(serialize(st));}catch(e){}onClose();}},
+    {icon:"🕐",label:"Histórico de versões",action:function(){cpP.setShowHistory(true);onClose();}},
+  ];
+
+  var qLow=q.toLowerCase();
+  var filteredProcs=q.length>1?all.filter(function(p){return (p.assunto||"").toLowerCase().includes(qLow)||(p.num||"").toLowerCase().includes(qLow)||(p.numeroSEI||"").toLowerCase().includes(qLow);}).slice(0,5):[];
+  var filteredPages=PAGES.filter(function(p){return p.label.toLowerCase().includes(qLow);});
+  var filteredActions=ACTIONS.filter(function(a){return a.label.toLowerCase().includes(qLow);});
+  var items=[
+    ...filteredProcs.map(function(p){return {icon:p.tipo==="jud"?"⚖️":"📁",label:p.assunto,hint:p.tipoPeca,action:function(){sSel(p);sPg(p.tipo==="jud"?"jud":"adm");onClose();}};}),
+    ...filteredPages,
+    ...filteredActions
+  ];
+
+  var handleKey=function(e){
+    if(e.key==="ArrowDown"){setSel(function(s){return Math.min(s+1,items.length-1);});}
+    if(e.key==="ArrowUp"){setSel(function(s){return Math.max(s-1,0);});}
+    if(e.key==="Enter"&&items[sel]){items[sel].action();}
+    if(e.key==="Escape"){onClose();}
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:9000,display:"flex",justifyContent:"center",alignItems:"flex-start",paddingTop:80}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div style={{width:"100%",maxWidth:560,background:"rgba(2,5,22,.98)",border:"1px solid rgba(0,229,255,.25)",borderRadius:16,overflow:"hidden",boxShadow:"0 24px 64px rgba(0,0,0,.8)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid rgba(0,229,255,.1)"}}>
+          <span style={{color:"#4e6a8a",fontSize:14}}>⌕</span>
+          <input ref={ref} value={q} onChange={function(e){setQ(e.target.value);setSel(0);}} onKeyDown={handleKey}
+            placeholder="Buscar processos, páginas, ações..."
+            style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:14,fontFamily:"inherit"}}/>
+          <span style={{fontSize:11,color:"#4e6a8a",background:"rgba(255,255,255,.06)",padding:"2px 6px",borderRadius:5}}>ESC</span>
+        </div>
+        <div style={{maxHeight:360,overflowY:"auto"}}>
+          {!items.length&&<div style={{padding:"24px",textAlign:"center",color:"#4e6a8a",fontSize:13}}>Digite para buscar processos, páginas ou ações</div>}
+          {items.length>0&&(
+            <div>
+              {filteredProcs.length>0&&<div style={{padding:"6px 16px 2px",fontSize:10,color:"#4e6a8a",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Processos</div>}
+              {items.map(function(item,i){return(
+                <div key={i} onClick={item.action}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",background:sel===i?"rgba(0,229,255,.08)":"transparent",borderLeft:sel===i?"2px solid #00e5ff":"2px solid transparent"}}
+                  onMouseEnter={function(){setSel(i);}}>
+                  <span style={{fontSize:14,flexShrink:0}}>{item.icon}</span>
+                  <span style={{flex:1,fontSize:13,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</span>
+                  {item.hint&&<span style={{fontSize:11,color:"#4e6a8a",flexShrink:0}}>{item.hint}</span>}
+                  {sel===i&&<span style={{fontSize:10,color:"#00e5ff",flexShrink:0}}>↵</span>}
+                </div>
+              );})}
+            </div>
+          )}
+        </div>
+        <div style={{padding:"8px 16px",borderTop:"1px solid rgba(0,229,255,.08)",display:"flex",gap:16,fontSize:10,color:"#4e6a8a"}}>
+          <span>↑↓ navegar</span><span>↵ selecionar</span><span>ESC fechar</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* === SKELETON LOADING === */
+function SkeletonCard() {
+  return React.createElement("div", {
+    style: {padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.06)",animation:"pulse 1.5s infinite"}
+  },
+    React.createElement("div", {style:{height:10,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:8,width:"30%"}}),
+    React.createElement("div", {style:{height:13,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:6,width:"80%"}}),
+    React.createElement("div", {style:{height:10,borderRadius:4,background:"rgba(255,255,255,.06)",width:"50%"}})
+  );
+}
+
+function SkeletonDashboard() {
+  return React.createElement("div", {style:{padding:"18px 20px"}},
+    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}},
+      [1,2,3,4].map(function(i){return React.createElement("div",{key:i,style:{padding:16,borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.06)",animation:"pulse 1.5s infinite"}},
+        React.createElement("div",{style:{height:10,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:8,width:"60%"}}),
+        React.createElement("div",{style:{height:28,borderRadius:4,background:"rgba(255,255,255,.1)",width:"40%"}})
+      );})
+    ),
+    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}},
+      [1,2,3,4,5,6].map(function(i){return React.createElement(SkeletonCard,{key:i});})
+    )
+  );
+}
+
 /* ═══ FORM MODAL ═══ */
 const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
   const[form,setForm]=useState(()=>({...(initial||{})}));
@@ -2321,9 +2478,11 @@ const DashPg=({st,dp,sp,ss})=>{
 /* PROCESS LIST PAGE */
 
 const ProcList=({type,st,dp,ss,compact})=>{
-  const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null);
+  const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null),[chipF,setChipF]=useState("todos");
   const isA=type==="admin",isJ=!isA,raw=isA?st.adm:st.jud;
-  const filtered=applyF(raw,fil),sorted=[...filtered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
+  const filtered=applyF(raw,fil);
+  const chipFiltered = chipF==="todos" ? filtered : chipF==="critico" ? filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}) : chipF==="urgente" ? filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}) : filtered.filter(function(p){return p.status===chipF;});
+  const sorted=[...chipFiltered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
   const doSave=form=>{if(showForm==="new")dp({type:isA?"ADD_A":"ADD_J",d:form});else dp({type:"UPD",id:showForm.id,isAdm:isA,ch:form});sSF(null)};
   const doDelete=()=>{dp({type:"DEL_P",id:showForm.id});sSF(null)};
 
@@ -2331,7 +2490,20 @@ const ProcList=({type,st,dp,ss,compact})=>{
     <div className="cj-pg">
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
         <h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>{isA?"Processos Administrativos SEI":"Prazos Judiciais"}</h2>
-        <Bd color={K.ac}>{filtered.length}/{raw.length}</Bd>
+        <Bd color={K.ac}>{chipFiltered.length}/{raw.length}</Bd>
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+        {[["todos","Todos",null],["critico","🚨 Críticos",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}).length],["urgente","⚠️ Urgentes",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}).length],["Ativo","● Ativos",null],["Em Elaboração","✍ Em Elaboração",null]].map(function(ch){
+          var isActive=chipF===ch[0];
+          var count=ch[2]!=null?ch[2]:raw.filter(function(p){return p.status===ch[0];}).length;
+          if(ch[2]===0&&ch[0]!=="todos")return null;
+          return React.createElement("button",{key:ch[0],onClick:function(){setChipF(ch[0]);},style:{padding:"5px 12px",borderRadius:20,border:isActive?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.1)",background:isActive?"rgba(0,229,255,.12)":"transparent",color:isActive?K.txt:K.dim,fontSize:11,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:5}},
+            ch[1], count>0?React.createElement("span",{style:{background:isActive?"rgba(0,229,255,.2)":"rgba(255,255,255,.08)",borderRadius:10,padding:"0 5px",fontSize:10}},count):null
+          );
+        })}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:0,flexWrap:"wrap"}}>
+        <span></span>
         <button style={btnPrim} onClick={()=>sSF("new")}><Plus size={14}/>Novo {isA?"Processo":"Prazo"}</button>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="crit"?K.cr:K.brd,color:fil.quick==="crit"?K.cr:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="crit"?"":"crit",urg:fil.quick==="crit"?fil.urg:"Crítico"})}>Críticos</button>
@@ -2347,7 +2519,7 @@ const ProcList=({type,st,dp,ss,compact})=>{
       </div>
       {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} compact={compact}/>)}</div>}
       {vw==="kanban"&&<KanbanV items={sorted} dp={dp} ss={ss}/>}
-      {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
         <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
         <td style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
         <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
@@ -2470,137 +2642,143 @@ const CAL_TIPOS = {
   "prazo_ok":   {emoji:"📋",  cor:"#00e5ff",  bg:"rgba(0,229,255,.08)",  brd:"rgba(0,229,255,.3)",  label:"Prazo"},
 };
 
-function CalPg({st, dp}){
-  const[mo,sMo]=useState(NOW.getMonth());
-  const[yr,sYr]=useState(NOW.getFullYear());
-  const[sd,sSd]=useState(null);
+function CalPg({st}){
+  const[mo,sMo]=useState(NOW.getMonth()),[yr,sYr]=useState(NOW.getFullYear()),[sd,sSd]=useState(null);
   const all=[...st.adm,...st.jud];
-  const hoje=NOW.toISOString().slice(0,10);
-  const fd=(new Date(yr,mo,1).getDay()+6)%7; // Monday-first
+  const fd=new Date(yr,mo,1).getDay();
   const dm=new Date(yr,mo+1,0).getDate();
   const mn=new Date(yr,mo).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-  const DIAS=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-  const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const hoje=NOW.toISOString().slice(0,10);
 
-  // Build events map by day
-  var events = {};
-  all.forEach(function(p){
-    if(!p.prazoFinal)return;
-    try{
-      var d=new Date(p.prazoFinal+"T12:00:00");
-      if(d.getFullYear()===yr && d.getMonth()===mo){
-        var day=d.getDate();
-        if(!events[day])events[day]=[];
-        var dr=p.diasRestantes!=null?p.diasRestantes:999;
-        var cor=dr<=2?"#ff2e5b":dr<=5?"#ffb800":dr<=15?"#fb923c":"#00e5ff";
-        var bg=dr<=2?"rgba(255,46,91,.18)":dr<=5?"rgba(255,184,0,.18)":dr<=15?"rgba(251,146,60,.12)":"rgba(0,229,255,.1)";
-        events[day].push({p:p,cor:cor,bg:bg,dr:dr});
+  const sameDay=function(d1,d2){return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();};
+
+  const gEv=function(day){
+    var d=new Date(yr,mo,day),ev=[];
+    // Prazos de processos
+    all.forEach(function(p){
+      var pf=toD(p.prazoFinal);
+      if(sameDay(pf,d)){
+        var dr=p.diasRestantes||0;
+        var tipo=dr<=5?"prazo_crit":dr<=15?"prazo_med":"prazo_ok";
+        ev.push({tipo:tipo,l:p.assunto,c:CAL_TIPOS[tipo].cor,emoji:CAL_TIPOS[tipo].emoji,destaque:dr<=5});
       }
-    }catch(e){}
-  });
-
-  // Stats for header
-  var criticos=Object.values(events).flat().filter(function(e){return e.dr<=2;}).length;
-  var urgentes=Object.values(events).flat().filter(function(e){return e.dr<=5&&e.dr>2;}).length;
-  var total=Object.values(events).flat().length;
-
-  var prevMo=function(){if(mo===0){sMo(11);sYr(yr-1);}else sMo(mo-1);sSd(null);};
-  var nextMo=function(){if(mo===11){sMo(0);sYr(yr+1);}else sMo(mo+1);sSd(null);};
-  var goToday=function(){sMo(NOW.getMonth());sYr(NOW.getFullYear());sSd(null);};
-
-  var dayStr=function(d){return yr+"-"+String(mo+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");};
-  var isToday=function(d){return dayStr(d)===hoje;};
-  var isWeekend=function(d){var dow=(new Date(yr,mo,d).getDay());return dow===0||dow===6;};
-
-  // Calendar grid: 6 rows x 7 cols
-  var cells=[];
-  for(var i=0;i<42;i++){
-    var day=i-fd+1;
-    cells.push(day>=1&&day<=dm?day:null);
-  }
-
+    });
+    // Reuniões
+    st.reun.forEach(function(r){
+      var rd=toD(r.data);
+      if(sameDay(rd,d)) ev.push({tipo:"reuniao",l:r.titulo,c:CAL_TIPOS.reuniao.cor,emoji:CAL_TIPOS.reuniao.emoji,destaque:true});
+    });
+    // Sustentações orais
+    st.sust.forEach(function(s){
+      var sd2=toD(s.data);
+      if(sameDay(sd2,d)) ev.push({tipo:"sust",l:s.tema,c:CAL_TIPOS.sust.cor,emoji:CAL_TIPOS.sust.emoji,destaque:true});
+    });
+    // Viagens — marca todos os dias do período
+    st.viag.forEach(function(v){
+      if(!v.dataIda||!v.dataVolta) return;
+      var ini=toD(v.dataIda),fim=toD(v.dataVolta);
+      if(d>=ini&&d<=fim) ev.push({tipo:"viagem",l:v.destino||v.motivo,c:CAL_TIPOS.viagem.cor,emoji:CAL_TIPOS.viagem.emoji,destaque:true,span:true});
+    });
+    // Lembretes
+    (st.lembretes||[]).forEach(function(lem){
+      if(!lem.data||lem.done) return;
+      var ld=new Date(lem.data+"T12:00:00");
+      if(sameDay(ld,d)) ev.push({tipo:"lembrete",l:lem.texto,c:CAL_TIPOS.lembrete.cor,emoji:CAL_TIPOS.lembrete.emoji,destaque:true});
+    });
+    return ev;
+  };
+  const navM=function(dir){if(dir<0&&mo===0){sMo(11);sYr(yr-1);}else if(dir>0&&mo===11){sMo(0);sYr(yr+1);}else sMo(mo+dir);sSd(null);};
+  const DAYS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
   return(
-    <div style={{padding:"18px 20px",maxWidth:900,margin:"0 auto"}}>
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={prevMo} style={{width:32,height:32,borderRadius:10,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",color:"#00e5ff",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{"<"}</button>
-          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:K.txt,fontFamily:"Orbitron,sans-serif",textTransform:"capitalize"}}>{mn}</h2>
-          <button onClick={nextMo} style={{width:32,height:32,borderRadius:10,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",color:"#00e5ff",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{">"}</button>
-          <button onClick={goToday} style={{padding:"4px 12px",borderRadius:8,border:"1px solid rgba(0,229,255,.2)",background:"transparent",color:K.dim,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Hoje</button>
+    <div className="cj-pg">
+      <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
+        <h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Calendário</h2>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:12}}>
+          <button style={{...btnGhost,padding:"6px 10px"}} onClick={()=>navM(-1)}><ChevronLeft size={16}/></button>
+          <span style={{fontSize:15,fontWeight:600,color:K.txt,textTransform:"capitalize",minWidth:180,textAlign:"center"}}>{mn}</span>
+          <button style={{...btnGhost,padding:"6px 10px"}} onClick={()=>navM(1)}><ChevronRight size={16}/></button>
         </div>
-        <div style={{display:"flex",gap:10}}>
-          {[["#ff2e5b","≤2du crítico",criticos],["#ffb800","≤5du urgente",urgentes],["#00e5ff","restante",total-criticos-urgentes]].map(function(it){return(
-            <div key={it[0]} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:K.dim}}>
-              <div style={{width:10,height:10,borderRadius:3,background:it[0]}}/>
-              <span>{it[2]} {it[1]}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:sd?"1fr 300px":"1fr",gap:16,alignItems:"start"}}>
+        <div style={{background:"linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.1)",borderRadius:20,overflow:"auto",boxShadow:"0 20px 50px rgba(0,0,0,.5)"}}>
+          <div style={{minWidth:560}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
+              {DAYS.map(function(d){return <div key={d} style={{padding:"10px 6px",textAlign:"center",fontSize:10,fontWeight:700,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1px solid rgba(0,229,255,.12)",background:"rgba(0,229,255,.025)"}}>{d}</div>;})}
             </div>
-          );})}
-        </div>
-      </div>
-
-      {/* Weekday headers */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
-        {DIAS.map(function(d){return(
-          <div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:K.dim,padding:"4px 0",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
-        );})}
-      </div>
-
-      {/* Calendar grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
-        {cells.map(function(day,i){
-          if(!day)return <div key={i} style={{minHeight:90,borderRadius:10,background:"rgba(255,255,255,.01)"}}/>;
-          var evs=events[day]||[];
-          var isT=isToday(day);
-          var isSel=sd===day;
-          var isWE=isWeekend(day);
-          var maxCrit=evs.length?Math.min.apply(null,evs.map(function(e){return e.dr;})):999;
-          var borderColor=maxCrit<=2?"rgba(255,46,91,.5)":maxCrit<=5?"rgba(255,184,0,.4)":isT?"rgba(0,229,255,.5)":"rgba(255,255,255,.06)";
-          return(
-            <div key={day} onClick={function(){sSd(isSel?null:day);}}
-              style={{minHeight:90,borderRadius:10,border:"1px solid "+(isSel?"rgba(0,229,255,.6)":borderColor),background:isSel?"rgba(0,229,255,.08)":isWE?"rgba(255,255,255,.01)":"rgba(255,255,255,.025)",cursor:evs.length?"pointer":"default",padding:"6px",position:"relative",transition:"all .15s"}}>
-              <div style={{fontSize:13,fontWeight:isT?800:500,color:isT?"#00e5ff":isWE?K.dim:K.txt,marginBottom:4,display:"flex",alignItems:"center",gap:4}}>
-                {isT&&<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#00e5ff"}}>{day}</div>}
-                {!isT&&day}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:2}}>
-                {evs.slice(0,3).map(function(e,ei){return(
-                  <div key={ei} style={{fontSize:9,padding:"2px 5px",borderRadius:5,background:e.bg,color:e.cor,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>
-                    {e.p.assunto.slice(0,18)}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
+              {Array.from({length:fd},function(_,i){return <div key={"e"+i} style={{padding:4,minHeight:90,borderBottom:"1px solid "+K.brd,borderRight:"1px solid "+K.brd,background:"rgba(0,0,0,.15)"}}/>;})}
+              {Array.from({length:dm},function(_,i){
+                var day=i+1,ev=gEv(day);
+                var isT=day===NOW.getDate()&&mo===NOW.getMonth()&&yr===NOW.getFullYear();
+                var isS=sd===day;
+                var hasDest=ev.some(function(e){return e.destaque;});
+                var topEv=ev[0]||null;
+                var cellBg=isS?"rgba(0,229,255,.18)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].bg:"transparent";
+                var cellBrd=isS?"rgba(0,229,255,.5)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].brd:K.brd;
+                var cellShadow=hasDest&&topEv?"inset 0 0 0 2px "+CAL_TIPOS[topEv.tipo].brd+", 0 0 18px "+topEv.c+"30":"none";
+                return(
+                  <div key={day} className="cj-cal-cell" onClick={function(){sSd(day===sd?null:day);}} style={{padding:"4px 5px 5px",minHeight:90,borderBottom:"1px solid "+cellBrd,borderRight:"1px solid "+K.brd,background:cellBg,boxSizing:"border-box",boxShadow:cellShadow,transition:"all .18s",position:"relative",overflow:"hidden"}}>
+                    {hasDest&&topEv&&<div style={{position:"absolute",inset:"0 0 auto 0",height:"3px",background:topEv.c,boxShadow:"0 0 8px "+topEv.c,borderRadius:"2px 2px 0 0",pointerEvents:"none"}}/>}
+                    <div style={{fontSize:11,fontWeight:isT?800:400,color:isT?K.ac:hasDest&&topEv?topEv.c:K.txt,marginBottom:2,display:"flex",alignItems:"center",gap:2}}>
+                      {isT&&<div style={{width:7,height:7,borderRadius:"50%",background:K.ac,boxShadow:"0 0 8px "+K.ac,flexShrink:0}}/>}
+                      <span>{day}</span>
+                      {ev.length>0&&<span style={{marginLeft:"auto",fontSize:9,fontWeight:800,color:hasDest&&topEv?topEv.c:K.dim,background:"rgba(0,0,0,.3)",borderRadius:5,padding:"0 4px",lineHeight:"14px"}}>{ev.length}</span>}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                      {ev.slice(0,3).map(function(e,ei){
+                        var tp=CAL_TIPOS[e.tipo];
+                        var isBig=e.destaque&&ei===0;
+                        return <div key={ei} style={{fontSize:isBig?9:8,padding:isBig?"2px 4px":"1px 3px",borderRadius:4,background:isBig?tp.bg:e.c+"18",color:e.c,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:isBig?800:600,borderLeft:(isBig?"3px":"2px")+" solid "+e.c,lineHeight:"14px",boxShadow:isBig?"0 0 6px "+e.c+"40":"none"}}>{e.emoji+" "+e.l}</div>;
+                      })}
+                      {ev.length>3&&<div style={{fontSize:8,color:K.dim2,paddingLeft:2}}>+{ev.length-3}</div>}
+                    </div>
                   </div>
-                );})}
-                {evs.length>3&&<div style={{fontSize:9,color:K.dim,textAlign:"center"}}>+{evs.length-3} mais</div>}
-              </div>
+                );
+              })}
             </div>
-          );
+          </div>
+        </div>
+        {sd&&<Bx className="cj-sc" style={{position:"sticky",top:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+            <h3 style={{margin:0,fontSize:16,fontWeight:600,color:K.txt}}>{sd} de {new Date(yr,mo).toLocaleDateString("pt-BR",{month:"long"})}</h3>
+            <button onClick={()=>sSd(null)} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={16}/></button>
+          </div>
+          {gEv(sd).length?gEv(sd).map(function(e,i){
+            var t=CAL_TIPOS[e.tipo];
+            return(
+              <div key={i} style={{padding:"12px 14px",marginBottom:8,borderRadius:12,background:t.bg,border:"1px solid "+t.brd,boxShadow:"0 0 14px "+e.c+"20"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                  <span style={{fontSize:18}}>{e.emoji}</span>
+                  <span style={{fontSize:10,fontWeight:800,color:e.c,textTransform:"uppercase",letterSpacing:".5px",fontFamily:"Orbitron,sans-serif"}}>{t.label}</span>
+                </div>
+                <div style={{fontSize:13,fontWeight:700,color:K.txt,lineHeight:1.4}}>{e.l}</div>
+              </div>
+            );
+          }):<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum evento neste dia</div>}
+        </Bx>}
+      </div>
+      <div style={{display:"flex",gap:14,marginTop:16,justifyContent:"center",flexWrap:"wrap"}}>
+        {[["reuniao","Reunião"],["sust","Sustentação Oral"],["viagem","Viagem"],["lembrete","Lembrete"],["prazo_crit","Prazo Crítico"],["prazo_med","Prazo"]].map(function(item){
+          var t=CAL_TIPOS[item[0]];
+          return <div key={item[0]} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:K.dim}}>
+            <div style={{width:18,height:12,borderRadius:3,background:t.bg,border:"2px solid "+t.brd,boxShadow:"0 0 6px "+t.cor+"40"}}/>
+            <span>{t.emoji} {item[1]}</span>
+          </div>;
         })}
       </div>
-
-      {/* Selected day detail */}
-      {sd&&events[sd]&&events[sd].length>0&&(
-        <div style={{marginTop:16,padding:"16px",borderRadius:14,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.04)"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#00e5ff",fontFamily:"Orbitron,monospace",marginBottom:12}}>
-            📅 {String(sd).padStart(2,"0")}/{String(mo+1).padStart(2,"0")}/{yr} — {events[sd].length} processo{events[sd].length>1?"s":""}
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {events[sd].map(function(e,i){return(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:"rgba(255,255,255,.025)",border:"1px solid "+e.cor+"33"}}>
-                <div style={{width:4,height:36,borderRadius:2,background:e.cor,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:700,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.p.assunto}</div>
-                  <div style={{fontSize:10,color:K.dim,marginTop:2}}>{e.p.tipoPeca||""} {e.p.tribunal?"· "+e.p.tribunal:""} {e.p.tipo==="adm"?"· Administrativo":""}</div>
-                </div>
-                <div style={{flexShrink:0,fontSize:12,fontWeight:800,color:e.cor,fontFamily:"Orbitron,monospace"}}>{e.dr===0?"HOJE":e.dr+"du"}</div>
-              </div>
-            );})}
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+};
 
+/* ANALYTICS */
+const AnalPg=({st})=>{const all=[...st.adm,...st.jud];const phD=PHS.slice(0,6).map(f=>({name:f.length>12?f.slice(0,12)+"…":f,adm:st.adm.filter(p=>p.fase===f).length,jud:st.jud.filter(p=>p.fase===f).length}));const mt=[{l:"Tempo 1ª Prov.",v:"3.2d",c:K.ac},{l:"Conclusão Semanal",v:"72%",c:K.ac},{l:"Sem Movim. (>7d)",v:all.filter(p=>p.semMov>=7).length,c:K.wa},{l:"Prov. Pendentes",v:all.filter(p=>p.status==="Ativo").length,c:K.cr},{l:"Follow-ups",v:all.filter(p=>p.depTerc).length,c:K.wa},{l:"Conclusão Média",v:"18.5d",c:K.su}];return(
+  <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Analytics</h2>
+    <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",gap:12,marginBottom:24}}>{mt.map((m,i)=><Bx key={i} style={{padding:"14px 16px"}}><div style={{fontSize:11,color:K.dim,marginBottom:8,fontWeight:500,textTransform:"uppercase"}}>{m.l}</div><div style={{fontSize:26,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div></Bx>)}</div>
+    <Bx><SH icon={BarChart3} title="Por Fase de Trabalho"/><ResponsiveContainer width="100%" height={250}><BarChart data={phD} layout="vertical" barSize={14}><XAxis type="number" tick={{fill:K.dim2,fontSize:10}} axisLine={false} tickLine={false}/><YAxis dataKey="name" type="category" tick={{fill:K.dim,fontSize:10}} width={100} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="adm" fill={K.ac} name="Admin" radius={[0,4,4,0]}/><Bar dataKey="jud" fill={K.pu} name="Judicial" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></Bx>
+  </div>
+)};
 
+/* DETAIL MODAL */
 function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=dProps.onEdit,setDjeProc=dProps.setDjeProc,st=dProps.st,ss=dProps.ss;if(!p)return null;const isJ=p.tipo==="jud",isA=p.tipo==="adm";const accent=uC(p.diasRestantes);return(
   <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(2,6,23,.78)",backdropFilter:"blur(10px)",zIndex:1000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"34px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)oc()}}>
     <div className="cj-sc cj-soft" style={{background:"linear-gradient(180deg,rgba(13,18,35,.98),rgba(8,12,24,.98))",border:`1px solid ${accent}28`,borderRadius:28,width:"100%",maxWidth:1080,padding:0,position:"relative",overflow:"hidden"}}>
@@ -3293,11 +3471,15 @@ export default function App() {
   const dp = function(action){
     setUndoStack(function(prev){return [...prev.slice(-9),{action,snapshot:st}];});
     dp0(action);
+    if(action.type==="ADD_J"||action.type==="ADD_A") showToast("Processo cadastrado com sucesso","success");
+    if(action.type==="UPD"&&action.ch&&action.ch.status==="Concluído") showToast("Processo marcado como concluído","success");
+    if(action.type==="DEL") showToast("Processo removido","warn");
   };
   const [pg, sPg] = useState("dashboard");
   const [sel, sSel] = useState(null);
   const [editForm, sEF] = useState(null);
   const [sq, sSq] = useState("");
+  const [fChip, setFChip] = React.useState("todos");
   const [so, sSo] = useState(false);
   const [col, sCol] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -3319,7 +3501,9 @@ export default function App() {
 
   // Load persisted state on mount
   const [loaded, setLoaded] = useState(false);
+  const [showCmdPalette, setShowCmdPalette] = React.useState(false);
   const [syncStatus, setSyncStatus] = useState('ok'); // 'ok' | 'saving' | 'error'
+  const [liveTime, setLiveTime] = React.useState(new Date());
   var lastSyncRef = React.useRef(null);
   const [showQuickAdd, setShowQuickAdd] = React.useState(false);
   const [showEtiquetas, setShowEtiquetas] = React.useState(false);
@@ -3382,8 +3566,9 @@ export default function App() {
       body: JSON.stringify({data: stateData})
     }).then(function(r) {
       setSyncStatus(r.ok ? 'ok' : 'error');
-      if (r.ok) lastSyncRef.current = new Date();
-    }).catch(function() { setSyncStatus('error'); });
+      if (r.ok) { lastSyncRef.current = new Date(); showToast("Dados sincronizados com Supabase","success"); }
+      else showToast("Erro ao sincronizar com Supabase","error");
+    }).catch(function() { setSyncStatus('error'); showToast("Erro de conexão ao salvar","error"); });
   };
 
   useEffect(() => {
@@ -3393,6 +3578,26 @@ export default function App() {
     }, 10000);
     return function() { clearInterval(interval); };
   }, [st, loaded]);
+
+  // Live clock for countdown
+  useEffect(() => {
+    var tick = setInterval(function(){ setLiveTime(new Date()); }, 60000);
+    return function(){ clearInterval(tick); };
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    var handleKey = function(e) {
+      var isInput = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);
+      if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); setShowCmdPalette(function(v){return !v;}); }
+      if ((e.ctrlKey||e.metaKey) && e.key === 'n') { e.preventDefault(); setShowQuickAdd(true); }
+      if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); try{syncToSupabase(serialize(st));}catch(ex){} }
+      if (!isInput && e.key === 'f') { setFocusMode(function(v){return !v;}); }
+      if (e.key === 'Escape') { setShowCmdPalette(false); setShowQuickAdd(false); setShowEtiquetas(false); setShowEmailAlert(false); setShowHistory(false); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return function() { window.removeEventListener('keydown', handleKey); };
+  }, [st]);
 
   // Save to Supabase on page close
   useEffect(() => {
@@ -3469,6 +3674,10 @@ export default function App() {
     }
   },[prazoUrgente&&prazoUrgente.length]);
 
+
+  // Breadcrumb label
+  var PAGE_LABELS = {dashboard:"Dashboard","today":"Plano do Dia",week:"Semana",priorities:"Prioridades",ia:"IA Nexus",admin:"Processos Adm.",judicial:"Processos Jud.",execucao:"Em Execução",acompanhamento:"Acompanhamento",protocolar:"A Protocolar",correcao:"Em Correção",done:"Realizados",agenda:"Agenda",calendar:"Calendário",timeline:"Timeline",stats:"Estatísticas"};
+  var currentPageLabel = PAGE_LABELS[pg] || pg;
   const rP = () => {
     const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode };
     switch (pg) {
@@ -3570,6 +3779,11 @@ export default function App() {
               <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#4e6a8a",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>
+            <span style={{color:"rgba(0,229,255,.4)"}}>COJUR</span>
+            <span style={{color:"rgba(0,229,255,.2)"}}>›</span>
+            <span style={{color:"#00e5ff",fontWeight:700}}>{currentPageLabel}</span>
+          </div>
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
             <input style={{ ...inpSt, paddingLeft: 40, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
@@ -3618,7 +3832,7 @@ export default function App() {
             </div>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>{rP()}</div>
+        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>{loaded ? React.createElement("div",{key:pg,className:"cj-page-enter",style:{width:"100%",height:"100%"}},rP()) : React.createElement(SkeletonDashboard, null)}</div>
       </div>
 
       {/* MODALS */}
@@ -3631,6 +3845,8 @@ export default function App() {
       {showQuickAdd&&<QuickAddModal dp={dp} onClose={function(){setShowQuickAdd(false);}}/> }
       {showEtiquetas&&<EtiquetasModal st={st} dp={dp} onClose={function(){setShowEtiquetas(false);}}/> }
       {showEmailAlert&&<EmailAlertModal st={st} onClose={function(){setShowEmailAlert(false);}}/> }
+      <ToastContainer/>
+      {showCmdPalette&&<CmdPalette st={st} dp={dp} sPg={sPg} sSel={sSel} setShowQuickAdd={setShowQuickAdd} setShowEtiquetas={setShowEtiquetas} setShowHistory={setShowHistory} syncToSupabase={syncToSupabase} onClose={function(){setShowCmdPalette(false);}}/> }
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
       {showRevisao&&<RevisaoModal onClose={function(){setShowRevisao(false);}}/>}
