@@ -597,10 +597,10 @@ const importState = function(file, dp, onDone) {
 };
 
 /* ═══ REDUCER ═══ */
-const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox:D_INBOX,realizados:[],notas:[],lembretes:[]});
+const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox:D_INBOX,realizados:[],notas:[],lembretes:[],etiquetas:[]});
 function reducer(st,a){
   switch(a.type){
-    case "LOAD": return {...mkInit(), ...a.state, realizados: a.state?.realizados || [], notas: a.state?.notas || [], lembretes: a.state?.lembretes || []};
+    case "LOAD": return {...mkInit(), ...a.state, realizados: a.state?.realizados || [], notas: a.state?.notas || [], lembretes: a.state?.lembretes || [], etiquetas: a.state?.etiquetas || []};
     case "UPD":{
       const k=a.isAdm?"adm":"jud";
       const list=st[k];
@@ -1327,6 +1327,39 @@ function ChecklistModal({proc,onConfirm,onClose}) {
 }
 
 
+
+/* ═══ FERIADOS NACIONAIS ═══ */
+var FERIADOS = [
+  "2025-01-01","2025-04-18","2025-04-21","2025-05-01","2025-06-19",
+  "2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20",
+  "2025-12-25",
+  "2026-01-01","2026-04-03","2026-04-21","2026-05-01","2026-06-04",
+  "2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20",
+  "2026-12-25",
+  "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
+  "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20",
+  "2027-12-25"
+];
+var isDU = function(d) {
+  var ds = d.toISOString().split('T')[0];
+  var dow = d.getDay();
+  return dow !== 0 && dow !== 6 && FERIADOS.indexOf(ds) === -1;
+};
+var addDU = function(start, n) {
+  var d = new Date(start);
+  var count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() + 1);
+    if (isDU(d)) count++;
+  }
+  return d.toISOString().split('T')[0];
+};
+var calcPrazoDJeFull = function(pubDJe, intersticio) {
+  if (!pubDJe) return null;
+  var days = intersticio || 15;
+  return addDU(new Date(pubDJe + 'T12:00:00'), days);
+};
+
 /* ═══ TIPO DE PEÇA — mapa de cores ═══ */
 var PECA_COR = {
   // Defesa/inicial
@@ -1569,6 +1602,22 @@ function RelatorioSemanalModal(rsP){
 
 function StatsModal(stP){
   var st=stP.st,onClose=stP.onClose;
+  var s1p=React.useState("resumo");var prodTab=s1p[0],setProdTab=s1p[1];
+  var getMonthLabel=function(k){var months=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];var p=k.split("-");return months[parseInt(p[1])-1]+"/"+p[0].slice(2);};
+  var monthlyProd=(function(){
+    var real=st.realizados||[];
+    var months={};
+    real.forEach(function(r){
+      var dt=r.data||r.dt||r.updatedAt;
+      if(!dt)return;
+      var k=dt.toString().slice(0,7);
+      if(!months[k])months[k]={mes:k,label:"",total:0};
+      months[k].total++;
+      months[k].label=getMonthLabel(k);
+    });
+    return Object.values(months).sort(function(a,b){return a.mes>b.mes?1:-1;}).slice(-6);
+  })();
+  var maxProd=monthlyProd.length?Math.max.apply(null,monthlyProd.map(function(m){return m.total;})):1;
   var all=[...st.adm,...st.jud];
   var real=st.realizados||[];
   var porTipo={};
@@ -1623,6 +1672,266 @@ function StatsModal(stP){
               <div style={{fontSize:9,color:K.dim}}>baseado nos tipos de peça · 4h/dia disponíveis</div>
             </div>
           </div>
+        </div>
+      
+        <div style={{marginTop:20,padding:"14px 16px",borderRadius:14,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.12)"}}>
+          <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:12}}>📊 Produção Mensal (últimos 6 meses)</div>
+          {monthlyProd.length===0&&<div style={{fontSize:12,color:K.dim,textAlign:"center",padding:"12px 0"}}>Nenhuma peça concluída registrada ainda.</div>}
+          <div style={{display:"flex",gap:8,alignItems:"flex-end",height:80}}>
+            {monthlyProd.map(function(m){var pct=maxProd>0?Math.round((m.total/maxProd)*100):0;return(
+              <div key={m.mes} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <div style={{fontSize:11,fontWeight:800,color:"#00e5ff"}}>{m.total}</div>
+                <div style={{width:"100%",height:Math.max(4,Math.round(pct*0.6))+"px",background:"linear-gradient(180deg,#00e5ff,#0891b2)",borderRadius:"4px 4px 0 0"}}/>
+                <div style={{fontSize:9,color:K.dim,whiteSpace:"nowrap"}}>{m.label}</div>
+              </div>
+            );})}
+          </div>
+        </div></div>
+    </div>
+  );
+}
+
+
+/* === CADASTRO RÁPIDO === */
+function QuickAddModal(qP) {
+  var dp=qP.dp, onClose=qP.onClose;
+  var s1=React.useState("jud"); var tipo=s1[0],setTipo=s1[1];
+  var s2=React.useState(""); var sei=s2[0],setSei=s2[1];
+  var s3=React.useState(""); var assunto=s3[0],setAssunto=s3[1];
+  var s4=React.useState(""); var prazo=s4[0],setPrazo=s4[1];
+  var s5=React.useState(""); var peca=s5[0],setPeca=s5[1];
+
+  var salvar = function() {
+    if (!assunto.trim()) return;
+    var proc = tipo==="jud"
+      ? mkJ({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Manifestação"})
+      : mkA({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Parecer Jurídico"});
+    dp({type: tipo==="jud" ? "ADD_J" : "ADD_A", proc: proc});
+    onClose();
+  };
+
+  return React.createElement("div", {
+    style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"},
+    onClick:function(e){if(e.target===e.currentTarget)onClose();}
+  },
+    React.createElement("div", {style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:480,padding:24,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}},
+      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}, React.createElement(X,{size:20})),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
+        React.createElement("span",{style:{fontSize:22}}, "⚡"),
+        React.createElement("div",null,
+          React.createElement("h3",{style:{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Cadastro Rápido"),
+          React.createElement("div",{style:{fontSize:11,color:K.dim}},"Campos mínimos — edite depois")
+        )
+      ),
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:14}},
+        ["jud","adm"].map(function(t){return React.createElement("button",{key:t,onClick:function(){setTipo(t);},style:{flex:1,padding:"8px",borderRadius:11,border:tipo===t?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.08)",background:tipo===t?"rgba(0,229,255,.1)":"transparent",color:tipo===t?K.txt:K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}},t==="jud"?"⚖️ Judicial":"📁 Administrativo");})
+      ),
+      React.createElement("div",{style:{marginBottom:10}},
+        React.createElement("label",{style:lblSt},"Assunto *"),
+        React.createElement("input",{style:{...inpSt,marginTop:4},value:assunto,onChange:function(e){setAssunto(e.target.value);},placeholder:"Ex: Impugnação ao edital REVALIDA",autoFocus:true,
+          onKeyDown:function(e){if(e.key==="Enter")salvar();}})
+      ),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+        React.createElement("div",null,
+          React.createElement("label",{style:lblSt},"Nº SEI"),
+          React.createElement("input",{style:{...inpSt,marginTop:4},value:sei,onChange:function(e){setSei(e.target.value);},placeholder:"26.0.000000-0"})
+        ),
+        React.createElement("div",null,
+          React.createElement("label",{style:lblSt},"Prazo Final"),
+          React.createElement("input",{type:"date",style:{...inpSt,marginTop:4},value:prazo,onChange:function(e){setPrazo(e.target.value);}})
+        )
+      ),
+      React.createElement("div",{style:{marginBottom:16}},
+        React.createElement("label",{style:lblSt},"Tipo de Peça"),
+        React.createElement("select",{style:{...inpSt,marginTop:4},value:peca,onChange:function(e){setPeca(e.target.value);}},
+          React.createElement("option",{value:""},"Selecionar..."),
+          TIPOS_PECA.map(function(t){return React.createElement("option",{key:t,value:t},t);})
+        )
+      ),
+      React.createElement("div",{style:{display:"flex",gap:10}},
+        React.createElement("button",{onClick:salvar,style:{flex:1,...btnPrim,justifyContent:"center",padding:"12px",fontSize:13,fontWeight:800}},"⚡ Cadastrar"),
+        React.createElement("button",{onClick:onClose,style:{...btnGhost,padding:"12px 16px",fontSize:12}},"Cancelar")
+      )
+    )
+  );
+}
+
+
+/* === EXPORT FICHA PROCESSO === */
+var exportProcPDF = function(p) {
+  var isJ = p.tipo === "jud";
+  var fmt = function(d){ if(!d)return "-"; try{return new Date(d+"T12:00:00").toLocaleDateString("pt-BR");}catch(e){return d;} };
+  var html = [
+    "<html><head><meta charset='UTF-8'>",
+    "<style>body{font-family:Arial,sans-serif;font-size:12px;margin:32px;color:#111;}",
+    "h1{font-size:16px;font-weight:bold;margin-bottom:4px;}",
+    "h2{font-size:13px;color:#444;font-weight:normal;margin-top:0;}",
+    ".grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:16px 0;}",
+    ".field{border-bottom:1px solid #e5e7eb;padding:4px 0;}",
+    ".label{font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;}",
+    ".value{font-size:12px;}",
+    ".obs{background:#f9fafb;border-radius:6px;padding:10px;margin-top:12px;font-size:11px;color:#444;}",
+    "@media print{@page{margin:20mm;}}",
+    "</style></head><body>",
+    "<h1>"+(isJ?"⚖️ Processo Judicial":"📁 Processo Administrativo")+"</h1>",
+    "<h2>"+p.assunto+"</h2>",
+    "<hr style='border:none;border-top:2px solid #111;margin:8px 0'/>",
+    "<div class='grid'>",
+    p.num?"<div class='field'><div class='label'>Nº Judicial</div><div class='value'>"+p.num+"</div></div>":"",
+    p.numeroSEI?"<div class='field'><div class='label'>Nº SEI</div><div class='value'>"+p.numeroSEI+"</div></div>":"",
+    isJ&&p.tribunal?"<div class='field'><div class='label'>Tribunal</div><div class='value'>"+p.tribunal+"</div></div>":"",
+    isJ&&p.tipoAcao?"<div class='field'><div class='label'>Tipo de Ação</div><div class='value'>"+p.tipoAcao+"</div></div>":"",
+    p.tipoPeca?"<div class='field'><div class='label'>Tipo de Peça</div><div class='value'>"+p.tipoPeca+"</div></div>":"",
+    isJ&&p.parteContraria?"<div class='field'><div class='label'>Parte Contrária</div><div class='value'>"+p.parteContraria+"</div></div>":"",
+    p.prazoFinal?"<div class='field'><div class='label'>Prazo Final</div><div class='value'>"+fmt(p.prazoFinal)+"</div></div>":"",
+    p.pubDJe?"<div class='field'><div class='label'>Pub. DJe</div><div class='value'>"+fmt(p.pubDJe)+"</div></div>":"",
+    p.status?"<div class='field'><div class='label'>Status</div><div class='value'>"+p.status+"</div></div>":"",
+    p.fase?"<div class='field'><div class='label'>Fase</div><div class='value'>"+p.fase+"</div></div>":"",
+    p.responsavel?"<div class='field'><div class='label'>Responsável</div><div class='value'>"+p.responsavel+"</div></div>":"",
+    p.horasTrabalhadas?"<div class='field'><div class='label'>Horas Trabalhadas</div><div class='value'>"+p.horasTrabalhadas+"h</div></div>":"",
+    "</div>",
+    p.proxProv?"<div class='obs'><strong>Próxima Providência:</strong> "+p.proxProv+"</div>":"",
+    p.obs?"<div class='obs'><strong>Observações:</strong> "+p.obs+"</div>":"",
+    "<div style='margin-top:24px;font-size:10px;color:#999;text-align:right'>Gerado em "+new Date().toLocaleString("pt-BR")+" · COJUR/CFM</div>",
+    "</body></html>"
+  ].join("");
+  var w = window.open("","_blank");
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 500);
+};
+
+
+/* === ETIQUETAS MODAL === */
+function EtiquetasModal(eP){
+  var st=eP.st,dp=eP.dp,onClose=eP.onClose;
+  var s1=React.useState("");var nome=s1[0],setNome=s1[1];
+  var s2=React.useState("#00e5ff");var cor=s2[0],setCor=s2[1];
+  var CORES=["#00e5ff","#00ff88","#ffb800","#ff2e5b","#b84dff","#fb923c","#f472b6","#38bdf8","#a3e635","#94a3b8"];
+
+  var criar=function(){
+    if(!nome.trim())return;
+    dp({type:"ADD_ETIQUETA",nome:nome.trim(),cor:cor});
+    setNome("");
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.3)",borderRadius:22,width:"100%",maxWidth:500,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}>{React.createElement(X,{size:20})}</button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <span style={{fontSize:22}}>🏷️</span>
+          <div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Etiquetas Personalizadas</h3>
+            <div style={{fontSize:11,color:K.dim}}>Organize seus processos com etiquetas coloridas</div>
+          </div>
+        </div>
+
+        {/* Create new */}
+        <div style={{marginBottom:16,padding:"14px",borderRadius:14,border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.04)"}}>
+          <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>Nova etiqueta</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <input style={{...inpSt,flex:1}} value={nome} onChange={function(e){setNome(e.target.value);}} placeholder="Ex: REVALIDA, Aguardando MPF..." onKeyDown={function(e){if(e.key==="Enter")criar();}}/>
+            <button onClick={criar} style={{...btnPrim,padding:"0 16px",flexShrink:0}}>Criar</button>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {CORES.map(function(c){return(
+              <div key={c} onClick={function(){setCor(c);}} style={{width:24,height:24,borderRadius:6,background:c,cursor:"pointer",border:cor===c?"3px solid #fff":"2px solid transparent",boxSizing:"border-box"}}/>
+            );})}
+          </div>
+        </div>
+
+        {/* Existing labels */}
+        <div style={{maxHeight:300,overflowY:"auto"}}>
+          {(!st.etiquetas||!st.etiquetas.length)&&<div style={{textAlign:"center",padding:"24px",color:K.dim,fontSize:13}}>Nenhuma etiqueta criada ainda.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {(st.etiquetas||[]).map(function(e){
+              var count=[...st.adm,...st.jud].filter(function(p){return (p.tags||[]).includes(e.id);}).length;
+              return(
+                <div key={e.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:11,border:"1px solid rgba(255,255,255,.07)",background:"rgba(255,255,255,.025)"}}>
+                  <div style={{width:14,height:14,borderRadius:4,background:e.cor,flexShrink:0}}/>
+                  <span style={{flex:1,fontSize:13,fontWeight:600,color:K.txt}}>{e.nome}</span>
+                  <span style={{fontSize:11,color:K.dim}}>{count} processo{count!==1?"s":""}</span>
+                  <button onClick={function(){if(window.confirm("Remover etiqueta '"+e.nome+"'?"))dp({type:"DEL_ETIQUETA",id:e.id});}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:"2px 6px",borderRadius:6,fontSize:12}}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* === EMAIL ALERT MODAL === */
+function EmailAlertModal(eaP){
+  var onClose=eaP.onClose,st=eaP.st;
+  var s1=React.useState("");var email=s1[0],setEmail=s1[1];
+  var s2=React.useState(false);var loading=s2[0],setLoad=s2[1];
+  var s3=React.useState(null);var result=s3[0],setResult=s3[1];
+
+  var enviar=function(){
+    if(!email.trim())return;
+    setLoad(true);setResult(null);
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/email-alert",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:email.trim()})
+    }).then(function(r){return r.json();}).then(function(d){
+      setResult(d);setLoad(false);
+    }).catch(function(){
+      setResult({error:"Erro de conexao"});setLoad(false);
+    });
+  };
+
+  var all=[...(st.adm||[]),...(st.jud||[])];
+  var urgentes=all.filter(function(p){return p.diasRestantes!=null&&p.diasRestantes>=0&&p.diasRestantes<=5&&!["Concluido","Arquivado"].includes(p.status);});
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:460,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}>{React.createElement(X,{size:20})}</button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <span style={{fontSize:22}}>📧</span>
+          <div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Alerta de Prazos por Email</h3>
+            <div style={{fontSize:11,color:K.dim}}>Envia agora um resumo dos prazos críticos</div>
+          </div>
+        </div>
+
+        <div style={{padding:"12px 14px",borderRadius:11,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.15)",marginBottom:16}}>
+          <div style={{fontSize:12,color:K.txt,fontWeight:700,marginBottom:4}}>
+            {urgentes.length} processo{urgentes.length!==1?"s":""} com prazo crítico (≤5du)
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:120,overflowY:"auto"}}>
+            {urgentes.slice(0,5).map(function(p){return(
+              <div key={p.id} style={{fontSize:11,color:K.dim,display:"flex",justifyContent:"space-between"}}>
+                <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
+                <span style={{flexShrink:0,marginLeft:8,color:p.diasRestantes<=2?"#ff2e5b":"#ffb800",fontWeight:700}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+              </div>
+            );})}
+          </div>
+        </div>
+
+        <div style={{marginBottom:12}}>
+          <label style={lblSt}>Seu email</label>
+          <input style={{...inpSt,marginTop:4}} value={email} onChange={function(e){setEmail(e.target.value);}} placeholder="joao@cfm.org.br" type="email" onKeyDown={function(e){if(e.key==="Enter")enviar();}}/>
+        </div>
+
+        {!loading&&!result&&<button onClick={enviar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>
+          📧 Enviar alerta agora
+        </button>}
+
+        {loading&&<div style={{textAlign:"center",padding:"16px",color:"#00e5ff",fontSize:12,fontFamily:"Orbitron,monospace"}}>Enviando...</div>}
+
+        {result&&<div style={{padding:"12px 14px",borderRadius:11,background:result.ok||result.preview?"rgba(0,255,136,.08)":"rgba(255,46,91,.08)",border:"1px solid "+(result.ok||result.preview?"rgba(0,255,136,.25)":"rgba(255,46,91,.25)"),fontSize:12,color:result.ok||result.preview?"#00ff88":"#ff2e5b"}}>
+          {result.ok?"✅ Email enviado com sucesso!":result.preview?"✅ Serviço ativo ("+result.urgentes+" processos). Configure RESEND_API_KEY no Supabase para ativar envio real.":result.error||"Erro ao enviar"}
+        </div>}
+
+        <div style={{marginTop:14,fontSize:10,color:K.dim,lineHeight:1.5}}>
+          Para envio automático diário às 7h30, configure RESEND_API_KEY + ALERT_EMAIL nos secrets do Supabase Edge Functions e ative um cron job.
         </div>
       </div>
     </div>
@@ -2161,143 +2470,137 @@ const CAL_TIPOS = {
   "prazo_ok":   {emoji:"📋",  cor:"#00e5ff",  bg:"rgba(0,229,255,.08)",  brd:"rgba(0,229,255,.3)",  label:"Prazo"},
 };
 
-function CalPg({st}){
-  const[mo,sMo]=useState(NOW.getMonth()),[yr,sYr]=useState(NOW.getFullYear()),[sd,sSd]=useState(null);
+function CalPg({st, dp}){
+  const[mo,sMo]=useState(NOW.getMonth());
+  const[yr,sYr]=useState(NOW.getFullYear());
+  const[sd,sSd]=useState(null);
   const all=[...st.adm,...st.jud];
-  const fd=new Date(yr,mo,1).getDay();
+  const hoje=NOW.toISOString().slice(0,10);
+  const fd=(new Date(yr,mo,1).getDay()+6)%7; // Monday-first
   const dm=new Date(yr,mo+1,0).getDate();
   const mn=new Date(yr,mo).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-  const hoje=NOW.toISOString().slice(0,10);
+  const DIAS=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-  const sameDay=function(d1,d2){return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();};
-
-  const gEv=function(day){
-    var d=new Date(yr,mo,day),ev=[];
-    // Prazos de processos
-    all.forEach(function(p){
-      var pf=toD(p.prazoFinal);
-      if(sameDay(pf,d)){
-        var dr=p.diasRestantes||0;
-        var tipo=dr<=5?"prazo_crit":dr<=15?"prazo_med":"prazo_ok";
-        ev.push({tipo:tipo,l:p.assunto,c:CAL_TIPOS[tipo].cor,emoji:CAL_TIPOS[tipo].emoji,destaque:dr<=5});
+  // Build events map by day
+  var events = {};
+  all.forEach(function(p){
+    if(!p.prazoFinal)return;
+    try{
+      var d=new Date(p.prazoFinal+"T12:00:00");
+      if(d.getFullYear()===yr && d.getMonth()===mo){
+        var day=d.getDate();
+        if(!events[day])events[day]=[];
+        var dr=p.diasRestantes!=null?p.diasRestantes:999;
+        var cor=dr<=2?"#ff2e5b":dr<=5?"#ffb800":dr<=15?"#fb923c":"#00e5ff";
+        var bg=dr<=2?"rgba(255,46,91,.18)":dr<=5?"rgba(255,184,0,.18)":dr<=15?"rgba(251,146,60,.12)":"rgba(0,229,255,.1)";
+        events[day].push({p:p,cor:cor,bg:bg,dr:dr});
       }
-    });
-    // Reuniões
-    st.reun.forEach(function(r){
-      var rd=toD(r.data);
-      if(sameDay(rd,d)) ev.push({tipo:"reuniao",l:r.titulo,c:CAL_TIPOS.reuniao.cor,emoji:CAL_TIPOS.reuniao.emoji,destaque:true});
-    });
-    // Sustentações orais
-    st.sust.forEach(function(s){
-      var sd2=toD(s.data);
-      if(sameDay(sd2,d)) ev.push({tipo:"sust",l:s.tema,c:CAL_TIPOS.sust.cor,emoji:CAL_TIPOS.sust.emoji,destaque:true});
-    });
-    // Viagens — marca todos os dias do período
-    st.viag.forEach(function(v){
-      if(!v.dataIda||!v.dataVolta) return;
-      var ini=toD(v.dataIda),fim=toD(v.dataVolta);
-      if(d>=ini&&d<=fim) ev.push({tipo:"viagem",l:v.destino||v.motivo,c:CAL_TIPOS.viagem.cor,emoji:CAL_TIPOS.viagem.emoji,destaque:true,span:true});
-    });
-    // Lembretes
-    (st.lembretes||[]).forEach(function(lem){
-      if(!lem.data||lem.done) return;
-      var ld=new Date(lem.data+"T12:00:00");
-      if(sameDay(ld,d)) ev.push({tipo:"lembrete",l:lem.texto,c:CAL_TIPOS.lembrete.cor,emoji:CAL_TIPOS.lembrete.emoji,destaque:true});
-    });
-    return ev;
-  };
-  const navM=function(dir){if(dir<0&&mo===0){sMo(11);sYr(yr-1);}else if(dir>0&&mo===11){sMo(0);sYr(yr+1);}else sMo(mo+dir);sSd(null);};
-  const DAYS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    }catch(e){}
+  });
+
+  // Stats for header
+  var criticos=Object.values(events).flat().filter(function(e){return e.dr<=2;}).length;
+  var urgentes=Object.values(events).flat().filter(function(e){return e.dr<=5&&e.dr>2;}).length;
+  var total=Object.values(events).flat().length;
+
+  var prevMo=function(){if(mo===0){sMo(11);sYr(yr-1);}else sMo(mo-1);sSd(null);};
+  var nextMo=function(){if(mo===11){sMo(0);sYr(yr+1);}else sMo(mo+1);sSd(null);};
+  var goToday=function(){sMo(NOW.getMonth());sYr(NOW.getFullYear());sSd(null);};
+
+  var dayStr=function(d){return yr+"-"+String(mo+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");};
+  var isToday=function(d){return dayStr(d)===hoje;};
+  var isWeekend=function(d){var dow=(new Date(yr,mo,d).getDay());return dow===0||dow===6;};
+
+  // Calendar grid: 6 rows x 7 cols
+  var cells=[];
+  for(var i=0;i<42;i++){
+    var day=i-fd+1;
+    cells.push(day>=1&&day<=dm?day:null);
+  }
+
   return(
-    <div className="cj-pg">
-      <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
-        <h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Calendário</h2>
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:12}}>
-          <button style={{...btnGhost,padding:"6px 10px"}} onClick={()=>navM(-1)}><ChevronLeft size={16}/></button>
-          <span style={{fontSize:15,fontWeight:600,color:K.txt,textTransform:"capitalize",minWidth:180,textAlign:"center"}}>{mn}</span>
-          <button style={{...btnGhost,padding:"6px 10px"}} onClick={()=>navM(1)}><ChevronRight size={16}/></button>
+    <div style={{padding:"18px 20px",maxWidth:900,margin:"0 auto"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={prevMo} style={{width:32,height:32,borderRadius:10,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",color:"#00e5ff",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{"<"}</button>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:K.txt,fontFamily:"Orbitron,sans-serif",textTransform:"capitalize"}}>{mn}</h2>
+          <button onClick={nextMo} style={{width:32,height:32,borderRadius:10,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",color:"#00e5ff",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{">"}</button>
+          <button onClick={goToday} style={{padding:"4px 12px",borderRadius:8,border:"1px solid rgba(0,229,255,.2)",background:"transparent",color:K.dim,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Hoje</button>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          {[["#ff2e5b","≤2du crítico",criticos],["#ffb800","≤5du urgente",urgentes],["#00e5ff","restante",total-criticos-urgentes]].map(function(it){return(
+            <div key={it[0]} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:K.dim}}>
+              <div style={{width:10,height:10,borderRadius:3,background:it[0]}}/>
+              <span>{it[2]} {it[1]}</span>
+            </div>
+          );})}
         </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:sd?"1fr 300px":"1fr",gap:16,alignItems:"start"}}>
-        <div style={{background:"linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.1)",borderRadius:20,overflow:"auto",boxShadow:"0 20px 50px rgba(0,0,0,.5)"}}>
-          <div style={{minWidth:560}}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
-              {DAYS.map(function(d){return <div key={d} style={{padding:"10px 6px",textAlign:"center",fontSize:10,fontWeight:700,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1px solid rgba(0,229,255,.12)",background:"rgba(0,229,255,.025)"}}>{d}</div>;})}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
-              {Array.from({length:fd},function(_,i){return <div key={"e"+i} style={{padding:4,minHeight:90,borderBottom:"1px solid "+K.brd,borderRight:"1px solid "+K.brd,background:"rgba(0,0,0,.15)"}}/>;})}
-              {Array.from({length:dm},function(_,i){
-                var day=i+1,ev=gEv(day);
-                var isT=day===NOW.getDate()&&mo===NOW.getMonth()&&yr===NOW.getFullYear();
-                var isS=sd===day;
-                var hasDest=ev.some(function(e){return e.destaque;});
-                var topEv=ev[0]||null;
-                var cellBg=isS?"rgba(0,229,255,.18)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].bg:"transparent";
-                var cellBrd=isS?"rgba(0,229,255,.5)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].brd:K.brd;
-                var cellShadow=hasDest&&topEv?"inset 0 0 0 2px "+CAL_TIPOS[topEv.tipo].brd+", 0 0 18px "+topEv.c+"30":"none";
-                return(
-                  <div key={day} className="cj-cal-cell" onClick={function(){sSd(day===sd?null:day);}} style={{padding:"4px 5px 5px",minHeight:90,borderBottom:"1px solid "+cellBrd,borderRight:"1px solid "+K.brd,background:cellBg,boxSizing:"border-box",boxShadow:cellShadow,transition:"all .18s",position:"relative",overflow:"hidden"}}>
-                    {hasDest&&topEv&&<div style={{position:"absolute",inset:"0 0 auto 0",height:"3px",background:topEv.c,boxShadow:"0 0 8px "+topEv.c,borderRadius:"2px 2px 0 0",pointerEvents:"none"}}/>}
-                    <div style={{fontSize:11,fontWeight:isT?800:400,color:isT?K.ac:hasDest&&topEv?topEv.c:K.txt,marginBottom:2,display:"flex",alignItems:"center",gap:2}}>
-                      {isT&&<div style={{width:7,height:7,borderRadius:"50%",background:K.ac,boxShadow:"0 0 8px "+K.ac,flexShrink:0}}/>}
-                      <span>{day}</span>
-                      {ev.length>0&&<span style={{marginLeft:"auto",fontSize:9,fontWeight:800,color:hasDest&&topEv?topEv.c:K.dim,background:"rgba(0,0,0,.3)",borderRadius:5,padding:"0 4px",lineHeight:"14px"}}>{ev.length}</span>}
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:2}}>
-                      {ev.slice(0,3).map(function(e,ei){
-                        var tp=CAL_TIPOS[e.tipo];
-                        var isBig=e.destaque&&ei===0;
-                        return <div key={ei} style={{fontSize:isBig?9:8,padding:isBig?"2px 4px":"1px 3px",borderRadius:4,background:isBig?tp.bg:e.c+"18",color:e.c,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:isBig?800:600,borderLeft:(isBig?"3px":"2px")+" solid "+e.c,lineHeight:"14px",boxShadow:isBig?"0 0 6px "+e.c+"40":"none"}}>{e.emoji+" "+e.l}</div>;
-                      })}
-                      {ev.length>3&&<div style={{fontSize:8,color:K.dim2,paddingLeft:2}}>+{ev.length-3}</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        {sd&&<Bx className="cj-sc" style={{position:"sticky",top:0}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
-            <h3 style={{margin:0,fontSize:16,fontWeight:600,color:K.txt}}>{sd} de {new Date(yr,mo).toLocaleDateString("pt-BR",{month:"long"})}</h3>
-            <button onClick={()=>sSd(null)} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={16}/></button>
-          </div>
-          {gEv(sd).length?gEv(sd).map(function(e,i){
-            var t=CAL_TIPOS[e.tipo];
-            return(
-              <div key={i} style={{padding:"12px 14px",marginBottom:8,borderRadius:12,background:t.bg,border:"1px solid "+t.brd,boxShadow:"0 0 14px "+e.c+"20"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                  <span style={{fontSize:18}}>{e.emoji}</span>
-                  <span style={{fontSize:10,fontWeight:800,color:e.c,textTransform:"uppercase",letterSpacing:".5px",fontFamily:"Orbitron,sans-serif"}}>{t.label}</span>
-                </div>
-                <div style={{fontSize:13,fontWeight:700,color:K.txt,lineHeight:1.4}}>{e.l}</div>
+
+      {/* Weekday headers */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
+        {DIAS.map(function(d){return(
+          <div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:K.dim,padding:"4px 0",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
+        );})}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {cells.map(function(day,i){
+          if(!day)return <div key={i} style={{minHeight:90,borderRadius:10,background:"rgba(255,255,255,.01)"}}/>;
+          var evs=events[day]||[];
+          var isT=isToday(day);
+          var isSel=sd===day;
+          var isWE=isWeekend(day);
+          var maxCrit=evs.length?Math.min.apply(null,evs.map(function(e){return e.dr;})):999;
+          var borderColor=maxCrit<=2?"rgba(255,46,91,.5)":maxCrit<=5?"rgba(255,184,0,.4)":isT?"rgba(0,229,255,.5)":"rgba(255,255,255,.06)";
+          return(
+            <div key={day} onClick={function(){sSd(isSel?null:day);}}
+              style={{minHeight:90,borderRadius:10,border:"1px solid "+(isSel?"rgba(0,229,255,.6)":borderColor),background:isSel?"rgba(0,229,255,.08)":isWE?"rgba(255,255,255,.01)":"rgba(255,255,255,.025)",cursor:evs.length?"pointer":"default",padding:"6px",position:"relative",transition:"all .15s"}}>
+              <div style={{fontSize:13,fontWeight:isT?800:500,color:isT?"#00e5ff":isWE?K.dim:K.txt,marginBottom:4,display:"flex",alignItems:"center",gap:4}}>
+                {isT&&<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#00e5ff"}}>{day}</div>}
+                {!isT&&day}
               </div>
-            );
-          }):<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum evento neste dia</div>}
-        </Bx>}
-      </div>
-      <div style={{display:"flex",gap:14,marginTop:16,justifyContent:"center",flexWrap:"wrap"}}>
-        {[["reuniao","Reunião"],["sust","Sustentação Oral"],["viagem","Viagem"],["lembrete","Lembrete"],["prazo_crit","Prazo Crítico"],["prazo_med","Prazo"]].map(function(item){
-          var t=CAL_TIPOS[item[0]];
-          return <div key={item[0]} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:K.dim}}>
-            <div style={{width:18,height:12,borderRadius:3,background:t.bg,border:"2px solid "+t.brd,boxShadow:"0 0 6px "+t.cor+"40"}}/>
-            <span>{t.emoji} {item[1]}</span>
-          </div>;
+              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                {evs.slice(0,3).map(function(e,ei){return(
+                  <div key={ei} style={{fontSize:9,padding:"2px 5px",borderRadius:5,background:e.bg,color:e.cor,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>
+                    {e.p.assunto.slice(0,18)}
+                  </div>
+                );})}
+                {evs.length>3&&<div style={{fontSize:9,color:K.dim,textAlign:"center"}}>+{evs.length-3} mais</div>}
+              </div>
+            </div>
+          );
         })}
       </div>
+
+      {/* Selected day detail */}
+      {sd&&events[sd]&&events[sd].length>0&&(
+        <div style={{marginTop:16,padding:"16px",borderRadius:14,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.04)"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#00e5ff",fontFamily:"Orbitron,monospace",marginBottom:12}}>
+            📅 {String(sd).padStart(2,"0")}/{String(mo+1).padStart(2,"0")}/{yr} — {events[sd].length} processo{events[sd].length>1?"s":""}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {events[sd].map(function(e,i){return(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:"rgba(255,255,255,.025)",border:"1px solid "+e.cor+"33"}}>
+                <div style={{width:4,height:36,borderRadius:2,background:e.cor,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.p.assunto}</div>
+                  <div style={{fontSize:10,color:K.dim,marginTop:2}}>{e.p.tipoPeca||""} {e.p.tribunal?"· "+e.p.tribunal:""} {e.p.tipo==="adm"?"· Administrativo":""}</div>
+                </div>
+                <div style={{flexShrink:0,fontSize:12,fontWeight:800,color:e.cor,fontFamily:"Orbitron,monospace"}}>{e.dr===0?"HOJE":e.dr+"du"}</div>
+              </div>
+            );})}
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}
 
-/* ANALYTICS */
-const AnalPg=({st})=>{const all=[...st.adm,...st.jud];const phD=PHS.slice(0,6).map(f=>({name:f.length>12?f.slice(0,12)+"…":f,adm:st.adm.filter(p=>p.fase===f).length,jud:st.jud.filter(p=>p.fase===f).length}));const mt=[{l:"Tempo 1ª Prov.",v:"3.2d",c:K.ac},{l:"Conclusão Semanal",v:"72%",c:K.ac},{l:"Sem Movim. (>7d)",v:all.filter(p=>p.semMov>=7).length,c:K.wa},{l:"Prov. Pendentes",v:all.filter(p=>p.status==="Ativo").length,c:K.cr},{l:"Follow-ups",v:all.filter(p=>p.depTerc).length,c:K.wa},{l:"Conclusão Média",v:"18.5d",c:K.su}];return(
-  <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Analytics</h2>
-    <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",gap:12,marginBottom:24}}>{mt.map((m,i)=><Bx key={i} style={{padding:"14px 16px"}}><div style={{fontSize:11,color:K.dim,marginBottom:8,fontWeight:500,textTransform:"uppercase"}}>{m.l}</div><div style={{fontSize:26,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div></Bx>)}</div>
-    <Bx><SH icon={BarChart3} title="Por Fase de Trabalho"/><ResponsiveContainer width="100%" height={250}><BarChart data={phD} layout="vertical" barSize={14}><XAxis type="number" tick={{fill:K.dim2,fontSize:10}} axisLine={false} tickLine={false}/><YAxis dataKey="name" type="category" tick={{fill:K.dim,fontSize:10}} width={100} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="adm" fill={K.ac} name="Admin" radius={[0,4,4,0]}/><Bar dataKey="jud" fill={K.pu} name="Judicial" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></Bx>
-  </div>
-)};
 
-/* DETAIL MODAL */
 function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=dProps.onEdit,setDjeProc=dProps.setDjeProc,st=dProps.st,ss=dProps.ss;if(!p)return null;const isJ=p.tipo==="jud",isA=p.tipo==="adm";const accent=uC(p.diasRestantes);return(
   <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(2,6,23,.78)",backdropFilter:"blur(10px)",zIndex:1000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"34px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)oc()}}>
     <div className="cj-sc cj-soft" style={{background:"linear-gradient(180deg,rgba(13,18,35,.98),rgba(8,12,24,.98))",border:`1px solid ${accent}28`,borderRadius:28,width:"100%",maxWidth:1080,padding:0,position:"relative",overflow:"hidden"}}>
@@ -3016,6 +3319,11 @@ export default function App() {
 
   // Load persisted state on mount
   const [loaded, setLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('ok'); // 'ok' | 'saving' | 'error'
+  var lastSyncRef = React.useRef(null);
+  const [showQuickAdd, setShowQuickAdd] = React.useState(false);
+  const [showEtiquetas, setShowEtiquetas] = React.useState(false);
+  const [showEmailAlert, setShowEmailAlert] = React.useState(false);
   const [showAutoBackup, setShowAutoBackup] = useState(false);
   useEffect(function(){
     var today=new Date();
@@ -3066,17 +3374,22 @@ export default function App() {
   }, [st, loaded]);
 
   // Sync to Supabase every 10 seconds
+  var syncToSupabase = function(stateData) {
+    setSyncStatus('saving');
+    fetch(STATE_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({data: stateData})
+    }).then(function(r) {
+      setSyncStatus(r.ok ? 'ok' : 'error');
+      if (r.ok) lastSyncRef.current = new Date();
+    }).catch(function() { setSyncStatus('error'); });
+  };
+
   useEffect(() => {
     if (!loaded) return;
     var interval = setInterval(function() {
-      try {
-        var data = serialize(st);
-        fetch(STATE_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({data: data})
-        }).catch(function(){});
-      } catch(e) {}
+      try { syncToSupabase(serialize(st)); } catch(e) {}
     }, 10000);
     return function() { clearInterval(interval); };
   }, [st, loaded]);
@@ -3201,6 +3514,24 @@ export default function App() {
       <input ref={importRef} type="file" accept=".json" onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleImport(f); e.target.value = ""; }} style={{ display: "none" }} />
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
+      {/* PRAZO URGENTE BANNER */}
+      {prazoUrgente && prazoUrgente.length > 0 && (
+        <div style={{position:"absolute",top:60,left:0,right:0,zIndex:200,background:"linear-gradient(90deg,rgba(255,46,91,.95),rgba(220,38,68,.95))",borderBottom:"1px solid rgba(255,100,130,.4)",padding:"6px 20px",display:"flex",alignItems:"center",gap:12,animation:"pulse 2s infinite"}}>
+          <span style={{fontSize:14}}>🚨</span>
+          <span style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"Orbitron,sans-serif",letterSpacing:".3px"}}>
+            {prazoUrgente.length} PROCESSO{prazoUrgente.length>1?"S":""} COM PRAZO CRÍTICO:
+          </span>
+          <div style={{display:"flex",gap:8,flex:1,overflowX:"auto"}}>
+            {prazoUrgente.slice(0,3).map(function(p){return(
+              <span key={p.id} onClick={function(){sS(p);}} style={{whiteSpace:"nowrap",fontSize:11,color:"rgba(255,255,255,.9)",background:"rgba(0,0,0,.2)",padding:"2px 8px",borderRadius:6,cursor:"pointer"}}>
+                {p.assunto.slice(0,30)}... ({p.diasRestantes===0?"HOJE":p.diasRestantes+"du"})
+              </span>
+            );})}
+          </div>
+          <span style={{fontSize:10,color:"rgba(255,255,255,.7)",whiteSpace:"nowrap"}}>Clique para abrir</span>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, overflow: "hidden", position:"relative" }}>
         <div style={{ padding: col ? "18px 10px" : "18px 18px", borderBottom: "1px solid rgba(0,212,255,.1)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background:"linear-gradient(135deg, rgba(0,229,255,.06), rgba(168,85,247,.04))" }} onClick={() => sCol(!col)}>
@@ -3266,8 +3597,16 @@ export default function App() {
             <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar JSON</button>
             <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.18)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>⚖️</button>
             <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:17}}>✏️</button>
-            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
+            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Salvar agora no Supabase" onClick={function(){try{syncToSupabase(serialize(st));}catch(e){}}} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:12,border:"1px solid "+(syncStatus==="ok"?"rgba(0,255,136,.25)":syncStatus==="saving"?"rgba(255,184,0,.35)":"rgba(255,46,91,.35)"),background:syncStatus==="ok"?"rgba(0,255,136,.06)":syncStatus==="saving"?"rgba(255,184,0,.06)":"rgba(255,46,91,.06)",cursor:"pointer",flexShrink:0}}>
+              <span style={{fontSize:10,fontWeight:700,fontFamily:"Orbitron,monospace",color:syncStatus==="ok"?"#00ff88":syncStatus==="saving"?"#ffb800":"#ff2e5b"}}>
+                {syncStatus==="ok"?"💾":syncStatus==="saving"?"⏳":"⚠️"}
+              </span>
+            </button>
+            <button title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
             <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
+            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta de prazos por email" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(34,211,238,.2)",background:"rgba(34,211,238,.05)",cursor:"pointer",fontSize:17}}>📧</button>
+            <button onClick={function(){setShowEtiquetas(true);}} title="Etiquetas personalizadas" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🏷️</button>
+            <button onClick={function(){setShowQuickAdd(true);}} title="Cadastro rápido ⚡" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>⚡</button>
             <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>>🤖</button>
             <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:15}}>☰</button>
             <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
@@ -3289,6 +3628,9 @@ export default function App() {
       {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }}
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
+      {showQuickAdd&&<QuickAddModal dp={dp} onClose={function(){setShowQuickAdd(false);}}/> }
+      {showEtiquetas&&<EtiquetasModal st={st} dp={dp} onClose={function(){setShowEtiquetas(false);}}/> }
+      {showEmailAlert&&<EmailAlertModal st={st} onClose={function(){setShowEmailAlert(false);}}/> }
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
       {showRevisao&&<RevisaoModal onClose={function(){setShowRevisao(false);}}/>}
