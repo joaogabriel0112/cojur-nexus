@@ -136,7 +136,8 @@ var showCopyToast = function(txt) {
 
 /* ═══ CSS ═══ */
 const injectCSS = () => {
-  if (document.getElementById("cj3")) return;
+  var existing = document.getElementById("cj3");
+  if (existing) existing.remove();
   const s = document.createElement("style");
   s.id = "cj3";
   s.textContent = `
@@ -166,9 +167,10 @@ const injectCSS = () => {
 @keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,46,91,.4)}50%{box-shadow:0 0 0 6px rgba(255,46,91,0)}}
 @keyframes countDown{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
+@keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .cj-page-enter{animation:fadeInUp .2s ease}
 .cj-card-hover:hover{transform:translateY(-2px)!important;transition:all .18s ease!important}
-.cj-ring-pulse{animation:ringPulse 1.5s ease-in-out infinite}
+.cj-ring-pulse{animation:ringPulse 1s ease-in-out infinite;box-shadow:0 0 0 3px rgba(255,46,91,.3)!important}
 .cj-pulse{animation:cjPulse 1.8s ease infinite}
 .cj-st>*{animation:cjUp .35s ease both}
 .cj-st>:nth-child(1){animation-delay:.03s}.cj-st>:nth-child(2){animation-delay:.06s}
@@ -558,6 +560,7 @@ const rehydrate = raw => {
     inbox: parsed.inbox || [],
     realizados: parsed.realizados || [],
     notas: parsed.notas || [],
+    etiquetas: parsed.etiquetas || [],
   };
 };
 const storage = (typeof window !== "undefined" && window.storage) ? window.storage : {
@@ -614,8 +617,13 @@ function reducer(st,a){
       const list=st[k];
       const updated=list.map(p=>{
         if(p.id!==a.id) return p;
-        const merged={...p,...a.ch};
+        var merged={...p,...a.ch};
         if(a.ch?.tipoPeca && a.ch.tipoPeca!==p.tipoPeca) merged.checklist=buildChecklist(a.ch.tipoPeca, merged);
+        // Auto-recalculate prazoFinal from pubDJe when pubDJe or intersticio changes
+        if((a.ch?.pubDJe || a.ch?.intersticio) && merged.pubDJe) {
+          var newPrazo = calcPrazoDJe(merged.pubDJe, merged.intersticio || 15);
+          if(newPrazo) merged.prazoFinal = newPrazo instanceof Date ? newPrazo.toISOString().split('T')[0] : newPrazo;
+        }
         return recalc(merged);
       });
       if(a.isAdm)return{...st,[k]:updated};
@@ -624,7 +632,12 @@ function reducer(st,a){
     }
     case "ADD_A":return{...st,adm:[...st.adm,mkA(a.d)]};
     case "ADD_J":{
-      const proc=mkJ(a.d);
+      var rawJ2={...a.d};
+      if(rawJ2.pubDJe) {
+        var jprazo=calcPrazoDJe(rawJ2.pubDJe, rawJ2.intersticio||15);
+        if(jprazo) rawJ2.prazoFinal = jprazo instanceof Date ? jprazo.toISOString().split('T')[0] : jprazo;
+      }
+      const proc=mkJ(rawJ2);
       return syncJudicialLinks({...st,jud:[...st.jud,proc]},proc);
     }
     case "DEL_P":{
@@ -688,6 +701,8 @@ function reducer(st,a){
     case "ADD_LEMBRETE": { var nls=[...(st.lembretes||[])]; nls.push({id:nid(),texto:a.texto,data:a.data||"",done:false}); return {...st,lembretes:nls}; }
     case "UPD_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).map(function(l){return l.id===a.id?{...l,...a.ch}:l;})}; }
     case "DEL_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).filter(function(l){return l.id!==a.id;})}; }
+    case "ADD_ETIQUETA": { return {...st,etiquetas:[...(st.etiquetas||[]),{id:nid(),nome:a.nome,cor:a.cor}]}; }
+    case "DEL_ETIQUETA": { return {...st,etiquetas:(st.etiquetas||[]).filter(function(e){return e.id!==a.id;})}; }
     case "RST":return mkInit();
     default:return st;
   }
@@ -960,8 +975,8 @@ function GmailSEIModal(props) {
 
   var importarObj=function(em){
     var isJ=em.tipo==="jud"||(em.numeroProcesso&&em.numeroProcesso.length>10);
-    if(isJ){dp({type:"ADD_J",proc:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
-    else{dp({type:"ADD_A",proc:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
+    if(isJ){dp({type:"ADD_J",d:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
+    else{dp({type:"ADD_A",d:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
     setAdded(function(p){var n=Object.assign({},p);n[em.assunto||"x"]=true;return n;});
   };
 
@@ -1228,7 +1243,7 @@ function RevisaoModal({onClose}) {
 
 
 /* ═══ TIMELINE 30 DIAS ═══ */
-function TimelinePg({st,ss}) {
+function TimelinePg({st,ss,liveTime}) {
   var all=[...st.adm,...st.jud].filter(function(p){return p.prazoFinal&&p.diasRestantes>=0&&p.diasRestantes<=30;}).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
   var hoje=new Date();
   var dias=Array.from({length:31},function(_,i){return i;});
@@ -1278,7 +1293,10 @@ function TimelinePg({st,ss}) {
                       </div>
                     </div>
                     <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-                    <div style={{fontSize:10,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                      <span style={{fontSize:10,color:K.dim}}>{p.tipoPeca}</span>
+                      {p.tipo==="jud"&&p.tribunal?<TribBadge trib={p.tribunal}/>:<span style={{fontSize:9,padding:"1px 6px",borderRadius:5,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",color:"#4e6a8a",fontFamily:"monospace"}}>ADM</span>}
+                    </div>
                       {(p.progresso!=null&&p.progresso>0)&&(
                         <div style={{marginTop:6}}>
                           <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
@@ -1553,7 +1571,7 @@ function IANovoProcessoModal(iaNP){
     fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
-  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
+  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",d:clean});}else{dp({type:"ADD_A",d:clean});}onClose();};
   var campos=[["N Processo","num"],["N SEI","numeroSEI"],["Assunto","assunto"],["Tribunal","tribunal"],["Tipo Acao","tipoAcao"],["Tipo Peca","tipoPeca"],["Parte Contraria","parteContraria"],["Prazo Final","prazoFinal"],["Status","status"],["Proxima Providencia","proxProv"]];
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
@@ -1655,7 +1673,7 @@ function StatsModal(stP){
           {[["Total acervo",all.length,"#00e5ff"],["Realizados",real.length,"#00ff88"],["Críticos (≤5du)",criticos,"#ff2e5b"],["Sem mov. (≥7d)",semMov,"#ffb800"]].map(function(item){return(
             <div key={item[0]} style={{padding:"14px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",textAlign:"center"}}>
               <div style={{fontSize:11,color:K.dim,marginBottom:6,textTransform:"uppercase",fontSize:9,letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
-              <div style={{fontSize:28,fontWeight:800,color:item[2],fontFamily:"Orbitron,monospace"}}>{item[1]}</div>
+              <AnimatedNumber value={item[1]} color={item[2]} size={28}/>
             </div>
           );})}
         </div>
@@ -1724,7 +1742,7 @@ function QuickAddModal(qP) {
     var proc = tipo==="jud"
       ? mkJ({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Manifestação"})
       : mkA({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Parecer Jurídico"});
-    dp({type: tipo==="jud" ? "ADD_J" : "ADD_A", proc: proc});
+    dp({type: tipo==="jud" ? "ADD_J" : "ADD_A", d: proc});
     onClose();
   };
 
@@ -1960,6 +1978,17 @@ function EmailAlertModal(eaP){
 /* === TOAST NOTIFICATIONS === */
 var _toastId = 0;
 var _toastSetFn = null;
+var _tipState = {set: null, timer: null};
+var showTipG = function(p, e) {
+  if (!_tipState.set) return;
+  if (_tipState.timer) clearTimeout(_tipState.timer);
+  var x = e.clientX, y = e.clientY;
+  _tipState.timer = setTimeout(function(){ _tipState.set({p:p,x:x,y:y}); }, 400);
+};
+var hideTipG = function() {
+  if (_tipState.timer) clearTimeout(_tipState.timer);
+  if (_tipState.set) _tipState.set({p:null,x:0,y:0});
+};
 var showToast = function(msg, type) {
   if (!_toastSetFn) return;
   var id = ++_toastId;
@@ -2095,7 +2124,126 @@ function SkeletonDashboard() {
   );
 }
 
-/* ═══ FORM MODAL ═══ */
+
+/* === ANIMATED COUNTER === */
+function AnimatedNumber({value, color, size}) {
+  var s = React.useState(0); var displayed = s[0], setDisplayed = s[1];
+  React.useEffect(function() {
+    var target = Number(value) || 0;
+    if (target === 0) { setDisplayed(0); return; }
+    var start = 0;
+    var duration = 800;
+    var startTime = null;
+    var step = function(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / duration, 1);
+      var ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setDisplayed(Math.round(ease * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [value]);
+  return React.createElement('span', {
+    style: {fontSize: size||28, fontWeight:800, color:color||'#00e5ff', fontFamily:'Orbitron,monospace', animation:'countUp .4s ease'}
+  }, displayed);
+}
+
+
+/* === TRIBUNAL BADGE === */
+var TRIB_COLORS = {
+  "TRF-1": {bg:"rgba(59,130,246,.15)", border:"rgba(59,130,246,.35)", color:"#60a5fa"},
+  "TRF-2": {bg:"rgba(99,102,241,.15)", border:"rgba(99,102,241,.35)", color:"#818cf8"},
+  "TRF-3": {bg:"rgba(168,85,247,.15)", border:"rgba(168,85,247,.35)", color:"#c084fc"},
+  "TRF-4": {bg:"rgba(20,184,166,.15)", border:"rgba(20,184,166,.35)", color:"#2dd4bf"},
+  "TRF-5": {bg:"rgba(245,158,11,.12)", border:"rgba(245,158,11,.3)", color:"#fbbf24"},
+  "TRF-6": {bg:"rgba(236,72,153,.12)", border:"rgba(236,72,153,.3)", color:"#f472b6"},
+  "STJ": {bg:"rgba(251,191,36,.12)", border:"rgba(251,191,36,.3)", color:"#fbbf24"},
+  "STF": {bg:"rgba(239,68,68,.12)", border:"rgba(239,68,68,.3)", color:"#f87171"},
+  "TJDFT": {bg:"rgba(16,185,129,.12)", border:"rgba(16,185,129,.3)", color:"#34d399"},
+  "CFM": {bg:"rgba(0,255,136,.08)", border:"rgba(0,255,136,.2)", color:"#00ff88"},
+};
+var TribBadge = function(tbP) {
+  var trib = tbP.trib;
+  if (!trib) return null;
+  var c = TRIB_COLORS[trib] || {bg:"rgba(255,255,255,.06)",border:"rgba(255,255,255,.15)",color:"#94a3b8"};
+  return React.createElement("span", {
+    style: {padding:"2px 7px",borderRadius:5,background:c.bg,border:"1px solid "+c.border,
+      fontSize:10,fontWeight:800,color:c.color,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}
+  }, trib);
+};
+
+
+/* === PROCESS TOOLTIP === */
+function ProcTooltip() {
+  const [state, setState] = React.useState({p:null,x:0,y:0});
+  React.useEffect(function(){
+    _tipState.set = setState;
+    return function(){ _tipState.set = null; };
+  }, []);
+  const p = state.p, x = state.x, y = state.y;
+  if (!p) return null;
+  const cor = p.diasRestantes <= 2 ? "#ff2e5b" : p.diasRestantes <= 5 ? "#ffb800" : "#00e5ff";
+  const fmt = function(d){ if(!d) return "—"; try{ return (d instanceof Date?d:new Date(d+"T12:00:00")).toLocaleDateString("pt-BR"); }catch(e){ return String(d); } };
+  const left = Math.min(x + 16, window.innerWidth - 310);
+  const top = Math.min(y + 8, window.innerHeight - 340);
+  const STATUS_COLORS = {"Concluído":"#00ff88","Em Elaboração":"#ffb800","Arquivado":"#4e6a8a"};
+  const sCor = STATUS_COLORS[p.status] || cor;
+  return (
+    <div style={{
+      position:"fixed", left:left, top:top, zIndex:9999,
+      width:300, background:"rgba(2,5,22,.98)",
+      border:"1px solid "+cor+"55", borderTop:"2px solid "+cor,
+      borderRadius:14, padding:14, pointerEvents:"none",
+      boxShadow:"0 20px 50px rgba(0,0,0,.85)"
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <div style={{flex:1,minWidth:0}}>
+          {p.tipo==="jud" && p.tribunal &&
+            <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:cor+"22",border:"1px solid "+cor+"44",color:cor,fontFamily:"monospace",fontWeight:800,marginRight:4}}>{p.tribunal}</span>
+          }
+          {p.tipoPeca && <span style={{fontSize:10,color:"#4e6a8a"}}>{p.tipoPeca}</span>}
+        </div>
+        <div style={{fontSize:13,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",background:cor+"18",padding:"3px 8px",borderRadius:6,flexShrink:0}}>
+          {p.diasRestantes===0?"HOJE":p.diasRestantes<0?Math.abs(p.diasRestantes)+"du ATRASO":p.diasRestantes+"du"}
+        </div>
+      </div>
+      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:10,lineHeight:1.4}}>
+        {p.assunto}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:8}}>
+        {[
+          ["Prazo Final", fmt(p.prazoFinal), null],
+          ["Status", p.status||"—", sCor],
+          p.parteContraria ? ["Parte Contrária", p.parteContraria, null] : null,
+          p.responsavel ? ["Responsável", p.responsavel, null] : null,
+          p.num ? ["Nº Judicial", p.num, "#7dd3fc"] : null,
+          p.orgao ? ["Órgão", p.orgao, null] : null,
+        ].filter(Boolean).slice(0,6).map(function(item){
+          return (
+            <div key={item[0]} style={{padding:"5px 7px",borderRadius:7,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)"}}>
+              <div style={{fontSize:9,color:"#4e6a8a",fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",marginBottom:1}}>{item[0]}</div>
+              <div style={{fontSize:11,color:item[2]||"#cbd5e1",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item[1]}</div>
+            </div>
+          );
+        })}
+      </div>
+      {p.proxProv && (
+        <div style={{padding:"6px 9px",borderRadius:8,background:"rgba(184,77,255,.1)",border:"1px solid rgba(184,77,255,.25)",fontSize:11,color:"#e2e8f0",lineHeight:1.5}}>
+          <span style={{color:"#b84dff",fontWeight:800}}>→ </span>
+          {p.proxProv.slice(0,90)}{p.proxProv.length>90?"…":""}
+        </div>
+      )}
+      {!p.proxProv && p.obs && (
+        <div style={{padding:"6px 9px",borderRadius:8,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
+          {p.obs.slice(0,90)}{p.obs.length>90?"…":""}
+        </div>
+      )}
+      <div style={{marginTop:8,fontSize:9,color:"rgba(255,255,255,.2)",textAlign:"right"}}>segure o mouse · clique para abrir</div>
+    </div>
+  );
+}
+
+
 const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
   const[form,setForm]=useState(()=>({...(initial||{})}));
   const[confirmDel,setCD]=useState(false);
@@ -2127,7 +2275,10 @@ const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
                 ):f.type==="number"?(
                   <input style={inpSt} type="number" min={1} max={5} value={form[f.key]??3} onChange={e=>set(f.key,parseInt(e.target.value)||3)}/>
                 ):f.type==="date"?(
-                  <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>set(f.key,e.target.value?new Date(e.target.value+"T12:00:00"):null)}/>
+                  <div>
+                    <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>{set(f.key,e.target.value?new Date(e.target.value+"T12:00:00"):null);if(f.key==="pubDJe"&&e.target.value){var np=calcPrazoDJe(e.target.value,form.intersticio||15);if(np){set("prazoFinal",np instanceof Date?np:new Date(np+"T12:00:00"));showToast("Prazo final calculado automaticamente do DJe","success");}}}}/>
+                    {f.key==="pubDJe"&&form.pubDJe&&(function(){var np=calcPrazoDJe(form.pubDJe instanceof Date?form.pubDJe.toISOString().split("T")[0]:form.pubDJe,form.intersticio||15);var npStr=np?(np instanceof Date?np:new Date(np+"T12:00:00")).toLocaleDateString("pt-BR"):"—";return React.createElement("div",{style:{marginTop:4,padding:"4px 8px",borderRadius:7,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",fontSize:10,color:"#00e5ff",display:"flex",gap:6,alignItems:"center"}},React.createElement("span",null,"📅"),React.createElement("span",null,"Prazo calculado: "+npStr+" ("+((form.intersticio||15)+"du")+")"));})()}
+                  </div>
                 ):(
                   <input style={inpSt} type="text" value={form[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.ph||""}/>
                 )}
@@ -2195,8 +2346,24 @@ const extValue=p=>p.tipo==="jud"?(p.parteContraria||"—"):(p.interessado||"—"
 const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,noreferrer")}catch(e){}};
 
 /* PROCESS CARD */
-const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
-  <div onClick={e=>{e.stopPropagation();oc?.(p)}} className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55"}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22"}}>
+const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
+  const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);
+  const [tipPos,setTipPos]=React.useState(null);
+  const tipTimer=React.useRef(null);
+  const onEnter=function(e){
+    clearTimeout(tipTimer.current);
+    var x=e.clientX,y=e.clientY;
+    tipTimer.current=setTimeout(function(){setTipPos({x:x,y:y});},400);
+  };
+  const onLeave=function(){
+    clearTimeout(tipTimer.current);
+    setTipPos(null);
+  };
+  const fmt=function(d){if(!d)return"—";try{return(d instanceof Date?d:new Date(d+"T12:00:00")).toLocaleDateString("pt-BR");}catch(ex){return String(d);}};
+  const cor=p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff";
+  const sCor=p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":cor;
+  return(
+  <div onClick={e=>{e.stopPropagation();oc?.(p)}} className={"cj-soft"+(p.diasRestantes===0?" cj-ring-pulse":"")} style={{position:"relative",background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.diasRestantes===0?"#ff2e5b":p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55";onEnter(e);}} onMouseMove={function(e){if(tipPos)setTipPos({x:e.clientX,y:e.clientY});}} onMouseLeave={function(e){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22";onLeave();}}>
     <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:`linear-gradient(180deg,${accent},transparent 88%)`}}/>
     <div style={{padding:compact?"8px 12px 6px":"14px 16px 10px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))"}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
@@ -2240,6 +2407,7 @@ const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=
         <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
         <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
         {p.tipo==="jud"&&<Bd color={K.pu}><Scale size={10}/>{p.tribunal}</Bd>}
+        {!isA&&p.tribunal&&<TribBadge trib={p.tribunal}/>}
         {p.responsavel&&<Bd color={K.ac}><Users size={10}/>{p.responsavel}</Bd>}
         {p.depTerc&&<Bd color={K.wa}><Users size={10}/>Terceiros</Bd>}
         {p.reuniao&&<Bd color={K.ac}><Calendar size={10}/>Reunião</Bd>}
@@ -2280,7 +2448,49 @@ const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=
         ):null;})()}
       </div>
       <div style={{marginTop:8,fontSize:10,color:K.dim2,textAlign:"right"}}>Atualizado {fmt(p.ultMov||NOW)}</div>
+      {/* Progress bar */}
+      {p.progresso!=null&&Number(p.progresso)>0&&(
+        <div style={{margin:"0 16px 10px",height:5,borderRadius:3,background:"rgba(255,255,255,.1)",overflow:"hidden"}}>
+          <div style={{height:"100%",width:Math.min(100,Number(p.progresso))+"%",background:Number(p.progresso)>=100?"#00ff88":accent,borderRadius:2,transition:"width .4s ease"}}/>
+        </div>
+      )}
+      {/* Status line */}
+      <div style={{height:5,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":accent+"66"}}/>
     </div>
+    {tipPos&&(
+      <div style={{position:"fixed",left:Math.min((tipPos?tipPos.x:0)+10,window.innerWidth-310),top:Math.max((tipPos?tipPos.y:0)-320,10),zIndex:9999,width:300,
+        background:"rgba(2,5,22,.99)",border:"1px solid "+cor+"55",borderTop:"2px solid "+cor,
+        borderRadius:14,padding:14,pointerEvents:"none",
+        boxShadow:"0 20px 50px rgba(0,0,0,.85)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            {p.tribunal&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:cor+"22",border:"1px solid "+cor+"44",color:cor,fontFamily:"monospace",fontWeight:800,marginRight:4}}>{p.tribunal}</span>}
+            {p.tipoPeca&&<span style={{fontSize:10,color:"#4e6a8a"}}>{p.tipoPeca}</span>}
+          </div>
+          <span style={{fontSize:12,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",background:cor+"18",padding:"2px 8px",borderRadius:6}}>
+            {p.diasRestantes===0?"HOJE":p.diasRestantes<0?Math.abs(p.diasRestantes)+"du ATRASO":p.diasRestantes+"du"}
+          </span>
+        </div>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8,lineHeight:1.4}}>{p.assunto}</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:p.proxProv||p.obs?8:0}}>
+          {[["Prazo",fmt(p.prazoFinal),null],["Status",p.status||"—",sCor],
+            p.parteContraria?["Parte",p.parteContraria,null]:null,
+            p.responsavel?["Responsável",p.responsavel,null]:null,
+          ].filter(Boolean).map(function(it){return(
+            <div key={it[0]} style={{padding:"4px 7px",borderRadius:6,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}>
+              <div style={{fontSize:9,color:"#4e6a8a",fontWeight:700,textTransform:"uppercase",marginBottom:1}}>{it[0]}</div>
+              <div style={{fontSize:11,color:it[2]||"#cbd5e1",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it[1]}</div>
+            </div>
+          );})}
+        </div>
+        {p.proxProv&&<div style={{padding:"5px 8px",borderRadius:7,background:"rgba(184,77,255,.1)",border:"1px solid rgba(184,77,255,.25)",fontSize:11,color:"#e2e8f0",lineHeight:1.4}}>
+          <span style={{color:"#b84dff",fontWeight:800}}>→ </span>{p.proxProv.slice(0,80)}{p.proxProv.length>80?"…":""}
+        </div>}
+        {!p.proxProv&&p.obs&&<div style={{padding:"5px 8px",borderRadius:7,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",fontSize:11,color:"#94a3b8",lineHeight:1.4}}>
+          {p.obs.slice(0,80)}{p.obs.length>80?"…":""}
+        </div>}
+      </div>
+    )}
   </div>
 )};
 /* KANBAN with localStorage persistence */
@@ -2380,7 +2590,7 @@ const applyF=(items,f)=>{let r=items;if(f.urg&&f.urg!=="all")r=r.filter(p=>uL(p.
 /* ═══ PAGES ═══ */
 /* ═══════════════════════════════════════ */
 
-const DashPg=({st,dp,sp,ss})=>{
+const DashPg=({st,dp,sp,ss,liveTime})=>{
   const all=[...st.adm,...st.jud],crit=all.filter(p=>p.diasRestantes<=10);
   const urgData=[{name:"Crítico",value:crit.length,color:K.cr},{name:"Intermediário",value:all.filter(p=>p.diasRestantes>10&&p.diasRestantes<30).length,color:K.wa},{name:"Normal",value:all.filter(p=>p.diasRestantes>=30).length,color:K.su}];
   const wkD=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);return{dia:d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".",""),n:all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),d)===0).length}});
@@ -2411,7 +2621,7 @@ const DashPg=({st,dp,sp,ss})=>{
               <div style={{fontSize:10,color:K.dim,marginTop:2}}>Aprovados pelo chefe do contencioso — aguardando protocolo</div></div>
               <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(0,255,136,.8)"}}>{prot.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(0,255,136,.1)",border:"1px solid rgba(0,255,136,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#00ff88",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} onMouseEnter={function(e){showTipG(p,e);}} onMouseLeave={hideTipG} style={{padding:"5px 10px",borderRadius:8,background:"rgba(0,255,136,.1)",border:"1px solid rgba(0,255,136,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#00ff88",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
           </div>}
           {corr.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(255,184,0,.12),rgba(255,184,0,.05))",border:"1px solid rgba(255,184,0,.45)",animation:"cjCorrecao 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("correcao")}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
@@ -2420,7 +2630,7 @@ const DashPg=({st,dp,sp,ss})=>{
               <div style={{fontSize:10,color:K.dim,marginTop:2}}>Retornados pelo chefe para revisão antes do protocolo</div></div>
               <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(255,184,0,.8)"}}>{corr.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(255,184,0,.1)",border:"1px solid rgba(255,184,0,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#ffb800",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} onMouseEnter={function(e){showTipG(p,e);}} onMouseLeave={hideTipG} style={{padding:"5px 10px",borderRadius:8,background:"rgba(255,184,0,.1)",border:"1px solid rgba(255,184,0,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#ffb800",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
           </div>}
         </div>
       );})()}
@@ -2451,6 +2661,17 @@ const DashPg=({st,dp,sp,ss})=>{
           <span style={{fontSize:11,color:K.dim,flexShrink:0}}>Ver painel →</span>
         </div>
       );})()}
+      {(function(){var criticos=[...st.adm,...st.jud].filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2&&!["Concluído","Arquivado"].includes(p.status);});return criticos.length>0?(
+        <div style={{marginBottom:14,padding:"10px 16px",borderRadius:12,background:"rgba(255,46,91,.12)",border:"1px solid rgba(255,46,91,.35)",display:"flex",alignItems:"center",gap:12,animation:"ringPulse 2s ease-in-out infinite"}}>
+          <span style={{fontSize:14}}>🚨</span>
+          <span style={{fontSize:12,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".3px"}}>{criticos.length} PROCESSO{criticos.length>1?"S":""} COM PRAZO CRÍTICO</span>
+          <div style={{display:"flex",gap:6,flex:1,overflowX:"auto"}}>
+            {criticos.slice(0,3).map(function(p){return(
+              <span key={p.id} style={{whiteSpace:"nowrap",fontSize:11,padding:"2px 8px",borderRadius:6,background:"rgba(255,46,91,.15)",color:"#ff2e5b",fontWeight:700}}>{p.assunto.slice(0,20)}… {p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+            );})}
+          </div>
+        </div>
+      ):null;}())}
       <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:24}}>
         <Bx onClick={()=>sp("today")} title="Abrir página Hoje"><SH icon={Target} title="Painel Operacional de Hoje"/><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           <SC icon={Flame} label="Vence Hoje" value={todayDue.length} color={K.cr} onClick={()=>sp("today")}/>
@@ -2458,12 +2679,28 @@ const DashPg=({st,dp,sp,ss})=>{
           <SC icon={Calendar} label="Reuniões Hoje" value={st.reun.filter(r=>diffD(toD(r.data),NOW)===0).length} color={K.ac} onClick={()=>sp("agenda")}/>
           <SC icon={Gavel} label="Sustentações 7 dias" value={st.sust.filter(s=>{const d=diffD(toD(s.data),NOW);return d>=0&&d<=7}).length} color={K.pu} onClick={()=>sp("agenda")}/>
         </div></Bx>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Tudo com próxima providência</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
+            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+          </div>
+          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
+        </div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Tudo com próxima providência</div>}</div></Bx>
         <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando/parados"><SH icon={Timer} title="Parados 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{stale.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Sem parados relevantes</div>}</div></Bx>
-        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma pendência externa</div>}</div></Bx>
+        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
+            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+          </div>
+          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
+        </div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma pendência externa</div>}</div></Bx>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
-        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
+        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} liveTime={liveTime}/>)}</div></Bx>
         <Bx onClick={()=>sp("judicial")} title="Abrir prazos judiciais"><SH icon={Scale} title="Prazos Judiciais" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("judicial")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.jud].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
@@ -2477,11 +2714,11 @@ const DashPg=({st,dp,sp,ss})=>{
 
 /* PROCESS LIST PAGE */
 
-const ProcList=({type,st,dp,ss,compact})=>{
+const ProcList=({type,st,dp,ss,compact,liveTime})=>{
   const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null),[chipF,setChipF]=useState("todos");
   const isA=type==="admin",isJ=!isA,raw=isA?st.adm:st.jud;
   const filtered=applyF(raw,fil);
-  const chipFiltered = chipF==="todos" ? filtered : chipF==="critico" ? filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}) : chipF==="urgente" ? filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}) : filtered.filter(function(p){return p.status===chipF;});
+  const chipFiltered=chipF==="todos"?filtered:chipF==="critico"?filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}):chipF==="urgente"?filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}):filtered.filter(function(p){return p.status===chipF;});
   const sorted=[...chipFiltered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
   const doSave=form=>{if(showForm==="new")dp({type:isA?"ADD_A":"ADD_J",d:form});else dp({type:"UPD",id:showForm.id,isAdm:isA,ch:form});sSF(null)};
   const doDelete=()=>{dp({type:"DEL_P",id:showForm.id});sSF(null)};
@@ -2491,19 +2728,6 @@ const ProcList=({type,st,dp,ss,compact})=>{
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
         <h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>{isA?"Processos Administrativos SEI":"Prazos Judiciais"}</h2>
         <Bd color={K.ac}>{chipFiltered.length}/{raw.length}</Bd>
-      </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-        {[["todos","Todos",null],["critico","🚨 Críticos",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}).length],["urgente","⚠️ Urgentes",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}).length],["Ativo","● Ativos",null],["Em Elaboração","✍ Em Elaboração",null]].map(function(ch){
-          var isActive=chipF===ch[0];
-          var count=ch[2]!=null?ch[2]:raw.filter(function(p){return p.status===ch[0];}).length;
-          if(ch[2]===0&&ch[0]!=="todos")return null;
-          return React.createElement("button",{key:ch[0],onClick:function(){setChipF(ch[0]);},style:{padding:"5px 12px",borderRadius:20,border:isActive?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.1)",background:isActive?"rgba(0,229,255,.12)":"transparent",color:isActive?K.txt:K.dim,fontSize:11,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:5}},
-            ch[1], count>0?React.createElement("span",{style:{background:isActive?"rgba(0,229,255,.2)":"rgba(255,255,255,.08)",borderRadius:10,padding:"0 5px",fontSize:10}},count):null
-          );
-        })}
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:0,flexWrap:"wrap"}}>
-        <span></span>
         <button style={btnPrim} onClick={()=>sSF("new")}><Plus size={14}/>Novo {isA?"Processo":"Prazo"}</button>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="crit"?K.cr:K.brd,color:fil.quick==="crit"?K.cr:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="crit"?"":"crit",urg:fil.quick==="crit"?fil.urg:"Crítico"})}>Críticos</button>
@@ -2517,9 +2741,12 @@ const ProcList=({type,st,dp,ss,compact})=>{
         <div style={{display:"flex",gap:4}}>{[["score","Score"],["urgency","Urgência"],["date","Data"]].map(([k,l])=><button key={k} onClick={()=>sSb(k)} style={{...btnGhost,padding:"5px 12px",fontSize:11,borderColor:sb===k?K.ac:K.brd,color:sb===k?K.ac:K.dim}}>{l}</button>)}</div>
         <div style={{display:"flex",gap:4}}>{[["cards",LayoutGrid,"Cards"],["kanban",Columns3,"Kanban"],["table",Table2,"Tabela"]].map(([k,I,l])=><button key={k} onClick={()=>sVw(k)} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:vw===k?K.ac:K.brd,color:vw===k?K.ac:K.dim,display:"flex",alignItems:"center",gap:4}}><I size={13}/>{l}</button>)}</div>
       </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        {[["todos","Todos",null],["critico","🚨 Críticos",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}).length],["urgente","⚠️ Urgentes",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}).length],["Ativo","● Ativos",null],["Em Elaboração","✍ Em Elab.",null]].map(function(ch){var isActive=chipF===ch[0];var count=ch[2]!=null?ch[2]:raw.filter(function(p){return p.status===ch[0];}).length;if(ch[2]===0&&ch[0]!=="todos")return null;return React.createElement("button",{key:ch[0],onClick:function(){setChipF(ch[0]);},style:{padding:"4px 10px",borderRadius:16,border:isActive?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.1)",background:isActive?"rgba(0,229,255,.12)":"transparent",color:isActive?K.txt:K.dim,fontSize:11,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}},ch[1],count>0&&ch[0]!=="todos"?React.createElement("span",{style:{background:"rgba(0,229,255,.15)",borderRadius:10,padding:"0 5px",fontSize:10,marginLeft:3}},count):null);})}
+      </div>
       {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} compact={compact}/>)}</div>}
       {vw==="kanban"&&<KanbanV items={sorted} dp={dp} ss={ss}/>}
-      {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
         <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
         <td style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
         <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
@@ -2556,7 +2783,15 @@ const TodayPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const tdI=all.fi
         <Bx><SH icon={Gavel} title="Sustentações próximas"/>{nextS.map(s=><div key={s.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.puG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</div><div style={{fontSize:13,fontWeight:600,color:K.txt,marginTop:4}}>{s.tema}</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>{s.tribunal} · {fmt(toD(s.data))}</div></div>)}{!nextS.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Sem sustentações próximas</div>}</Bx>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum processo sem ação</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
+            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+          </div>
+          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
+        </div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum processo sem ação</div>}</div></Bx>
         <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando"><SH icon={Timer} title="Parados há 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{stale.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nada parado acima do limite</div>}</div></Bx>
       </div>
     </div>
@@ -2882,8 +3117,35 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                   <div style={{fontSize:18,fontWeight:800,color:du<=0?"#ff2e5b":du<=5?"#ffb800":"#00e5ff",fontFamily:"Orbitron,monospace",textShadow:"0 0 10px currentColor"}}>{du<=0?"VENCIDO":du+"du"}</div>
                   <div style={{fontSize:10,color:K.dim,marginTop:2}}>Vence: {fmt(prazo)} · Pub: {fmt(toD(p.pubDJe))}</div>
                 </div>}
-                {!p.pubDJe&&<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:K.dim}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
+                {!p.pubDJe?(function(){
+                  var calculado=calcPrazoDJe(p.pubDJe,p.intersticio||15);
+                  var calculadoStr=calculado?(calculado instanceof Date?calculado:new Date(calculado+"T12:00:00")).toLocaleDateString("pt-BR"):"—";
+                  var duCalc=calculado?diffD(calculado instanceof Date?calculado:new Date(calculado+"T12:00:00"),NOW):null;
+                  var cor=duCalc!=null?(duCalc<=2?"#ff2e5b":duCalc<=5?"#ffb800":"#00e5ff"):"#4e6a8a";
+                  return React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.2)"}},
+                    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+                      React.createElement("span",{style:{fontSize:10,color:"#4e6a8a",textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}},"⚡ Prazo calculado do DJe"),
+                      React.createElement("div",{style:{display:"flex",gap:12,flexWrap:"wrap",marginTop:4,width:"100%"}},
+                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
+                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Pub. DJe: "),
+                          React.createElement("span",{style:{fontWeight:700}},(p.pubDJe instanceof Date?p.pubDJe:new Date(p.pubDJe+"T12:00:00")).toLocaleDateString("pt-BR"))
+                        ),
+                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
+                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Interstício: "),
+                          React.createElement("span",{style:{fontWeight:700}},(p.intersticio||15)+"du")
+                        ),
+                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
+                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Prazo Final: "),
+                          React.createElement("span",{style:{fontWeight:800,color:cor}},calculadoStr)
+                        ),
+                        duCalc!=null&&React.createElement("div",{style:{padding:"2px 8px",borderRadius:6,background:cor+"22",border:"1px solid "+cor+"44",fontSize:11,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}},
+                          duCalc===0?"HOJE":duCalc<0?"VENCIDO":duCalc+"du"
+                        )
+                      )
+                    )
+                  );
+                })():<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:"#4e6a8a"}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
                 </div>}
               </div>
             </div>
@@ -3471,9 +3733,9 @@ export default function App() {
   const dp = function(action){
     setUndoStack(function(prev){return [...prev.slice(-9),{action,snapshot:st}];});
     dp0(action);
-    if(action.type==="ADD_J"||action.type==="ADD_A") showToast("Processo cadastrado com sucesso","success");
-    if(action.type==="UPD"&&action.ch&&action.ch.status==="Concluído") showToast("Processo marcado como concluído","success");
-    if(action.type==="DEL") showToast("Processo removido","warn");
+    if(action.type==="ADD_J"||action.type==="ADD_A") showToast("success","Processo cadastrado com sucesso");
+    if(action.type==="UPD"&&action.ch&&action.ch.status==="Concluído") showToast("success","Processo marcado como concluído");
+    if(action.type==="DEL") showToast("warn","Processo removido");
   };
   const [pg, sPg] = useState("dashboard");
   const [sel, sSel] = useState(null);
@@ -3488,12 +3750,21 @@ export default function App() {
   const Kref = darkMode ? KD : KL;
   // Sync global K (used by all components) — simple reassignment works for re-renders
   Object.assign(K, Kref);
+  // Patch style objects for current theme
+  inpSt.color = K.txt;
+  inpSt.border = "1px solid " + K.brd;
+  inpSt.background = K.acG;
+  lblSt.color = K.dim;
+  btnGhost.color = K.dim;
+  btnGhost.borderColor = K.brd;
+  btnDanger.borderColor = K.cr;
+  btnDanger.color = K.cr;
   const [toast, setToast] = useState(null);
   const showToast = function(type, msg) { setToast({type: type, msg: msg}); setTimeout(function(){ setToast(null); }, 3000); };
   const handleExport = function() { try { exportState(st); showToast("ok", "JSON exportado com sucesso"); } catch(e) { showToast("err", "Erro ao exportar"); } };
   const handleImport = function(file) { importState(file, dp, function(res){ showToast(res === "ok" ? "ok" : "err", res === "ok" ? "Estado importado com sucesso" : "Arquivo JSON inválido"); }); };
 
-  useEffect(() => { injectCSS(); }, []);
+  useEffect(() => { injectCSS(); }, [darkMode]);
   useEffect(() => {
     document.body.style.background = K.bg;
     document.body.style.color = K.txt;
@@ -3504,6 +3775,10 @@ export default function App() {
   const [showCmdPalette, setShowCmdPalette] = React.useState(false);
   const [syncStatus, setSyncStatus] = useState('ok'); // 'ok' | 'saving' | 'error'
   const [liveTime, setLiveTime] = React.useState(new Date());
+  var liveTimeRef = React.useRef(new Date());
+  const [tooltip, setTooltip] = React.useState({p:null,x:0,y:0});
+  React.useEffect(function(){ _tipState.set = setTooltip; return function(){ _tipState.set = null; }; }, []);
+
   var lastSyncRef = React.useRef(null);
   const [showQuickAdd, setShowQuickAdd] = React.useState(false);
   const [showEtiquetas, setShowEtiquetas] = React.useState(false);
@@ -3528,6 +3803,7 @@ export default function App() {
   const [showStats, setShowStats] = useState(false);
   const [showSemanal, setShowSemanal] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [djeProc, setDjeProc] = useState(null);
   const [showIANovo, setShowIANovo] = useState(false);
   useEffect(() => {
@@ -3566,9 +3842,8 @@ export default function App() {
       body: JSON.stringify({data: stateData})
     }).then(function(r) {
       setSyncStatus(r.ok ? 'ok' : 'error');
-      if (r.ok) { lastSyncRef.current = new Date(); showToast("Dados sincronizados com Supabase","success"); }
-      else showToast("Erro ao sincronizar com Supabase","error");
-    }).catch(function() { setSyncStatus('error'); showToast("Erro de conexão ao salvar","error"); });
+      if (r.ok) { lastSyncRef.current = new Date(); }
+    }).catch(function() { setSyncStatus('error'); });
   };
 
   useEffect(() => {
@@ -3581,7 +3856,8 @@ export default function App() {
 
   // Live clock for countdown
   useEffect(() => {
-    var tick = setInterval(function(){ setLiveTime(new Date()); }, 60000);
+    var tick = setInterval(function(){ var now=new Date(); setLiveTime(now); liveTimeRef.current=now; window._cjLiveTime=now; }, 60000);
+    window._cjLiveTime = new Date();
     return function(){ clearInterval(tick); };
   }, []);
 
@@ -3592,7 +3868,6 @@ export default function App() {
       if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); setShowCmdPalette(function(v){return !v;}); }
       if ((e.ctrlKey||e.metaKey) && e.key === 'n') { e.preventDefault(); setShowQuickAdd(true); }
       if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); try{syncToSupabase(serialize(st));}catch(ex){} }
-      if (!isInput && e.key === 'f') { setFocusMode(function(v){return !v;}); }
       if (e.key === 'Escape') { setShowCmdPalette(false); setShowQuickAdd(false); setShowEtiquetas(false); setShowEmailAlert(false); setShowHistory(false); }
     };
     window.addEventListener('keydown', handleKey);
@@ -3679,7 +3954,7 @@ export default function App() {
   var PAGE_LABELS = {dashboard:"Dashboard","today":"Plano do Dia",week:"Semana",priorities:"Prioridades",ia:"IA Nexus",admin:"Processos Adm.",judicial:"Processos Jud.",execucao:"Em Execução",acompanhamento:"Acompanhamento",protocolar:"A Protocolar",correcao:"Em Correção",done:"Realizados",agenda:"Agenda",calendar:"Calendário",timeline:"Timeline",stats:"Estatísticas"};
   var currentPageLabel = PAGE_LABELS[pg] || pg;
   const rP = () => {
-    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode };
+    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode, liveTime };
     switch (pg) {
       case "dashboard": return <DashPg {...pp} />;
       case "today": return <TodayPg {...pp} />;
@@ -3718,7 +3993,6 @@ export default function App() {
         <button onClick={function(){handleExport();localStorage.setItem("cojur_last_backup",new Date().toISOString());setShowAutoBackup(false);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(0,255,136,.4)",background:"rgba(0,255,136,.1)",color:"#00ff88",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exportar JSON</button>
         <button onClick={function(){setShowAutoBackup(false);}} style={{background:"none",border:"none",color:"rgba(0,255,136,.6)",cursor:"pointer",fontSize:14}}>x</button>
       </div>}
-      {prazoUrgente&&prazoUrgente.length>0&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:3000,padding:"9px 20px",background:"rgba(200,20,60,.95)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 20px rgba(255,46,91,.4)"}}><span style={{fontSize:12,fontWeight:800,color:"#fff",flex:1,fontFamily:"Orbitron,sans-serif"}}>PRAZO CRITICO: {prazoUrgente[0].assunto} — {prazoUrgente[0].diasRestantes===0?"VENCE HOJE":prazoUrgente[0].diasRestantes+"du"}</span><button onClick={function(){sSel(prazoUrgente[0]);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.15)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ver</button></div>}
       {darkMode&&<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1,overflow:"hidden"}}><div style={{position:"absolute",left:0,right:0,height:"1px",background:"linear-gradient(90deg, transparent 10%, rgba(0,229,255,.28) 50%, transparent 90%)",animation:"scanLine 5s linear infinite"}} /></div>}
       <input ref={importRef} type="file" accept=".json" onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleImport(f); e.target.value = ""; }} style={{ display: "none" }} />
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -3754,7 +4028,7 @@ export default function App() {
           {NAV.map(({ id, icon: I, label: l }) => {
             const isAct = pg === id, isCrit = id === "priorities" && cn > 0;
             return (
-              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, border: "1px solid transparent", background: isAct ? "linear-gradient(90deg, rgba(0,212,255,.12), rgba(0,212,255,.04))" : "transparent", color: isAct ? "#00d4ff" : K.dim, fontSize: 13, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
+              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, borderLeft: isAct ? "3px solid #00e5ff" : "3px solid transparent", border: "1px solid " + (isAct ? "rgba(0,229,255,.25)" : "transparent"), background: isAct ? "linear-gradient(90deg, rgba(0,229,255,.15), rgba(0,229,255,.04))" : "transparent", color: isAct ? "#00e5ff" : K.dim, fontSize: 13, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
                 onMouseEnter={e => { if (!isAct) { e.currentTarget.style.background = "rgba(0,212,255,.05)"; e.currentTarget.style.color = K.txt; e.currentTarget.style.borderColor = "rgba(0,212,255,.12)"; } }}
                 onMouseLeave={e => { if (!isAct) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = K.dim; e.currentTarget.style.borderColor = "transparent"; } }}>
                 <I size={16} style={{filter:isAct?"drop-shadow(0 0 5px #00e5ff)":"none"}} />{!col && <span style={{fontFamily:isAct?"Orbitron,sans-serif":"inherit",fontSize:isAct?11:13,letterSpacing:isAct?".5px":"normal",textShadow:isAct?"0 0 8px rgba(0,229,255,.7)":"none"}}>{l}</span>}
@@ -3779,10 +4053,10 @@ export default function App() {
               <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#4e6a8a",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>
-            <span style={{color:"rgba(0,229,255,.4)"}}>COJUR</span>
-            <span style={{color:"rgba(0,229,255,.2)"}}>›</span>
-            <span style={{color:"#00e5ff",fontWeight:700}}>{currentPageLabel}</span>
+          <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",borderRadius:8,padding:"4px 10px"}}>
+            <span style={{color:"#4e6a8a",fontSize:12}}>COJUR</span>
+            <span style={{color:"#4e6a8a",fontSize:12,margin:"0 4px"}}>›</span>
+            <span style={{color:"#00e5ff",fontWeight:800,fontSize:12,textShadow:"0 0 8px rgba(0,229,255,.5)"}}>{currentPageLabel}</span>
           </div>
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
@@ -3839,13 +4113,15 @@ export default function App() {
       {showGmail&&<GmailSEIModal dp={dp} onClose={function(){setShowGmail(false);}}/>}
       {minutaProc!==null&&<MinutaModal proc={minutaProc} onClose={function(){setMinutaProc(null);}}/> }
       {showStats&&<StatsModal st={st} onClose={function(){setShowStats(false);}}/> }
-      {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }}
+      {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
       {showQuickAdd&&<QuickAddModal dp={dp} onClose={function(){setShowQuickAdd(false);}}/> }
       {showEtiquetas&&<EtiquetasModal st={st} dp={dp} onClose={function(){setShowEtiquetas(false);}}/> }
       {showEmailAlert&&<EmailAlertModal st={st} onClose={function(){setShowEmailAlert(false);}}/> }
       <ToastContainer/>
+      <div style={{position:"fixed",bottom:70,right:20,zIndex:8000,background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.4)",borderRadius:8,padding:"4px 10px",fontSize:9,color:"#00e5ff",fontFamily:"Orbitron,monospace",fontWeight:700,letterSpacing:".5px",pointerEvents:"none"}}>NEXUS v2.0 ✦</div>
+      
       {showCmdPalette&&<CmdPalette st={st} dp={dp} sPg={sPg} sSel={sSel} setShowQuickAdd={setShowQuickAdd} setShowEtiquetas={setShowEtiquetas} setShowHistory={setShowHistory} syncToSupabase={syncToSupabase} onClose={function(){setShowCmdPalette(false);}}/> }
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
@@ -3945,7 +4221,7 @@ function IATplModal({proc,onClose}){
 /* ═══ PÁGINA PROTOCOLAR ═══ */
 
 /* ═══ PÁGINA EM EXECUÇÃO ═══ */
-const ExecucaoPg=({st,dp,ss})=>{
+const ExecucaoPg=({st,dp,ss,liveTime})=>{
   const items=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).filter(function(p){return isExecucao(p);}).sort(function(a,b){return b.iaS-a.iaS;});
   return(
     <div className="cj-pg">
@@ -3969,7 +4245,7 @@ const ExecucaoPg=({st,dp,ss})=>{
                   <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
                   <div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
                   {p.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",background:"rgba(125,211,252,.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
-                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
+                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes===0?(function(){var t=liveTime||window._cjLiveTime||new Date();var h=17-t.getHours();var m=60-t.getMinutes();if(h>=0&&h<=8)return h+"h"+String(m).padStart(2,"0")+"min";return"HOJE";}()):p.diasRestantes+"du"}</div>
                 </div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{p.assunto}</div>
                 {p.proxProv&&<div style={{fontSize:12,color:K.ac,background:"rgba(0,229,255,.05)",borderRadius:8,padding:"6px 10px",border:"1px solid rgba(0,229,255,.1)"}}><span style={{fontSize:10,color:K.dim,marginRight:6}}>Próxima:</span>{p.proxProv}</div>}
@@ -3998,7 +4274,7 @@ const ExecucaoPg=({st,dp,ss})=>{
 };
 
 /* ═══ PÁGINA EM ACOMPANHAMENTO ═══ */
-const AcompanhamentoPg=({st,dp,ss})=>{
+const AcompanhamentoPg=({st,dp,ss,liveTime})=>{
   const items=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).filter(function(p){return isAcompanhamento(p);}).sort(function(a,b){return b.iaS-a.iaS;});
   return(
     <div className="cj-pg">
