@@ -3707,7 +3707,7 @@ return(
 <button onClick={function(){dp({type:“UPD”,id:p.id,isAdm:p.tipo===“adm”,ch:{status:“Pronto p/ Protocolo”}});}} style={{display:“inline-flex”,alignItems:“center”,gap:5,padding:“7px 12px”,borderRadius:11,border:“1px solid rgba(0,255,136,.35)”,background:“rgba(0,255,136,.08)”,color:”#00ff88”,fontSize:10,fontWeight:700,cursor:“pointer”,fontFamily:“inherit”,whiteSpace:“nowrap”}}>
 <Upload size={12}/>Mover p/ Protocolar
 </button>
-<button onClick={function(){}} style={{display:“inline-flex”,alignItems:“center”,gap:5,padding:“6px 10px”,borderRadius:10,border:“1px solid rgba(255,184,0,.25)”,background:“rgba(255,184,0,.06)”,color:”#ffb800”,fontSize:10,fontWeight:700,cursor:“pointer”}} onClick={()=>ss(p)}>
+<button onClick={()=>ss(p)} style={{display:“inline-flex”,alignItems:“center”,gap:5,padding:“6px 10px”,borderRadius:10,border:“1px solid rgba(255,184,0,.25)”,background:“rgba(255,184,0,.06)”,color:”#ffb800”,fontSize:10,fontWeight:700,cursor:“pointer”}}>
 <PenLine size={12}/>Ver processo
 </button>
 </div>
@@ -4065,11 +4065,11 @@ return (
 
 ```
   {/* SIDEBAR */}
-  <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, overflow: "hidden", position:"relative" }}>
+  <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, position:"relative" }}>
     <div style={{ padding: col ? "18px 10px" : "18px 18px", borderBottom: "1px solid rgba(0,212,255,.1)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background:"linear-gradient(135deg, rgba(0,229,255,.06), rgba(168,85,247,.04))" }} onClick={() => sCol(!col)}>
       <CFMMark size={38} />
       {!col && <div style={{minWidth:0}}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, letterSpacing:".15px", textShadow:"0 0 12px rgba(0,229,255,.5)",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px" }}>COJUR</div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, textShadow:"0 0 12px rgba(0,229,255,.5)",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px" }}>COJUR</div>
         <div style={{ fontSize: 9, color: "#00d4ff", fontWeight: 700, letterSpacing: "1.6px", textTransform: "uppercase", textShadow:"0 0 8px rgba(0,229,255,.7)",fontFamily:"Orbitron, sans-serif" }}>CFM · NEXUS</div>
       </div>}
     </div>
