@@ -1,11 +1,62 @@
-import React from 'react';
 import { useState, useMemo, useEffect, useReducer, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, ChevronRight, ChevronLeft, Plus, Filter, Inbox, Settings, BarChart3, Zap, Shield, Target, Activity, Layers, MapPin, Plane, Gavel, X, ChevronDown, CalendarDays, Scale, FolderOpen, LayoutDashboard, Timer, Tag, Flame, Edit3, Trash2, Columns3, LayoutGrid, Table2, GripVertical, Save, PenLine, Download, StickyNote, DollarSign, Eye, Link, Pencil, BarChart2 } from "lucide-react";
+import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, ChevronRight, ChevronLeft, Plus, Filter, Inbox, Settings, BarChart3, Zap, Shield, Target, Activity, Layers, MapPin, Plane, Gavel, X, ChevronDown, CalendarDays, Scale, FolderOpen, LayoutDashboard, Timer, Tag, Flame, Edit3, Trash2, Columns3, LayoutGrid, Table2, GripVertical, Save, PenLine, Download, StickyNote, DollarSign, Eye, Link, Pencil, BarChart2, Copy, FileText, ClipboardCheck, History } from "lucide-react";
 
-/* ═══ CUSTAS ═══ */
-const CUSTAS_TIPOS=["Apelação","Agravo de Instrumento","Recurso Especial","Agravo em Recurso Especial","Recurso Extraordinário","Agravo em Recurso Extraordinário"];
-const hasCustas=p=>CUSTAS_TIPOS.some(t=>(p?.tipoAcao||"").toLowerCase()===t.toLowerCase());
+/* ═══ CUSTAS — CPC + CLT completo ═══ */
+/* Peças que SÃO o recurso/ação e exigem preparo, custas ou depósito recursal no protocolo */
+const CUSTAS_PECAS=[
+  /* ── CPC — Recursos com preparo obrigatório (art. 1.007 CPC) ── */
+  "Apelação","Apelação Adesiva",
+  "Agravo de Instrumento",
+  "Recurso Especial","Agravo em Recurso Especial",
+  "Recurso Extraordinário","Agravo em Recurso Extraordinário",
+  "Recurso Ordinário Constitucional",
+  "Embargos de Divergência",
+  /* ── CPC — Ações com depósito obrigatório ── */
+  "Ação Rescisória","Ação Rescisória Trabalhista",
+  /* ── CLT — Recursos com custas (2%) + depósito recursal (arts. 789 e 899 CLT) ── */
+  "Recurso Ordinário Trabalhista",
+  "Recurso Ordinário em Mandado de Segurança",
+  "Recurso de Revista",
+  "Agravo de Instrumento em Recurso de Revista",
+  "Recurso de Revista com Agravo",
+  "Embargos TST",
+  "Recurso Extraordinário Trabalhista",
+  "Agravo de Petição"
+];
+/* Custas aparecem quando a peça sendo elaborada É um recurso/ação que exige preparo */
+const hasCustas=p=>CUSTAS_PECAS.some(t=>(p?.tipoPeca||"").toLowerCase()===t.toLowerCase());
+/* ═══ CUSTAS — valores estimados por tribunal (2025/2026) ═══ */
+const CUSTAS_VALORES={
+  /* ── Justiça Federal — preparo via GRU ── */
+  "TRF-1":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64 | Embs.Div.: R$ 1.015,27",url:"https://www.trf1.jus.br/trf1/servicos/gru/"},
+  "TRF-2":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64",url:"https://www.trf2.jus.br/"},
+  "TRF-3":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64",url:"https://www.trf3.jus.br/"},
+  "TRF-4":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64",url:"https://www.trf4.jus.br/"},
+  "TRF-5":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64",url:"https://www.trf5.jus.br/"},
+  "TRF-6":{label:"GRU Justiça Federal",valor:"Apelação: R$ 1.015,27 | AI: R$ 507,64",url:"https://www.trf6.jus.br/"},
+  /* ── Tribunais Superiores ── */
+  "STJ":{label:"GRU STJ (DARF cód. 1312)",valor:"REsp/AREsp/Embs.Div.: R$ 327,24 + porte de remessa",url:"https://www.stj.jus.br/sites/portalp/Paginas/Servicos/Custas-e-porte-de-remessa.aspx"},
+  "STF":{label:"GRU STF (DARF cód. 6665)",valor:"RE/ARE: R$ 327,24 + porte de remessa",url:"https://portal.stf.jus.br/"},
+  /* ── Justiça do Trabalho — custas 2% + depósito recursal (Ato 51/TST, vigência 2025) ── */
+  "TRT-1":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt1.jus.br/pje/"},
+  "TRT-2":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt2.jus.br/pje/"},
+  "TRT-3":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt3.jus.br/pje/"},
+  "TRT-4":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt4.jus.br/pje/"},
+  "TRT-5":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt5.jus.br/pje/"},
+  "TRT-6":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt6.jus.br/pje/"},
+  "TRT-7":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt7.jus.br/pje/"},
+  "TRT-8":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt8.jus.br/pje/"},
+  "TRT-9":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt9.jus.br/pje/"},
+  "TRT-10":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt10.jus.br/pje/"},
+  "TRT-11":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt11.jus.br/pje/"},
+  "TRT-12":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt12.jus.br/pje/"},
+  "TRT-13":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt13.jus.br/pje/"},
+  "TRT-14":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt14.jus.br/pje/"},
+  "TRT-15":{label:"Custas 2% + Depósito Recursal",valor:"RO: R$ 13.133,48 | RR/Embs.TST: R$ 26.266,95 | AI em RR: 50%",url:"https://pje.trt15.jus.br/pje/"},
+  "TST":{label:"Custas 2% + Depósito Recursal TST",valor:"RR/Embs: R$ 26.266,95 | AI em RR: R$ 13.133,48",url:"https://pje.tst.jus.br/pje/"}
+};
+const getCustasInfo=function(tribunal){return CUSTAS_VALORES[tribunal]||null;};
 
 /* ═══ TRIBUNAL SISTEMAS — URLs verificadas abril/2026 ═══ */
 const TRIB_SISTEMA = {
@@ -136,8 +187,7 @@ var showCopyToast = function(txt) {
 
 /* ═══ CSS ═══ */
 const injectCSS = () => {
-  var existing = document.getElementById("cj3");
-  if (existing) existing.remove();
+  if (document.getElementById("cj3")) return;
   const s = document.createElement("style");
   s.id = "cj3";
   s.textContent = `
@@ -162,15 +212,6 @@ const injectCSS = () => {
 /* ═══ BASE ═══ */
 .cj-up{animation:cjUp .35s ease both}
 .cj-sc{animation:cjSc .22s ease both}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,46,91,.4)}50%{box-shadow:0 0 0 6px rgba(255,46,91,0)}}
-@keyframes countDown{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
-@keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.cj-page-enter{animation:fadeInUp .2s ease}
-.cj-card-hover:hover{transform:translateY(-2px)!important;transition:all .18s ease!important}
-.cj-ring-pulse{animation:ringPulse 1s ease-in-out infinite;box-shadow:0 0 0 3px rgba(255,46,91,.3)!important}
 .cj-pulse{animation:cjPulse 1.8s ease infinite}
 .cj-st>*{animation:cjUp .35s ease both}
 .cj-st>:nth-child(1){animation-delay:.03s}.cj-st>:nth-child(2){animation-delay:.06s}
@@ -254,16 +295,102 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 .cj-custas-blink{animation:neonPulseWa 2.2s ease-in-out infinite}
 
 /* ═══ SOFT ═══ */
+/* ═══ SKELETON SHIMMER ═══ */
+@keyframes cjShimmer{0%{background-position:-200px 0}100%{background-position:calc(200px + 100%) 0}}
+.cj-skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(0,229,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200px 100%;animation:cjShimmer 1.5s ease infinite;border-radius:8px}
+.cj-skel-line{height:12px;margin-bottom:8px;border-radius:6px}
+.cj-skel-block{height:60px;border-radius:12px;margin-bottom:10px}
+
+/* ═══ PAGE TRANSITION ═══ */
+@keyframes cjPageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.cj-pg{animation:cjPageIn .3s ease-out both}
+.cj-pg .cj-st>*{animation:cjUp .35s ease both}
+.cj-pg .cj-st>:nth-child(1){animation-delay:.04s}
+.cj-pg .cj-st>:nth-child(2){animation-delay:.08s}
+.cj-pg .cj-st>:nth-child(3){animation-delay:.12s}
+.cj-pg .cj-st>:nth-child(4){animation-delay:.16s}
+.cj-pg .cj-st>:nth-child(5){animation-delay:.20s}
+.cj-pg .cj-st>:nth-child(n+6){animation-delay:.24s}
+
+/* ═══ SIDEBAR TRANSITION ═══ */
+.cj-side{transition:width .25s cubic-bezier(.4,0,.2,1)}
+.cj-side *{transition:opacity .18s ease}
+.cj-side-label{transition:opacity .15s ease,max-width .25s ease;overflow:hidden;white-space:nowrap}
+
+/* ═══ STEPPER ═══ */
+.cj-stepper{display:flex;align-items:center;gap:0;padding:12px 0}
+.cj-step-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(0,229,255,.3);background:transparent;flex-shrink:0;transition:all .2s;cursor:pointer;position:relative;z-index:1}
+.cj-step-dot.active{background:#00e5ff;border-color:#00e5ff;box-shadow:0 0 10px rgba(0,229,255,.6)}
+.cj-step-dot.done{background:rgba(0,255,136,.8);border-color:#00ff88;box-shadow:0 0 6px rgba(0,255,136,.4)}
+.cj-step-line{height:2px;flex:1;background:rgba(0,229,255,.15);min-width:8px}
+.cj-step-line.done{background:rgba(0,255,136,.5)}
+
+/* ═══ NOTIFICATION PANEL ═══ */
+@keyframes cjSlideDown{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cj-notif-panel{animation:cjSlideDown .2s ease both}
+
 .cj-soft{box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04)}
 .cj-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .cj-kd{outline:2px dashed rgba(0,229,255,.45);background:rgba(0,229,255,.06)!important}
 
 /* ═══ MISC ═══ */
-.cj-glass{background:rgba(0,229,255,.04);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}`;
+.cj-glass{background:rgba(0,229,255,.04);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(255,46,91,.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(255,46,91,.3)}}
+@keyframes textBlink{0%,100%{opacity:1}50%{opacity:.35}}
+.cj-sust-pulse{animation:neonBlink .9s ease-in-out infinite!important}
+`;
   document.head.appendChild(s);
 };
 
 /* ═══ THEME ═══ */
+
+/* ═══ FERIADOS NACIONAIS ═══ */
+var FERIADOS_NAC = [
+  "2025-01-01","2025-04-18","2025-04-21","2025-05-01","2025-06-19",
+  "2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20","2025-12-25",
+  "2026-01-01","2026-04-03","2026-04-21","2026-05-01","2026-06-04",
+  "2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-12-25",
+  "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
+  "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25"
+];
+/* Feriados distritais (DF) */
+var FERIADOS_DF=["2025-04-21","2025-11-30","2026-04-21","2026-11-30","2027-04-21","2027-11-30"];
+/* Recesso forense: 20/dez a 20/jan (art. 220 CPC) */
+var isRecessoForense=function(d){var m=d.getMonth(),day=d.getDate();return(m===11&&day>=20)||(m===0&&day<=20);};
+var isDU = function(d) {
+  var dow = d.getDay();
+  if (dow === 0 || dow === 6) return false;
+  if (isRecessoForense(d)) return false;
+  var iso=d.toISOString().split("T")[0];
+  return FERIADOS_NAC.indexOf(iso)===-1 && FERIADOS_DF.indexOf(iso)===-1;
+};
+var subDU = function(date, n) {
+  // go back n business days from date
+  var d = new Date(date); var count = 0;
+  while (count < n) { d.setDate(d.getDate() - 1); if (isDU(d)) count++; }
+  return d;
+};
+var isSustAlerta = function(p) {
+  if (!p.dataSustentacao) return false;
+  if (p.tipoPeca !== "Sustentação Oral") return false;
+  var sust = new Date(p.dataSustentacao);
+  if (isNaN(sust)) return false;
+  var limite = subDU(sust, 2); // 2 dias úteis antes = 48h úteis
+  limite.setHours(0, 0, 0, 0);
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return hoje >= limite && hoje <= sust;
+};
+var getSustCountdown = function(p) {
+  if (!p.dataSustentacao) return null;
+  var sust = new Date(p.dataSustentacao);
+  if (isNaN(sust)) return null;
+  var agora = new Date();
+  var diff = sust - agora;
+  if (diff < 0 || diff > 24 * 60 * 60 * 1000) return null; // só hoje
+  var h = Math.floor(diff / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  return h + "h " + String(m).padStart(2, "0") + "min";
+};
+
 const KD={bg:"#020208",card:"rgba(4,6,20,.92)",cardH:"rgba(6,10,28,.95)",side:"rgba(2,3,14,.99)",modal:"rgba(2,4,16,.99)",brd:"rgba(0,229,255,.1)",txt:"#e2e8f0",dim:"#4e6a8a",dim2:"#3a5070",ac:"#00e5ff",acG:"rgba(0,229,255,.14)",cr:"#ff2e5b",crG:"rgba(255,46,91,.15)",wa:"#ffb800",waG:"rgba(255,184,0,.15)",su:"#00ff88",suG:"rgba(0,255,136,.15)",pu:"#b84dff",puG:"rgba(184,77,255,.15)"};
 const KL={bg:"#f0f4f8",card:"rgba(255,255,255,.95)",cardH:"rgba(248,252,255,.98)",side:"rgba(240,245,255,.98)",modal:"rgba(255,255,255,.99)",brd:"rgba(0,150,200,.2)",txt:"#0f172a",dim:"#475569",dim2:"#64748b",ac:"#0284c7",acG:"rgba(2,132,199,.12)",cr:"#dc2626",crG:"rgba(220,38,38,.12)",wa:"#d97706",waG:"rgba(217,119,6,.12)",su:"#059669",suG:"rgba(5,150,105,.12)",pu:"#7c3aed",puG:"rgba(124,58,237,.12)"};
 let K=KD;
@@ -286,11 +413,16 @@ function copyText(txt, onDone) {
 const uC=d=>d<=10?K.cr:d<30?K.wa:K.su;
 const uL=d=>d<=10?"Crítico":d<30?"Intermediário":"Normal";
 const uG=d=>d<=10?K.crG:d<30?K.waG:K.suG;
-const inpSt={width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid rgba(0,229,255,.12)",background:"rgba(0,229,255,.04)",color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",transition:"border-color .2s"};
-const lblSt={display:"block",fontSize:11,fontWeight:600,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4};
-const btnPrim={padding:"9px 18px",borderRadius:12,border:"1px solid rgba(0,229,255,.3)",background:"linear-gradient(135deg,rgba(0,229,255,.18),rgba(184,77,255,.18))",boxShadow:"0 0 22px rgba(0,229,255,.28),0 12px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1)",color:"#00e5ff",fontSize:13,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit",textShadow:"0 0 8px rgba(0,229,255,.7)"};
-const btnGhost={padding:"8px 14px",borderRadius:12,border:"1px solid rgba(0,229,255,.1)",background:"rgba(0,229,255,.04)",color:"#4e6a8a",fontSize:13,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,transition:"all .18s",fontFamily:"inherit"};
-const btnDanger={...btnGhost,borderColor:K.cr,color:K.cr};
+const getInpSt=()=>({width:"100%",padding:"10px 12px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.txt,fontSize:13,outline:"none",fontFamily:"inherit",transition:"border-color .2s"});
+const getLblSt=()=>({display:"block",fontSize:11,fontWeight:600,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4});
+const getBtnPrim=()=>({padding:"9px 18px",borderRadius:12,border:`1px solid ${K.ac}55`,background:`linear-gradient(135deg,${K.acG},${K.puG})`,boxShadow:`0 0 22px ${K.ac}44,0 12px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)`,color:K.ac,fontSize:13,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit",textShadow:`0 0 8px ${K.ac}aa`});
+const getBtnGhost=()=>({padding:"8px 14px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.dim,fontSize:13,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,transition:"all .18s",fontFamily:"inherit"});
+/* Legacy aliases — used by 200+ references, kept as getter proxies */
+const inpSt=new Proxy({},{get(_,p){return getInpSt()[p]},ownKeys(){return Object.keys(getInpSt())},getOwnPropertyDescriptor(_,p){const v=getInpSt();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getInpSt()}});
+const lblSt=new Proxy({},{get(_,p){return getLblSt()[p]},ownKeys(){return Object.keys(getLblSt())},getOwnPropertyDescriptor(_,p){const v=getLblSt();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getLblSt()}});
+const btnPrim=new Proxy({},{get(_,p){return getBtnPrim()[p]},ownKeys(){return Object.keys(getBtnPrim())},getOwnPropertyDescriptor(_,p){const v=getBtnPrim();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getBtnPrim()}});
+const btnGhost=new Proxy({},{get(_,p){return getBtnGhost()[p]},ownKeys(){return Object.keys(getBtnGhost())},getOwnPropertyDescriptor(_,p){const v=getBtnGhost();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getBtnGhost()}});
+const btnDanger=new Proxy({},{get(_,p){const base=getBtnGhost();const v={...base,borderColor:K.cr,color:K.cr};return v[p];},ownKeys(){return Object.keys({...getBtnGhost(),borderColor:"",color:""})},getOwnPropertyDescriptor(_,p){const v={...getBtnGhost(),borderColor:K.cr,color:K.cr};if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in {...getBtnGhost(),borderColor:"",color:""}}});
 
 /* ═══ DATE ═══ */
 const curDate=(base)=>{const d=base?new Date(base):new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0,0)};
@@ -343,28 +475,29 @@ const TACOES=[
   "Recurso de Revista com Agravo","Embargos TST","Recurso Extraordinário Trabalhista","Sustentação Oral","Outro"
 ];
 const TIPOS_PECA=[
-  // ── Atos iniciais / defesa ──
+  // ── Defesa e atos iniciais ──
   "Contestação","Reconvenção","Exceção de Incompetência","Impugnação ao Valor da Causa",
   // ── Recursos ordinários 1G→2G ──
   "Apelação","Apelação Adesiva","Agravo de Instrumento","Agravo Retido",
   // ── Recursos internos tribunais ──
   "Agravo Interno","Embargos de Declaração","Embargos Infringentes","Embargos de Divergência",
-  // ── Recursos excepcionais ──
+  // ── Recursos excepcionais (STJ/STF) ──
   "Recurso Especial","Agravo em Recurso Especial","Recurso Extraordinário","Agravo em Recurso Extraordinário","Recurso Ordinário Constitucional",
-  // ── Incidentes e ações autônomas ──
+  // ── MS, contrarrazões e incidentes ──
   "Informações em MS","Contrarrazões","Contraminuta","Impugnação ao Cumprimento de Sentença",
   "Exceção de Pré-Executividade","Embargos à Execução","Embargos de Terceiro",
   // ── Tutelas e cautelares ──
   "Manifestação sobre Tutela","Pedido de Efeito Suspensivo","Petição Cautelar",
   // ── Manifestações gerais ──
-  "Manifestação","Petição Simples","Memorial","Memoriais",
-  "Alegações Finais","Razões de Recurso","Contrarrazões de Recurso",
-  // ── Orais ──
-  "Sustentação Oral",
-  // ── Cumprimento de sentença ──
+  "Manifestação","Petição Simples","Razões de Recurso","Contrarrazões de Recurso",
+  // ── Memoriais e sustentação oral ──
+  "Memorial","Memoriais","Alegações Finais","Sustentação Oral",
+  // ── Cumprimento e execução ──
   "Cumprimento de Sentença","Impugnação ao Cumprimento","Cálculos de Liquidação",
-  // ── Admin CFM ──
+  // ── Administrativo CFM ──
   "Parecer Jurídico","Ofício","Nota Técnica","Despacho de Andamento",
+  // ── Contratos ──
+  "Análise de Contrato",
   // ── Outros ──
   "Outro"
 ];
@@ -376,6 +509,7 @@ const inferTipoPeca=p=>{
   if(ac.includes("mandado de segurança")) return "Informações em MS";
   if(ac.includes("sustentação")) return "Sustentação Oral";
   if(ac.includes("contrarraz")||ac.includes("contraminuta")) return "Contraminuta";
+  if(ac.includes("contrato")||ac.includes("licitação")||ac.includes("convênio")||ac.includes("termo de referência")) return "Análise de Contrato";
   return p?.tipo==="jud" ? "Manifestação" : "Parecer Jurídico";
 };
 const buildChecklist=(tipo,p)=>{
@@ -391,6 +525,7 @@ const buildChecklist=(tipo,p)=>{
     "Embargos de Declaração":["Identificar omissão, contradição, obscuridade ou erro material","Demonstrar objetivamente o vício por item","Evitar rediscussão indevida do mérito","Indicar reflexo prático da correção","Revisar pedido de saneamento ou prequestionamento"],
     "Sustentação Oral":["Definir tese central em 3 ideias-força","Selecionar precedentes e normas-chave","Preparar abertura, desenvolvimento e fecho em tempo compatível","Antecipar perguntas do colegiado","Separar memoriais e documentos de apoio"],
     "Memoriais":["Sintetizar controvérsia e tese central","Selecionar fundamentos e precedentes decisivos","Enfatizar pontos sensíveis para o julgamento","Ajustar linguagem objetiva e institucional","Conferir endereçamento e pedido final"],
+    "Análise de Contrato":["Identificar partes, objeto e vigência do contrato","Verificar cláusulas de rescisão, multa e renovação","Checar conformidade com normas do CFM e legislação aplicável","Analisar riscos jurídicos e cláusulas abusivas","Emitir parecer sobre viabilidade e recomendações","Conferir assinaturas e representação legal"],
     "Outro":["Definir objetivo da peça","Listar pontos obrigatórios","Separar fundamentos normativos","Checar documentos de apoio","Revisar clareza e pedido final"]
   };
   return (base[tipo]||base["Outro"]).map(text=>({text,done:false}));
@@ -402,7 +537,7 @@ const recalc=p=>{const pf=toD(p.prazoFinal);const dr=bizDiff(pf,NOW);const tipoP
 
 /* ═══ DATA ═══ */
 let _nid=100;const nid=()=>"N"+(++_nid);
-const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,...ov});
+const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,dataSustentacao:null,tempoFala:15,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,...ov});
 const mkJ=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",tribunal:"TRF-1",orgao:"Justiça Federal",responsavel:"João Gabriel",linkRef:"",linkSEI:"",tipoAcao:"Ação Ordinária",tipoPeca:"Manifestação",parteContraria:"",prazoFinal:addD(NOW,30),pubDJe:null,intersticio:15,status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,destaque:"",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"jud",motivoAcompanhamento:"",progresso:0,...ov});
 
 
@@ -507,39 +642,6 @@ const D_INBOX=[];
 
 /* ═══ PERSISTENCE ═══ */
 const STORE_KEY = "cojur-nexus-state";
-const STATE_URL = "https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/state-proxy";
-
-/* === STORAGE: Edge Function + localStorage fallback === */
-var dbGet = async function(){
-  var local = null;
-  try { local = localStorage.getItem(STORE_KEY); } catch(e) {}
-  try {
-    var r = await Promise.race([
-      fetch(STATE_URL, {method:"GET", headers:{"Content-Type":"application/json"}}),
-      new Promise(function(res){ setTimeout(function(){ res(null); }, 4000); })
-    ]);
-    if (r && r.ok) {
-      var d = await r.json();
-      if (d && d.data) {
-        try { localStorage.setItem(STORE_KEY, d.data); } catch(e) {}
-        return d.data;
-      }
-    }
-  } catch(e) {}
-  return local;
-};
-
-var dbSet = async function(value){
-  try { localStorage.setItem(STORE_KEY, value); } catch(e) {}
-  try {
-    fetch(STATE_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({data: value})
-    }).catch(function(){});
-  } catch(e) {}
-};
-
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
 const reviveDates = obj => {
   if (!obj || typeof obj !== "object") return obj;
@@ -560,7 +662,6 @@ const rehydrate = raw => {
     inbox: parsed.inbox || [],
     realizados: parsed.realizados || [],
     notas: parsed.notas || [],
-    etiquetas: parsed.etiquetas || [],
   };
 };
 const storage = (typeof window !== "undefined" && window.storage) ? window.storage : {
@@ -591,6 +692,43 @@ const exportState = function(st) {
     } catch(e2) {}
   }
 };
+/* ═══ EXPORT CSV (Excel-compatible) ═══ */
+const exportCSV = function(st) {
+  try {
+    var all = [...st.adm, ...st.jud];
+    var headers = ["Tipo","Nº Processo","Nº SEI","Assunto","Status","Fase","Tipo de Peça","Tribunal/Órgão","Responsável","Prazo Final","Dias Úteis","Score","Parte Contrária/Interessado","Próxima Providência","Tags","Observações"];
+    var rows = all.map(function(p){
+      return [
+        p.tipo==="jud"?"Judicial":"Administrativo",
+        '"'+(p.num||"").replace(/"/g,'""')+'"',
+        '"'+(p.numeroSEI||"").replace(/"/g,'""')+'"',
+        '"'+(p.assunto||"").replace(/"/g,'""')+'"',
+        p.status||"",
+        p.fase||"",
+        p.tipoPeca||"",
+        p.tribunal||p.orgao||"",
+        p.responsavel||"",
+        p.prazoFinal?fmt(toD(p.prazoFinal)):"",
+        p.diasRestantes||0,
+        p.score||0,
+        '"'+((p.parteContraria||p.interessado||"").replace(/"/g,'""'))+'"',
+        '"'+((p.proxProv||"").replace(/"/g,'""'))+'"',
+        '"'+((p.tags||[]).join(", "))+'"',
+        '"'+((p.obs||"").replace(/"/g,'""').replace(/\n/g," "))+'"'
+      ].join(";");
+    });
+    var bom = "\uFEFF";
+    var csv = bom + headers.join(";") + "\n" + rows.join("\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "cojur-nexus-" + new Date().toISOString().slice(0,10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  } catch(e) {}
+};
 const importState = function(file, dp, onDone) {
   if (!file) return;
   var reader = new FileReader();
@@ -608,21 +746,23 @@ const importState = function(file, dp, onDone) {
 };
 
 /* ═══ REDUCER ═══ */
-const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox:D_INBOX,realizados:[],notas:[],lembretes:[],etiquetas:[]});
-function reducer(st,a){
+const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox:D_INBOX,realizados:[],notas:[],lembretes:[],auditLog:[]});
+/* ═══ AUDIT LOG HELPER ═══ */
+var auditEntry=function(action,detail){return{ts:new Date().toISOString(),action:action,detail:detail};};
+function reducerCore(st,a){
   switch(a.type){
-    case "LOAD": return {...mkInit(), ...a.state, realizados: a.state?.realizados || [], notas: a.state?.notas || [], lembretes: a.state?.lembretes || [], etiquetas: a.state?.etiquetas || []};
+    case "LOAD": return {...mkInit(), ...a.state, realizados: a.state?.realizados || [], notas: a.state?.notas || [], lembretes: a.state?.lembretes || []};
     case "UPD":{
       const k=a.isAdm?"adm":"jud";
       const list=st[k];
       const updated=list.map(p=>{
         if(p.id!==a.id) return p;
-        var merged={...p,...a.ch};
+        const merged={...p,...a.ch};
         if(a.ch?.tipoPeca && a.ch.tipoPeca!==p.tipoPeca) merged.checklist=buildChecklist(a.ch.tipoPeca, merged);
-        // Auto-recalculate prazoFinal from pubDJe when pubDJe or intersticio changes
-        if((a.ch?.pubDJe || a.ch?.intersticio) && merged.pubDJe) {
-          var newPrazo = calcPrazoDJe(merged.pubDJe, merged.intersticio || 15);
-          if(newPrazo) merged.prazoFinal = newPrazo instanceof Date ? newPrazo.toISOString().split('T')[0] : newPrazo;
+        // Auto-recalc prazoFinal from pubDJe when pubDJe or intersticio changes
+        if((a.ch?.pubDJe !== undefined || a.ch?.intersticio !== undefined) && merged.pubDJe) {
+          var np = calcPrazoDJe(merged.pubDJe, merged.intersticio || 15);
+          if (np) merged.prazoFinal = np;
         }
         return recalc(merged);
       });
@@ -632,12 +772,7 @@ function reducer(st,a){
     }
     case "ADD_A":return{...st,adm:[...st.adm,mkA(a.d)]};
     case "ADD_J":{
-      var rawJ2={...a.d};
-      if(rawJ2.pubDJe) {
-        var jprazo=calcPrazoDJe(rawJ2.pubDJe, rawJ2.intersticio||15);
-        if(jprazo) rawJ2.prazoFinal = jprazo instanceof Date ? jprazo.toISOString().split('T')[0] : jprazo;
-      }
-      const proc=mkJ(rawJ2);
+      const proc=mkJ(a.d);
       return syncJudicialLinks({...st,jud:[...st.jud,proc]},proc);
     }
     case "DEL_P":{
@@ -701,11 +836,34 @@ function reducer(st,a){
     case "ADD_LEMBRETE": { var nls=[...(st.lembretes||[])]; nls.push({id:nid(),texto:a.texto,data:a.data||"",done:false}); return {...st,lembretes:nls}; }
     case "UPD_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).map(function(l){return l.id===a.id?{...l,...a.ch}:l;})}; }
     case "DEL_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).filter(function(l){return l.id!==a.id;})}; }
-    case "ADD_ETIQUETA": { return {...st,etiquetas:[...(st.etiquetas||[]),{id:nid(),nome:a.nome,cor:a.cor}]}; }
-    case "DEL_ETIQUETA": { return {...st,etiquetas:(st.etiquetas||[]).filter(function(e){return e.id!==a.id;})}; }
+    case "LINK_P":{
+      var k1=st.adm.some(function(p){return p.id===a.id1;})?"adm":"jud";
+      var k2=st.adm.some(function(p){return p.id===a.id2;})?"adm":"jud";
+      var upd1=st[k1].map(function(p){if(p.id!==a.id1)return p;var lk=[...(p.linkedIds||[])];if(!lk.includes(a.id2))lk.push(a.id2);return{...p,linkedIds:lk};});
+      var upd2=(k1===k2?upd1:st[k2]).map(function(p){if(p.id!==a.id2)return p;var lk=[...(p.linkedIds||[])];if(!lk.includes(a.id1))lk.push(a.id1);return{...p,linkedIds:lk};});
+      return k1===k2?{...st,[k1]:upd2}:{...st,[k1]:upd1,[k2]:upd2};
+    }
+    case "UNLINK_P":{
+      var uk1=st.adm.some(function(p){return p.id===a.id1;})?"adm":"jud";
+      var uk2=st.adm.some(function(p){return p.id===a.id2;})?"adm":"jud";
+      var rem=function(list,fromId,toId){return list.map(function(p){if(p.id!==fromId)return p;return{...p,linkedIds:(p.linkedIds||[]).filter(function(x){return x!==toId;})};});};
+      return{...st,[uk1]:rem(st[uk1],a.id1,a.id2),[uk2]:rem(st[uk2],a.id2,a.id1)};
+    }
     case "RST":return mkInit();
     default:return st;
   }
+}
+/* Wrapper: adds audit log to every mutation */
+function reducer(st,a){
+  var result=reducerCore(st,a);
+  if(result!==st&&a.type!=="LOAD"&&a.type!=="RST"){
+    var log=[...(result.auditLog||[])];
+    var detail=a.id?(a.ch?JSON.stringify(a.ch).substring(0,120):String(a.id)):(a.type);
+    log.unshift(auditEntry(a.type,detail));
+    if(log.length>200)log=log.slice(0,200);
+    result={...result,auditLog:log};
+  }
+  return result;
 }
 
 /* ═══ COMPONENTS ═══ */
@@ -724,9 +882,34 @@ const CFMMark=({size=40})=>(
   </svg>
 );
 const Bd=({children,color:c,glow:g,style:sx})=><span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:999,fontSize:11,fontWeight:700,background:g||"linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))",color:c||K.txt,border:`1px solid ${(c||K.brd)}33`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",textTransform:"uppercase",letterSpacing:".35px",...sx}}>{children}</span>;
-const UB=({d})=><Bd color={uC(d)} glow={uG(d)} style={{padding:"6px 10px"}}>{d<=10&&<Flame size={11}/>}{uL(d)} · {d}du</Bd>;
-const SB=({s})=>{const c=s>=70?K.cr:s>=45?K.wa:K.ac;return <Bd color={c} glow={s>=70?K.crG:s>=45?K.waG:K.acG} style={{padding:"6px 10px"}}><Zap size={11}/>{s}</Bd>};
-const SC=({icon:I,label:l,value:v,color:c,sub,onClick})=>{
+const UB=({d,prazoFinal})=>{
+  var c=uC(d);
+  var bg=d<=10?"rgba(255,46,91,.15)":d<30?"rgba(255,184,0,.12)":"rgba(0,229,255,.08)";
+  var bd=d<=10?"rgba(255,46,91,.4)":d<30?"rgba(255,184,0,.35)":"rgba(0,229,255,.25)";
+  var showCountdown=d>=0&&d<=1&&prazoFinal;
+  var countdownStr="";
+  if(showCountdown){try{var pf=prazoFinal instanceof Date?prazoFinal:new Date(prazoFinal);var agora=new Date();var diff=pf.getTime()+18*3600000-agora.getTime();if(diff>0&&diff<48*3600000){var h=Math.floor(diff/3600000);var m=Math.floor((diff%3600000)/60000);countdownStr=h+"h"+String(m).padStart(2,"0");}else{showCountdown=false;}}catch(e){showCountdown=false;}}
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 12px",borderRadius:12,background:bg,border:"1px solid "+bd,minWidth:64,boxShadow:"0 0 12px "+c+"22"}}>
+      {showCountdown&&countdownStr?(
+        <div style={{fontSize:13,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:"-.3px",animation:"cjPulse 1.8s ease infinite"}}>{countdownStr}</div>
+      ):(
+        <div style={{fontSize:d===0?11:20,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:d===0?".5px":"-.5px"}}>{d===0?"HOJE":d<0?Math.abs(d):d}</div>
+      )}
+      {d!==0&&!showCountdown&&<div style={{fontSize:8,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".4px"}}>{d<0?"ATRASO":"dias úteis"}</div>}
+      {showCountdown&&countdownStr&&<div style={{fontSize:7,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".3px"}}>restante</div>}
+      {d===0&&!showCountdown&&null}
+    </div>
+  );
+};
+const SB=({s})=>{const c=s>=70?K.cr:s>=45?K.wa:K.ac;const pct=Math.min(100,Math.max(0,s));const r=14,cx=18,cy=18,sw=3.5;const circ=2*Math.PI*r;const dash=circ*pct/100;return(
+  <svg width={36} height={36} viewBox="0 0 36 36" style={{flexShrink:0,filter:"drop-shadow(0 0 4px "+c+"55)"}}>
+    <circle cx={cx} cy={cy} r={r} fill="none" stroke={c} strokeOpacity=".15" strokeWidth={sw}/>
+    <circle cx={cx} cy={cy} r={r} fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ-dash} transform={"rotate(-90 "+cx+" "+cy+")"} style={{transition:"stroke-dashoffset .6s ease"}}/>
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill={c} style={{fontSize:s>=100?9:10,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{s}</text>
+  </svg>
+)};
+const SC=({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
   const col=c||K.ac;
   return(
   <div className="cj-hud-tl cj-hud-br" role={onClick?"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(4,8,22,.97), rgba(2,5,14,.99))",border:"1px solid "+col+"28",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",boxShadow:"0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.borderColor=col+"50";e.currentTarget.style.boxShadow="0 0 24px "+col+"14, 0 0 0 1px "+col+"22, 0 22px 50px rgba(0,0,0,.5), inset 0 1px 0 "+col+"18";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=col+"28";e.currentTarget.style.boxShadow="0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10";}}>
@@ -738,7 +921,10 @@ const SC=({icon:I,label:l,value:v,color:c,sub,onClick})=>{
       </div>
       <div className="cj-dot cj-pulse" style={{background:col,boxShadow:"0 0 10px "+col+", 0 0 20px "+col+"88"}}/>
     </div>
-    <div style={{fontSize:33,fontWeight:800,color:col,fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,textShadow:"0 0 18px "+col+"70, 0 0 40px "+col+"30",animation:"textGlow 2.5s ease-in-out infinite"}}>{v}</div>
+    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
+      <div style={{fontSize:33,fontWeight:800,color:col,fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,textShadow:"0 0 18px "+col+"70, 0 0 40px "+col+"30",animation:"textGlow 2.5s ease-in-out infinite"}}>{v}</div>
+      {sparkData&&sparkData.length>1&&<Sparkline data={sparkData} color={col} w={64} h={22}/>}
+    </div>
     {sub&&<span style={{fontSize:10,color:K.dim2,fontFamily:"'JetBrains Mono',monospace"}}>{sub}</span>}
   </div>
 );};
@@ -755,6 +941,117 @@ const Bx=({children,style:sx,className:cn,onClick,role,title})=><div className={
 const AC=({icon:I,color:c,title:t,desc})=><div className="cj-soft" style={{background:`linear-gradient(180deg,${c}10,rgba(255,255,255,.02))`,border:`1px solid ${c}22`,borderRadius:14,padding:"12px 14px",display:"flex",gap:10}}><I size={16} color={c} style={{marginTop:2,flexShrink:0}}/><div><div style={{fontSize:12,fontWeight:700,color:c}}>{t}</div><div style={{fontSize:11,color:K.dim,marginTop:2,lineHeight:1.5}}>{desc}</div></div></div>;
 const PB=({value:v,max:m,color:c})=><div style={{height:8,borderRadius:999,background:"rgba(255,255,255,.05)",overflow:"hidden",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"}}><div style={{height:"100%",borderRadius:999,background:`linear-gradient(90deg,${c},${c}aa)`,boxShadow:`0 0 22px ${c}55`,width:`${Math.min(100,(v/m)*100)}%`,transition:"width .6s ease"}}/></div>;
 const DoneBtn=({onClick,small})=><button onClick={e=>{e.stopPropagation();onClick?.()}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:small?"6px 9px":"8px 12px",borderRadius:12,border:`1px solid ${K.su}33`,background:`linear-gradient(180deg,${K.suG},rgba(16,185,129,.08))`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",color:K.su,fontSize:small?11:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}><CheckCircle size={small?12:14}/>Feito</button>;
+
+/* ═══ SKELETON LOADING ═══ */
+const SkeletonBlock=({lines=3,h})=>(
+  <div style={{padding:16}}>{h&&<div className="cj-skel cj-skel-block" style={{height:h}}/>}{Array.from({length:lines},(_,i)=><div key={i} className="cj-skel cj-skel-line" style={{width:i===lines-1?"60%":"100%"}}/>)}</div>
+);
+
+/* ═══ EMPTY STATE ILLUSTRATIONS ═══ */
+const EmptyIllust={
+  done:function(c){return(<svg width="64" height="64" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke={c} strokeWidth="1.5" strokeDasharray="4 3" opacity=".3"/><path d="M22 33l7 7 13-14" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity=".8"/><circle cx="32" cy="32" r="20" stroke={c} strokeWidth="1" opacity=".15"/></svg>);},
+  scale:function(c){return(<svg width="64" height="64" viewBox="0 0 64 64" fill="none"><rect x="28" y="14" width="8" height="36" rx="4" stroke={c} strokeWidth="1.5" opacity=".3"/><circle cx="20" cy="38" r="10" stroke={c} strokeWidth="1.5" opacity=".25"/><circle cx="44" cy="38" r="10" stroke={c} strokeWidth="1.5" opacity=".25"/><line x1="20" y1="28" x2="44" y2="28" stroke={c} strokeWidth="1" opacity=".2"/><rect x="16" y="34" width="8" height="8" rx="2" fill={c} opacity=".12"/><rect x="40" y="34" width="8" height="8" rx="2" fill={c} opacity=".12"/></svg>);},
+  folder:function(c){return(<svg width="64" height="64" viewBox="0 0 64 64" fill="none"><rect x="10" y="20" width="44" height="30" rx="4" stroke={c} strokeWidth="1.5" opacity=".3"/><path d="M10 24h16l4-4h14a4 4 0 014 4" stroke={c} strokeWidth="1.5" opacity=".25"/><line x1="22" y1="32" x2="42" y2="32" stroke={c} strokeWidth="1" opacity=".15"/><line x1="22" y1="38" x2="36" y2="38" stroke={c} strokeWidth="1" opacity=".15"/></svg>);},
+  rocket:function(c){return(<svg width="64" height="64" viewBox="0 0 64 64" fill="none"><path d="M32 12c-4 8-6 16-6 24h12c0-8-2-16-6-24z" stroke={c} strokeWidth="1.5" opacity=".35"/><ellipse cx="32" cy="40" rx="8" ry="4" stroke={c} strokeWidth="1" opacity=".2"/><line x1="28" y1="44" x2="24" y2="52" stroke={c} strokeWidth="1.5" strokeLinecap="round" opacity=".25"/><line x1="36" y1="44" x2="40" y2="52" stroke={c} strokeWidth="1.5" strokeLinecap="round" opacity=".25"/><line x1="32" y1="44" x2="32" y2="54" stroke={c} strokeWidth="1.5" strokeLinecap="round" opacity=".2"/><circle cx="32" cy="28" r="3" fill={c} opacity=".15"/></svg>);},
+  clock:function(c){return(<svg width="64" height="64" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="22" stroke={c} strokeWidth="1.5" opacity=".25"/><line x1="32" y1="32" x2="32" y2="20" stroke={c} strokeWidth="2" strokeLinecap="round" opacity=".4"/><line x1="32" y1="32" x2="42" y2="36" stroke={c} strokeWidth="1.5" strokeLinecap="round" opacity=".3"/><circle cx="32" cy="32" r="2" fill={c} opacity=".3"/></svg>);}
+};
+const EmptyState=({icon,color,title,sub})=>{
+  var c=color||K.dim2;
+  var illust=EmptyIllust[icon]?EmptyIllust[icon](c):EmptyIllust.done(c);
+  return(
+    <div style={{textAlign:"center",padding:"36px 20px"}}>
+      <div style={{display:"inline-block",marginBottom:12,opacity:.8}}>{illust}</div>
+      <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{title}</div>
+      {sub&&<div style={{fontSize:12,color:K.dim,lineHeight:1.5}}>{sub}</div>}
+    </div>
+  );
+};
+
+/* ═══ STATUS STEPPER ═══ */
+const STATUS_FLOW=["Ativo","Em Execução","Pronto p/ Protocolo","Concluído"];
+const StatusStepper=({current,onSet})=>{
+  const idx=STATUS_FLOW.indexOf(current);
+  return(
+    <div className="cj-stepper" style={{margin:"0 0 16px"}}>
+      {STATUS_FLOW.map(function(st,i){var isDone=i<idx;var isAct=i===idx;return(
+        <React.Fragment key={st}>
+          {i>0&&<div className={"cj-step-line"+(isDone?" done":"")}/>}
+          <div title={st} onClick={function(){if(onSet)onSet(st);}} className={"cj-step-dot"+(isAct?" active":"")+(isDone?" done":"")} style={{position:"relative"}}>
+            {(isAct||isDone)&&<div style={{position:"absolute",top:16,left:"50%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontSize:8,fontWeight:700,color:isAct?K.ac:K.su,fontFamily:"Orbitron,monospace",letterSpacing:".3px"}}>{st.length>12?st.slice(0,10)+"…":st}</div>}
+          </div>
+        </React.Fragment>
+      );})}
+    </div>
+  );
+};
+
+/* ═══ NOTIFICATION PANEL ═══ */
+const NotifPanel=({alerts,onClose,onSelect})=>(
+  <div className="cj-notif-panel" style={{position:"absolute",top:52,right:0,width:360,maxHeight:440,overflowY:"auto",background:K.modal,border:"1px solid "+K.brd,borderRadius:16,boxShadow:"0 24px 60px rgba(0,0,0,.7)",zIndex:200,padding:8}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginBottom:4}}>
+      <span style={{fontSize:13,fontWeight:700,color:K.txt}}>Notificações</span>
+      <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",fontSize:11}}>Fechar</button>
+    </div>
+    {alerts.length===0&&<div style={{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma notificação pendente</div>}
+    {alerts.slice(0,12).map(function(a,i){var I=a.icon;return(
+      <div key={i} onClick={function(){if(a.proc&&onSelect)onSelect(a.proc);}} style={{display:"flex",gap:10,padding:"10px 12px",borderRadius:10,cursor:a.proc?"pointer":"default",transition:"background .15s"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.04)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+        <div style={{width:28,height:28,borderRadius:8,background:a.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><I size={13} color={a.color}/></div>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:a.color}}>{a.title}</div>
+          <div title={a.desc} style={{fontSize:11,color:K.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:260}}>{a.desc}</div>
+        </div>
+      </div>
+    );})}
+  </div>
+);
+
+/* ═══ HEATMAP DE PRAZOS ═══ */
+const PrazoHeatmap=({items})=>{
+  const weeks=6,days=7;
+  const cells=[];
+  for(var w=0;w<weeks;w++){for(var d=0;d<days;d++){var dt=addD(NOW,w*7+d);var count=items.filter(function(p){return p.prazoFinal&&diffD(toD(p.prazoFinal),dt)===0;}).length;cells.push({dt:dt,count:count,w:w,d:d});}}
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:3}}>
+      <div style={{display:"flex",gap:2,marginBottom:4}}>
+        {["D","S","T","Q","Q","S","S"].map(function(l,i){return <div key={i} style={{width:18,height:12,fontSize:8,color:K.dim2,textAlign:"center",fontWeight:600}}>{l}</div>;})}
+      </div>
+      {Array.from({length:weeks},function(_,w){return(
+        <div key={w} style={{display:"flex",gap:2}}>
+          {Array.from({length:days},function(__,d){
+            var cell=cells[w*7+d];
+            var c=cell.count;
+            var bg=c===0?"rgba(255,255,255,.03)":c===1?K.su+"30":c<=3?K.wa+"40":K.cr+"50";
+            var isToday=diffD(cell.dt,NOW)===0;
+            return <div key={d} title={fmt(cell.dt)+": "+c+" prazo"+(c!==1?"s":"")} style={{width:18,height:18,borderRadius:3,background:bg,border:isToday?"1.5px solid "+K.ac:"1px solid rgba(255,255,255,.04)",cursor:"default",transition:"all .15s"}}/>;
+          })}
+        </div>
+      );})}
+      <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
+        <span style={{fontSize:8,color:K.dim2}}>Menos</span>
+        {[0,1,2,4].map(function(v){return <div key={v} style={{width:10,height:10,borderRadius:2,background:v===0?"rgba(255,255,255,.03)":v===1?K.su+"30":v<=3?K.wa+"40":K.cr+"50"}}/>;})}
+        <span style={{fontSize:8,color:K.dim2}}>Mais</span>
+      </div>
+    </div>
+  );
+};
+
+/* ═══ SPARKLINE ═══ */
+const Sparkline=({data,color,w=60,h=20})=>{
+  if(!data||data.length<2)return null;
+  var max=Math.max(...data,1),min=Math.min(...data,0);
+  var range=max-min||1;
+  var pts=data.map(function(v,i){return(i/(data.length-1))*w+","+(h-((v-min)/range)*h);}).join(" ");
+  return <svg width={w} height={h} viewBox={"0 0 "+w+" "+h} style={{opacity:.7}}><polyline points={pts} fill="none" stroke={color||K.ac} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+};
+
+/* ═══ EMPTY STATE ILLUSTRATIONS ═══ */
+const EmptySVG=({type,size=64})=>{
+  var s=size;
+  if(type==="judicial")return(<svg width={s} height={s} viewBox="0 0 64 64"><rect x="16" y="42" width="32" height="4" rx="2" fill={K.dim2} opacity=".4"/><rect x="30" y="18" width="4" height="24" rx="2" fill={K.dim2} opacity=".3"/><path d="M16 18L32 10L48 18" stroke={K.dim2} strokeWidth="3" strokeLinecap="round" fill="none" opacity=".4"/><circle cx="16" cy="22" r="4" fill={K.dim2} opacity=".25"/><circle cx="48" cy="22" r="4" fill={K.dim2} opacity=".25"/></svg>);
+  if(type==="admin")return(<svg width={s} height={s} viewBox="0 0 64 64"><rect x="14" y="10" width="36" height="44" rx="4" fill="none" stroke={K.dim2} strokeWidth="2" opacity=".3"/><rect x="20" y="18" width="24" height="3" rx="1.5" fill={K.dim2} opacity=".2"/><rect x="20" y="26" width="18" height="3" rx="1.5" fill={K.dim2} opacity=".15"/><rect x="20" y="34" width="22" height="3" rx="1.5" fill={K.dim2} opacity=".12"/><rect x="14" y="10" width="12" height="8" rx="2" fill={K.dim2} opacity=".15"/></svg>);
+  if(type==="success")return(<svg width={s} height={s} viewBox="0 0 64 64"><circle cx="32" cy="32" r="22" fill="none" stroke={K.su} strokeWidth="2" opacity=".3"/><path d="M22 32L29 39L42 25" stroke={K.su} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity=".4"/></svg>);
+  return(<svg width={s} height={s} viewBox="0 0 64 64"><circle cx="32" cy="28" r="14" fill="none" stroke={K.dim2} strokeWidth="2" opacity=".25"/><line x1="42" y1="38" x2="52" y2="48" stroke={K.dim2} strokeWidth="3" strokeLinecap="round" opacity=".3"/></svg>);
+};
 
 /* INLINE SELECT */
 const IS=({value:v,options:o,onChange:oc,color:c})=>{
@@ -892,7 +1189,7 @@ function PdfAIModal(props) {
   var analyze=function(b64,mime,fn){
     sLoad(true);sErr("");sResult("");sFname(fn);
     var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+proc.assunto+" | Tipo: "+proc.tipoPeca;
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem analise.");sLoad(false);}).catch(function(){sErr("Erro na analise.");sLoad(false);});
   };
   var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){analyze(ev.target.result.split(",")[1],f.type||"application/pdf",f.name);};r.readAsDataURL(f);};
@@ -931,7 +1228,7 @@ function GmailSEIModal(props) {
     if(!texto.trim()){setErr("Cole o texto do email antes de analisar.");return;}
     setLoad(true);setErr("");setExtracted(null);
     var prompt="Analise o email abaixo e extraia as informações do processo judicial ou administrativo.\n\nEMAIL:\n"+texto+"\n\nRetorne APENAS um objeto JSON (não array) com:\n- assunto: assunto do email (string)\n- remetente: quem enviou (string)\n- data: data do email (string)\n- numeroSEI: número SEI se houver (string ou null)\n- numeroProcesso: número judicial se houver no formato XXXXXXX-XX.XXXX.X.XX.XXXX (string ou null)\n- tipoPeca: tipo de peça jurídica mencionada (string ou null)\n- prazo: data de prazo mencionada (string ou null)\n- tipo: 'jud' se for processo judicial/tribunal, 'adm' se for administrativo\n- grupo: 1 se mencionar novo prazo SEI atribuído, 2 se for email institucional importante\n- urgencia: 'alta' se mencionar prazo vencendo, 'media' se institucional, 'normal' para demais\n- resumo: 1 frase descrevendo o que o email solicita ou comunica\n\nSeja preciso. SOMENTE JSON, sem markdown.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
@@ -950,8 +1247,8 @@ function GmailSEIModal(props) {
   /* ── ABA 2: Busca automática via Gmail MCP ───────────────────────────── */
   var buscarGmail=function(){
     setLoad(true);setErr("");setEmails([]);
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      max_tokens:3000,
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      model:"claude-sonnet-4-20250514",max_tokens:3000,
       messages:[{role:"user",content:"Use o Gmail para buscar emails recentes (últimos 30 dias). Identifique: GRUPO 1 — emails com 'Comunico a atribuição de novo prazo em seu nome no âmbito do sistema SEI'. GRUPO 2 — emails de TRF, STJ, STF, TRT, OAB, AGU, CNJ, CFM, CRM, MP sobre processos, prazos, decisões, intimações. Para cada email retorne JSON: [{assunto, remetente, data, numeroSEI, numeroProcesso, tipoPeca, prazo, tipo (jud/adm), grupo (1/2), urgencia (alta/media/normal), resumo}]. APENAS array JSON."}],
       mcp_servers:[{type:"url",url:"https://gmail.mcp.claude.com/mcp",name:"gmail"}]
     })})
@@ -975,8 +1272,8 @@ function GmailSEIModal(props) {
 
   var importarObj=function(em){
     var isJ=em.tipo==="jud"||(em.numeroProcesso&&em.numeroProcesso.length>10);
-    if(isJ){dp({type:"ADD_J",d:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
-    else{dp({type:"ADD_A",d:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
+    if(isJ){dp({type:"ADD_J",proc:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
+    else{dp({type:"ADD_A",proc:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
     setAdded(function(p){var n=Object.assign({},p);n[em.assunto||"x"]=true;return n;});
   };
 
@@ -1017,7 +1314,7 @@ function GmailSEIModal(props) {
             placeholder={"Cole aqui o texto completo do email SEI ou do tribunal...\n\nExemplo:\nDe: sei@cfm.org.br\nAssunto: Comunico a atribuição de novo prazo...\n\nComunico que foi atribuído novo prazo..."}
             style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}
           />
-          {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>🧠</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Extraindo informações...</div></div>}
+          {loading&&<div style={{padding:"12px 0"}}><SkeletonBlock lines={4} h={20}/><div style={{textAlign:"center",fontSize:11,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8}}>Extraindo informações...</div></div>}
           {!loading&&!extracted&&<button onClick={extrairEmail} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>🧠 Analisar email com IA</button>}
           {extracted&&!loading&&<div>
             <div style={{padding:"14px 16px",borderRadius:14,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",marginBottom:12}}>
@@ -1117,7 +1414,7 @@ function RelatorioModal(props) {
     var mes=new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
     var dados="Mes: "+mes+"\nTotal processos: "+total+"\nRealizados: "+real.length+"\nJudiciais: "+st.jud.length+"\nAdministrativos: "+st.adm.length+"\nSustentacoes: "+st.sust.length+"\nReunioes: "+st.reun.length;
     var lista=real.slice(0,15).map(function(p,i){return (i+1)+". "+p.assunto+" ("+p.tipoPeca+", "+(p.tipo==="jud"?"Judicial":"Adm")+")";}).join("\n");
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem relatorio.");sLoad(false);}).catch(function(){sResult("Erro ao gerar.");sLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){sCopied(true);setTimeout(function(){sCopied(false);},2500);});}catch(e){}};
@@ -1167,7 +1464,7 @@ function DecisaoModal({onClose}) {
     if(!texto.trim())return;
     setLoad(true);setResult("");
     var prompt="Você é advogado sênior da COJUR/CFM. Analise a decisão judicial abaixo e forneça:\n\n1. TIPO DE DECISÃO: (Sentença/Acórdão/Decisão interlocutória/Despacho)\n2. RESULTADO: Resumo em 2 frases do que foi decidido\n3. PRÓXIMA PROVIDÊNCIA: Ação concreta e imediata para a COJUR\n4. PRAZO: Prazo para recurso ou manifestação (com fundamento legal)\n5. ARGUMENTOS A REBATER: Se desfavorável, quais argumentos precisam ser contestados\n6. NÍVEL DE RISCO: Crítico/Médio/Baixo para o CFM — com justificativa\n\nDecisão:\n"+texto+"\n\nSeja direto, técnico e objetivo. Sem travessão.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1200,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
     .catch(function(){setResult("Erro na análise.");setLoad(false);});
@@ -1210,7 +1507,7 @@ function RevisaoModal({onClose}) {
     if(!texto.trim())return;
     setLoad(true);setResult("");
     var prompt="Você é advogado sênior especializado em Direito Administrativo e Processual Civil, revisor de peças jurídicas da COJUR/CFM.\n\nRevise a peça abaixo e aponte:\n\n1. ERROS FORMAIS: problemas de formatação, estrutura, numeração de dispositivos\n2. ERROS TÉCNICOS: referências legais incorretas, argumentos juridicamente fracos ou equivocados\n3. MELHORIAS SUGERIDAS: trechos que podem ser reforçados, argumentos adicionais pertinentes\n4. LINGUAGEM: uso de travessão (proibido na COJUR), informalidades, redundâncias\n5. PONTUAÇÃO: ≤10 (necessita revisão profunda), 10-14 (ajustes pontuais), 15-18 (boa qualidade), 19-20 (excelente)\n\nPeça:\n"+texto+"\n\nSeja específico, cite os trechos problemáticos. Sem travessão na sua resposta.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1400,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1400,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
     .catch(function(){setResult("Erro na revisão.");setLoad(false);});
@@ -1243,7 +1540,7 @@ function RevisaoModal({onClose}) {
 
 
 /* ═══ TIMELINE 30 DIAS ═══ */
-function TimelinePg({st,ss,liveTime}) {
+function TimelinePg({st,ss}) {
   var all=[...st.adm,...st.jud].filter(function(p){return p.prazoFinal&&p.diasRestantes>=0&&p.diasRestantes<=30;}).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
   var hoje=new Date();
   var dias=Array.from({length:31},function(_,i){return i;});
@@ -1283,27 +1580,14 @@ function TimelinePg({st,ss,liveTime}) {
               <div style={{fontSize:11,color:cor,fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>{emoji} {label} ({procs.length})</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
                 {procs.map(function(p){return(
-                  <div key={p.id} onClick={function(){ss(p);}} className={"cj-card-hover"+(p.diasRestantes===0?" cj-ring-pulse":"")} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+(p.diasRestantes===0?"#ff2e5b":cor+"33"),cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";e.currentTarget.style.background="linear-gradient(135deg,rgba(3,7,28,.98),rgba(2,5,18,.99))";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
+                  <div key={p.id} onClick={function(){ss(p);}} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+cor+"33",cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:cor,boxShadow:"0 0 6px "+cor}}/>
-                    <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,borderRadius:"0 0 14px 14px",background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.25)"}}/>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                       <div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Adm"}</div>
-                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace",animation:p.diasRestantes===0?"countDown 2s ease-in-out infinite":"none"}}>
-                        {p.diasRestantes===0?(function(){var h=17-liveTime.getHours();var m=60-liveTime.getMinutes();if(h<0||h>8)return"HOJE";return h+"h"+String(m).padStart(2,"0")+"min";})():p.diasRestantes+"du"}
-                      </div>
+                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
                     </div>
                     <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                      <span style={{fontSize:10,color:K.dim}}>{p.tipoPeca}</span>
-                      {p.tipo==="jud"&&p.tribunal?<TribBadge trib={p.tribunal}/>:<span style={{fontSize:9,padding:"1px 6px",borderRadius:5,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",color:"#4e6a8a",fontFamily:"monospace"}}>ADM</span>}
-                    </div>
-                      {(p.progresso!=null&&p.progresso>0)&&(
-                        <div style={{marginTop:6}}>
-                          <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
-                            <div style={{height:"100%",width:Math.min(100,Number(p.progresso)||0)+"%",background:Number(p.progresso)>=100?"#00ff88":cor,borderRadius:2,transition:"width .4s ease"}}/>
-                          </div>
-                        </div>
-                      )}
+                    <div style={{fontSize:10,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
                   </div>
                 );})}
               </div>
@@ -1317,22 +1601,87 @@ function TimelinePg({st,ss,liveTime}) {
 
 
 /* ═══ CHECKLIST PRÉ-PROTOCOLO ═══ */
-var CHECKLIST_ITEMS = [
+var CHECKLIST_ITEMS_BASE = [
   {id:"num",label:"Número do processo correto e completo"},
-  {id:"cab",label:"Cabeçalho com destinatário correto"},
-  {id:"qual",label:"Qualificação do CFM como réu/interessado"},
-  {id:"req",label:"Pedido (requerimento) claro e fundamentado"},
-  {id:"ref",label:"Referências legais corretas (Lei, art., §)"},
   {id:"ass",label:"Assinatura digital do advogado responsável"},
   {id:"cus",label:"Custas processuais verificadas"},
   {id:"ane",label:"Documentos anexos conferidos"},
   {id:"pra",label:"Prazo processual ainda vigente"},
-  {id:"trav",label:"Sem uso de travessão no texto"},
+  {id:"sei",label:"Documento gerado e incluído no SEI"},
 ];
+
+var CHECKLIST_TIPO = {
+  "Agravo Interno":         [{id:"dec",label:"Decisão monocrática identificada e transcrita"},
+                             {id:"fun",label:"Fundamentos da decisão rebatidos ponto a ponto"},
+                             {id:"pre",label:"Precedentes do próprio tribunal citados"},
+                             {id:"pec",label:"Peças obrigatórias listadas (certidão de publicação)"},
+                             {id:"tmp",label:"Tempestividade verificada (15 dias da intimação)"},
+                             {id:"rei",label:"Requerimento de inclusão em pauta formulado"}],
+  "Contestação":            [{id:"ped",label:"Todos os pedidos da inicial mapeados"},
+                             {id:"pre",label:"Preliminares processuais verificadas"},
+                             {id:"doc",label:"Documentos essenciais do CFM juntados"},
+                             {id:"tmp",label:"Tempestividade verificada (prazo de resposta)"},
+                             {id:"pro",label:"Rol de provas e testemunhas incluído se necessário"},
+                             {id:"con",label:"Contagem de páginas e formatação conferidas"}],
+  "Informações em MS":      [{id:"ato",label:"Ato coator identificado e descrito corretamente"},
+                             {id:"doc",label:"Cópia do ato impugnado juntada"},
+                             {id:"tmp",label:"Prazo de 10 dias verificado"},
+                             {id:"lim",label:"Liminar (se deferida) rebatida expressamente"},
+                             {id:"nor",label:"Fundamento normativo e precedentes incluídos"},
+                             {id:"aut",label:"Autoridade coatora corretamente indicada"}],
+  "Recurso Especial":       [{id:"pre",label:"Prequestionamento verificado na decisão recorrida"},
+                             {id:"rep",label:"Hipótese de cabimento (art. 105, III CR) indicada"},
+                             {id:"div",label:"Divergência jurisprudencial comprovada se aplicável"},
+                             {id:"tmp",label:"Tempestividade verificada (15 dias do acórdão)"},
+                             {id:"rep",label:"Repercussão geral / relevância da questão federal"},
+                             {id:"pec",label:"Certidão de publicação do acórdão juntada"}],
+  "Agravo em Recurso Especial":[{id:"dec",label:"Decisão de inadmissão identificada"},
+                             {id:"fun",label:"Fundamentos da inadmissão rebatidos"},
+                             {id:"tmp",label:"Tempestividade verificada (15 dias)"},
+                             {id:"pec",label:"Peças obrigatórias do AREsp listadas"},
+                             {id:"cer",label:"Certidão de publicação juntada"}],
+  "Parecer Jurídico":       [{id:"rel",label:"Relatório objetivo e delimitação da consulta"},
+                             {id:"nor",label:"Normas do CFM citadas com numeração exata"},
+                             {id:"con",label:"Conclusão expressa e objetiva da COJUR"},
+                             {id:"ass",label:"Assinado pelo advogado e revisado pelo coordenador"},
+                             {id:"sei",label:"Incluído no SEI e número registrado no processo"}],
+  "Sustentação Oral":       [{id:"ins",label:"Inscrição para sustentação protocolada no tribunal"},
+                             {id:"vid",label:"Vídeo enviado (sustentação virtual) dentro do prazo"},
+                             {id:"mem",label:"Memoriais protocolados e juntados ao processo"},
+                             {id:"rot",label:"Roteiro de sustentação revisado"},
+                             {id:"tmp",label:"Tempo de fala verificado com o gabinete"},
+                             {id:"pau",label:"Pauta do julgamento confirmada no dia"}],
+  "Embargos de Declaração": [{id:"vic",label:"Vício identificado (omissão/contradição/obscuridade)"},
+                             {id:"tmp",label:"Tempestividade: 5 dias úteis da publicação"},
+                             {id:"pre",label:"Prequestionamento explícito se cabível"},
+                             {id:"obj",label:"Não há rediscussão de mérito"}],
+  "Manifestação":           [{id:"obj",label:"Objeto da manifestação claro e delimitado"},
+                             {id:"ped",label:"Pedido objetivo ao final"},
+                             {id:"tmp",label:"Prazo verificado"},
+                             {id:"jnt",label:"Documentos referenciados juntados"}],
+  "Memoriais":              [{id:"end",label:"Endereçado ao órgão julgador correto"},
+                             {id:"tmp",label:"Prazo para memoriais verificado no edital"},
+                             {id:"sin",label:"Síntese da tese central clara"},
+                             {id:"sei",label:"Protocolado e juntado no SEI"}],
+  "Análise de Contrato":   [{id:"obj",label:"Objeto e partes do contrato identificados"},
+                             {id:"vig",label:"Vigência, renovação e rescisão verificadas"},
+                             {id:"nor",label:"Conformidade com normas do CFM e legislação"},
+                             {id:"ris",label:"Riscos jurídicos e cláusulas abusivas analisados"},
+                             {id:"par",label:"Parecer conclusivo com recomendações"},
+                             {id:"sei",label:"Incluído no SEI com número registrado"}],
+};
+var getChecklistProtocolo = function(tipoPeca) {
+  var base = CHECKLIST_ITEMS_BASE;
+  var especifico = CHECKLIST_TIPO[tipoPeca] || [];
+  return especifico.concat(base);
+};
+var CHECKLIST_ITEMS = CHECKLIST_ITEMS_BASE;
+
 function ChecklistModal({proc,onConfirm,onClose}) {
   var sCheck=useState({});var checks=sCheck[0],setCheck=sCheck[1];
-  var all_ok=CHECKLIST_ITEMS.every(function(it){return checks[it.id];});
-  var ok_count=CHECKLIST_ITEMS.filter(function(it){return checks[it.id];}).length;
+  var items = getChecklistProtocolo(proc && proc.tipoPeca);
+  var all_ok=items.every(function(it){return checks[it.id];});
+  var ok_count=items.filter(function(it){return checks[it.id];}).length;
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
       <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
@@ -1341,13 +1690,13 @@ function ChecklistModal({proc,onConfirm,onClose}) {
           <span style={{fontSize:22}}>📋</span>
           <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Checklist Pré-Protocolo</h3>
           <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&(proc.num||proc.assunto)}</div></div>
-          <div style={{marginLeft:"auto",fontSize:14,fontWeight:800,color:all_ok?"#00ff88":"#ffb800",fontFamily:"Orbitron,monospace"}}>{ok_count}/{CHECKLIST_ITEMS.length}</div>
+          <div style={{marginLeft:"auto",fontSize:14,fontWeight:800,color:all_ok?"#00ff88":"#ffb800",fontFamily:"Orbitron,monospace"}}>{ok_count}/{items.length}</div>
         </div>
         <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,.06)",marginBottom:18,overflow:"hidden"}}>
-          <div style={{height:"100%",width:(ok_count/CHECKLIST_ITEMS.length*100)+"%",background:all_ok?"#00ff88":"#ffb800",boxShadow:"0 0 8px "+(all_ok?"#00ff88":"#ffb800"),transition:"width .3s"}}/>
+          <div style={{height:"100%",width:(ok_count/items.length*100)+"%",background:all_ok?"#00ff88":"#ffb800",boxShadow:"0 0 8px "+(all_ok?"#00ff88":"#ffb800"),transition:"width .3s"}}/>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-          {CHECKLIST_ITEMS.map(function(it){return(
+          {items.map(function(it){return(
             <label key={it.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:checks[it.id]?"rgba(0,255,136,.07)":"rgba(255,255,255,.025)",border:"1px solid "+(checks[it.id]?"rgba(0,255,136,.3)":"rgba(255,255,255,.08)"),cursor:"pointer",transition:"all .2s"}}>
               <input type="checkbox" checked={!!checks[it.id]} onChange={function(e){setCheck(function(p){var n=Object.assign({},p);n[it.id]=e.target.checked;return n;});}} style={{width:18,height:18,accentColor:"#00ff88",flexShrink:0}}/>
               <span style={{fontSize:13,color:checks[it.id]?K.dim:K.txt,textDecoration:checks[it.id]?"line-through":"none",fontWeight:checks[it.id]?400:500}}>{it.label}</span>
@@ -1363,71 +1712,39 @@ function ChecklistModal({proc,onConfirm,onClose}) {
 }
 
 
-
-/* ═══ FERIADOS NACIONAIS ═══ */
-var FERIADOS = [
-  "2025-01-01","2025-04-18","2025-04-21","2025-05-01","2025-06-19",
-  "2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20",
-  "2025-12-25",
-  "2026-01-01","2026-04-03","2026-04-21","2026-05-01","2026-06-04",
-  "2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20",
-  "2026-12-25",
-  "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
-  "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20",
-  "2027-12-25"
-];
-var isDU = function(d) {
-  var ds = d.toISOString().split('T')[0];
-  var dow = d.getDay();
-  return dow !== 0 && dow !== 6 && FERIADOS.indexOf(ds) === -1;
-};
-var addDU = function(start, n) {
-  var d = new Date(start);
-  var count = 0;
-  while (count < n) {
-    d.setDate(d.getDate() + 1);
-    if (isDU(d)) count++;
-  }
-  return d.toISOString().split('T')[0];
-};
-var calcPrazoDJeFull = function(pubDJe, intersticio) {
-  if (!pubDJe) return null;
-  var days = intersticio || 15;
-  return addDU(new Date(pubDJe + 'T12:00:00'), days);
-};
-
 /* ═══ TIPO DE PEÇA — mapa de cores ═══ */
 var PECA_COR = {
-  // Defesa/inicial
-  "Contestação":"#00e5ff","Reconvenção":"#00e5ff","Exceção de Incompetência":"#94a3b8",
-  // Recursos 1G→2G
-  "Apelação":"#f59e0b","Apelação Adesiva":"#f59e0b","Agravo de Instrumento":"#fb923c","Agravo Retido":"#fb923c",
-  // Recursos tribunais
-  "Agravo Interno":"#f97316","Embargos de Declaração":"#a78bfa","Embargos Infringentes":"#a78bfa","Embargos de Divergência":"#a78bfa",
-  // Recursos excepcionais
-  "Recurso Especial":"#c084fc","Agravo em Recurso Especial":"#c084fc",
-  "Recurso Extraordinário":"#e879f9","Agravo em Recurso Extraordinário":"#e879f9","Recurso Ordinário Constitucional":"#e879f9",
-  // MS e incidentes
-  "Informações em MS":"#06b6d4","Contrarrazões":"#38bdf8","Contraminuta":"#38bdf8",
-  "Impugnação ao Cumprimento de Sentença":"#f43f5e","Exceção de Pré-Executividade":"#f43f5e",
+  // ── Defesa (família cyan/sky) ──
+  "Contestação":"#0ea5e9","Reconvenção":"#06b6d4","Exceção de Incompetência":"#0891b2","Impugnação ao Valor da Causa":"#0284c7",
+  // ── Recursos 1G→2G (família âmbar/laranja) ──
+  "Apelação":"#f59e0b","Apelação Adesiva":"#d97706","Agravo de Instrumento":"#fb923c","Agravo Retido":"#ea580c",
+  // ── Recursos internos tribunais (família laranja/coral) ──
+  "Agravo Interno":"#f97316","Embargos de Declaração":"#e17055","Embargos Infringentes":"#d44b2f","Embargos de Divergência":"#c0392b",
+  // ── Recursos excepcionais STJ/STF (família violeta/púrpura) ──
+  "Recurso Especial":"#8b5cf6","Agravo em Recurso Especial":"#7c3aed",
+  "Recurso Extraordinário":"#a855f7","Agravo em Recurso Extraordinário":"#9333ea","Recurso Ordinário Constitucional":"#6d28d9",
+  // ── MS e incidentes (família azul) ──
+  "Informações em MS":"#3b82f6","Contrarrazões":"#2563eb","Contraminuta":"#60a5fa",
+  // ── Execução e cumprimento (família vermelho/rosa) ──
+  "Impugnação ao Cumprimento de Sentença":"#ef4444","Exceção de Pré-Executividade":"#dc2626",
   "Embargos à Execução":"#f43f5e","Embargos de Terceiro":"#fb7185",
-  // Tutelas
-  "Manifestação sobre Tutela":"#34d399","Pedido de Efeito Suspensivo":"#34d399","Petição Cautelar":"#6ee7b7",
-  // Manifestações gerais
-  "Manifestação":"#64748b","Petição Simples":"#64748b","Memorial":"#8b5cf6","Memoriais":"#8b5cf6",
-  "Alegações Finais":"#8b5cf6","Razões de Recurso":"#f59e0b","Contrarrazões de Recurso":"#38bdf8",
-  // Orais
-  "Sustentação Oral":"#b84dff",
-  // Execução
-  "Cumprimento de Sentença":"#f43f5e","Impugnação ao Cumprimento":"#f43f5e","Cálculos de Liquidação":"#fb7185",
-  // Admin
-  "Parecer Jurídico":"#00ff88","Ofício":"#22d3ee","Nota Técnica":"#86efac","Despacho de Andamento":"#94a3b8",
-  // Outro
+  "Cumprimento de Sentença":"#e11d48","Impugnação ao Cumprimento":"#be123c","Cálculos de Liquidação":"#f87171",
+  // ── Tutelas e cautelares (família esmeralda/teal) ──
+  "Manifestação sobre Tutela":"#10b981","Pedido de Efeito Suspensivo":"#14b8a6","Petição Cautelar":"#059669",
+  // ── Manifestações gerais (família neutra/pedra) ──
+  "Manifestação":"#78716c","Petição Simples":"#a8a29e","Razões de Recurso":"#d97706","Contrarrazões de Recurso":"#2563eb",
+  // ── Memoriais e sustentação (família índigo/violeta) ──
+  "Memorial":"#818cf8","Memoriais":"#6366f1","Alegações Finais":"#4f46e5","Sustentação Oral":"#b84dff",
+  // ── Administrativo CFM (família verde/menta) ──
+  "Parecer Jurídico":"#00ff88","Ofício":"#22d3ee","Nota Técnica":"#4ade80","Despacho de Andamento":"#86efac",
+  // ── Contratos (dourado) ──
+  "Análise de Contrato":"#eab308",
+  // ── Outros ──
   "Outro":"#64748b"
 };
 var getPecaCor=function(tp){return PECA_COR[tp]||"#64748b";};
 var getPecaLabel=function(tp){
-  var abbrev={"Contestação":"CONTEST.","Apelação":"APEL.","Apelação Adesiva":"APEL.ADES.","Agravo de Instrumento":"AG.INST.","Agravo Retido":"AG.RET.","Agravo Interno":"AG.INT.","Embargos de Declaração":"EMBS.DEC.","Embargos Infringentes":"EMBS.INF.","Embargos de Divergência":"EMBS.DIV.","Recurso Especial":"RESP","Agravo em Recurso Especial":"AG.RESP","Recurso Extraordinário":"RE","Agravo em Recurso Extraordinário":"AG.RE","Recurso Ordinário Constitucional":"ROC","Informações em MS":"INFO.MS","Contrarrazões":"CTR.RAZ.","Contraminuta":"CTR.MIN.","Impugnação ao Cumprimento de Sentença":"IMP.CUM.","Exceção de Pré-Executividade":"EXC.PRE.","Embargos à Execução":"EMBS.EX.","Embargos de Terceiro":"EMBS.TER.","Manifestação sobre Tutela":"TUTE.","Pedido de Efeito Suspensivo":"EF.SUSP.","Petição Cautelar":"CAU.","Manifestação":"MANIF.","Petição Simples":"PET.","Memorial":"MEM.","Memoriais":"MEM.","Alegações Finais":"ALEG.FIN.","Razões de Recurso":"RAZ.REC.","Contrarrazões de Recurso":"CTR.REC.","Sustentação Oral":"SUST.","Cumprimento de Sentença":"CUM.SENT.","Impugnação ao Cumprimento":"IMP.CUM.","Cálculos de Liquidação":"CALC.","Parecer Jurídico":"PARECER","Ofício":"OFÍCIO","Nota Técnica":"NT","Despacho de Andamento":"DESP.","Reconvenção":"RECONV.","Exceção de Incompetência":"EXC.INC."};
+  var abbrev={"Contestação":"CONTEST.","Apelação":"APEL.","Apelação Adesiva":"APEL.ADES.","Agravo de Instrumento":"AG.INST.","Agravo Retido":"AG.RET.","Agravo Interno":"AG.INT.","Embargos de Declaração":"EMBS.DEC.","Embargos Infringentes":"EMBS.INF.","Embargos de Divergência":"EMBS.DIV.","Recurso Especial":"RESP","Agravo em Recurso Especial":"AG.RESP","Recurso Extraordinário":"RE","Agravo em Recurso Extraordinário":"AG.RE","Recurso Ordinário Constitucional":"ROC","Informações em MS":"INFO.MS","Contrarrazões":"CTR.RAZ.","Contraminuta":"CTR.MIN.","Impugnação ao Cumprimento de Sentença":"IMP.CUM.","Exceção de Pré-Executividade":"EXC.PRE.","Embargos à Execução":"EMBS.EX.","Embargos de Terceiro":"EMBS.TER.","Manifestação sobre Tutela":"TUTE.","Pedido de Efeito Suspensivo":"EF.SUSP.","Petição Cautelar":"CAU.","Manifestação":"MANIF.","Petição Simples":"PET.","Memorial":"MEM.","Memoriais":"MEM.","Alegações Finais":"ALEG.FIN.","Razões de Recurso":"RAZ.REC.","Contrarrazões de Recurso":"CTR.REC.","Sustentação Oral":"SUST.","Cumprimento de Sentença":"CUM.SENT.","Impugnação ao Cumprimento":"IMP.CUM.","Cálculos de Liquidação":"CALC.","Parecer Jurídico":"PARECER","Ofício":"OFÍCIO","Nota Técnica":"NT","Despacho de Andamento":"DESP.","Reconvenção":"RECONV.","Exceção de Incompetência":"EXC.INC.","Impugnação ao Valor da Causa":"IMP.VALOR","Análise de Contrato":"CONTRATO"};
   return abbrev[tp]||tp.substring(0,8).toUpperCase();
 };
 
@@ -1448,7 +1765,7 @@ function MinutaModal({proc, onClose}) {
     }
     var instrucoes="REGRAS OBRIGATÓRIAS DE ESTILO COJUR/CFM:\n1. PROIBIDO travessão (use vírgula ou ponto)\n2. Use estrutura: RELATÓRIO, FUNDAMENTOS e CONCLUSÃO\n3. Cite NORMA + FATO + CONSEQUÊNCIA JURÍDICA em cada argumento\n4. Linguagem técnica, objetiva, sem redundâncias\n5. Parágrafos numerados quando houver mais de 3\n6. Endereçamento formal ao tribunal correspondente";
     var prompt="Você é advogado sênior do Conselho Federal de Medicina (CFM) especializado em Direito Administrativo e Processual Civil. Redija uma minuta completa de "+tipoMinuta+" seguindo rigorosamente as regras da COJUR/CFM.\n\n"+instrucoes+"\n\nContexto do processo:\n"+ctx+(obsExtra?"\n\nInstruções adicionais:\n"+obsExtra:"")+"\n\nRedija a peça completa, incluindo cabeçalho formal, qualificação das partes, fundamentos jurídicos (indicando os artigos aplicáveis) e pedido final. A peça deve estar pronta para revisão e protocolo.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:4000,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setMinuta(t||"Sem resultado.");setLoad(false);})
     .catch(function(){setMinuta("Erro ao gerar. Verifique sua conexão.");setLoad(false);});
@@ -1520,7 +1837,7 @@ function DjeAutoModal(djeP){
   var buscar=function(){
     setLoad(true);setErr("");setResult(null);
     var prompt="Pesquise no DJe a publicação mais recente do processo "+numero+" no "+trib+". Retorne JSON: {dataDJe, tipoAto, prazo, intersticio, resumo, encontrado}.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:400,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Não encontrado. Verifique o número.");setLoad(false);}}).catch(function(){setErr("Erro de conexão.");setLoad(false);});
   };
   var aplicar=function(){if(!result||!result.dataDJe)return;dp({type:"UPD",id:proc.id,isAdm:false,ch:{pubDJe:result.dataDJe,intersticio:result.intersticio||15}});onClose();};
@@ -1568,10 +1885,10 @@ function IANovoProcessoModal(iaNP){
     if(!descricao.trim())return;
     setLoad(true);setErr("");setResult(null);
     var prompt="Assistente juridico da COJUR/CFM. Extraia dados do processo descrito. Retorne APENAS JSON com: num, numeroSEI, assunto, tribunal, tipoAcao, tipoPeca, parteContraria, prazoFinal (YYYY-MM-DD), status, impacto (1-5), complexidade (1-5), proxProv, obs. Use null para campos desconhecidos.\n\nDescricao: "+descricao;
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
-  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",d:clean});}else{dp({type:"ADD_A",d:clean});}onClose();};
+  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
   var campos=[["N Processo","num"],["N SEI","numeroSEI"],["Assunto","assunto"],["Tribunal","tribunal"],["Tipo Acao","tipoAcao"],["Tipo Peca","tipoPeca"],["Parte Contraria","parteContraria"],["Prazo Final","prazoFinal"],["Status","status"],["Proxima Providencia","proxProv"]];
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
@@ -1618,7 +1935,7 @@ function RelatorioSemanalModal(rsP){
     var realizados_semana=(st.realizados||[]).slice(0,5);
     var dados="Periodo: "+semana+"\nProcessos criticos (<=5du): "+criticos.length+"\nEm execucao: "+em_exec.length+"\nRealizados recentes: "+realizados_semana.length+"\nTotal no acervo: "+([...st.adm,...st.jud].length)+"\n\nProcessos criticos:\n"+criticos.slice(0,5).map(function(p,i){return (i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+p.diasRestantes+"du";}).join("\n")+"\n\nEm execucao:\n"+em_exec.slice(0,3).map(function(p,i){return (i+1)+". "+p.assunto+" ("+Math.min(100,Number(p.progresso)||0)+"%)";}).join("\n");
     var prompt="Voce e advogado senior da COJUR/CFM. Gere um resumo semanal de producao conciso e profissional. Sem travesSao.\n\nDados:\n"+dados+"\n\nFormato: (1) Status geral da semana; (2) Prioridades para proxima semana; (3) Alertas criticos; (4) Recomendacao de foco. Seja direto, maximo 200 palavras.";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
@@ -1638,22 +1955,6 @@ function RelatorioSemanalModal(rsP){
 
 function StatsModal(stP){
   var st=stP.st,onClose=stP.onClose;
-  var s1p=React.useState("resumo");var prodTab=s1p[0],setProdTab=s1p[1];
-  var getMonthLabel=function(k){var months=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];var p=k.split("-");return months[parseInt(p[1])-1]+"/"+p[0].slice(2);};
-  var monthlyProd=(function(){
-    var real=st.realizados||[];
-    var months={};
-    real.forEach(function(r){
-      var dt=r.data||r.dt||r.updatedAt;
-      if(!dt)return;
-      var k=dt.toString().slice(0,7);
-      if(!months[k])months[k]={mes:k,label:"",total:0};
-      months[k].total++;
-      months[k].label=getMonthLabel(k);
-    });
-    return Object.values(months).sort(function(a,b){return a.mes>b.mes?1:-1;}).slice(-6);
-  })();
-  var maxProd=monthlyProd.length?Math.max.apply(null,monthlyProd.map(function(m){return m.total;})):1;
   var all=[...st.adm,...st.jud];
   var real=st.realizados||[];
   var porTipo={};
@@ -1672,8 +1973,8 @@ function StatsModal(stP){
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           {[["Total acervo",all.length,"#00e5ff"],["Realizados",real.length,"#00ff88"],["Críticos (≤5du)",criticos,"#ff2e5b"],["Sem mov. (≥7d)",semMov,"#ffb800"]].map(function(item){return(
             <div key={item[0]} style={{padding:"14px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",textAlign:"center"}}>
-              <div style={{fontSize:11,color:K.dim,marginBottom:6,textTransform:"uppercase",fontSize:9,letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
-              <AnimatedNumber value={item[1]} color={item[2]} size={28}/>
+              <div style={{fontSize:9,color:K.dim,marginBottom:6,textTransform:"uppercase",letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
+              <div style={{fontSize:28,fontWeight:800,color:item[2],fontFamily:"Orbitron,monospace"}}>{item[1]}</div>
             </div>
           );})}
         </div>
@@ -1709,541 +2010,12 @@ function StatsModal(stP){
             </div>
           </div>
         </div>
-      
-        <div style={{marginTop:20,padding:"14px 16px",borderRadius:14,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.12)"}}>
-          <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:12}}>📊 Produção Mensal (últimos 6 meses)</div>
-          {monthlyProd.length===0&&<div style={{fontSize:12,color:K.dim,textAlign:"center",padding:"12px 0"}}>Nenhuma peça concluída registrada ainda.</div>}
-          <div style={{display:"flex",gap:8,alignItems:"flex-end",height:80}}>
-            {monthlyProd.map(function(m){var pct=maxProd>0?Math.round((m.total/maxProd)*100):0;return(
-              <div key={m.mes} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                <div style={{fontSize:11,fontWeight:800,color:"#00e5ff"}}>{m.total}</div>
-                <div style={{width:"100%",height:Math.max(4,Math.round(pct*0.6))+"px",background:"linear-gradient(180deg,#00e5ff,#0891b2)",borderRadius:"4px 4px 0 0"}}/>
-                <div style={{fontSize:9,color:K.dim,whiteSpace:"nowrap"}}>{m.label}</div>
-              </div>
-            );})}
-          </div>
-        </div></div>
-    </div>
-  );
-}
-
-
-/* === CADASTRO RÁPIDO === */
-function QuickAddModal(qP) {
-  var dp=qP.dp, onClose=qP.onClose;
-  var s1=React.useState("jud"); var tipo=s1[0],setTipo=s1[1];
-  var s2=React.useState(""); var sei=s2[0],setSei=s2[1];
-  var s3=React.useState(""); var assunto=s3[0],setAssunto=s3[1];
-  var s4=React.useState(""); var prazo=s4[0],setPrazo=s4[1];
-  var s5=React.useState(""); var peca=s5[0],setPeca=s5[1];
-
-  var salvar = function() {
-    if (!assunto.trim()) return;
-    var proc = tipo==="jud"
-      ? mkJ({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Manifestação"})
-      : mkA({assunto:assunto.trim(), numeroSEI:sei.trim(), prazoFinal:prazo||addD(NOW,30), tipoPeca:peca||"Parecer Jurídico"});
-    dp({type: tipo==="jud" ? "ADD_J" : "ADD_A", d: proc});
-    onClose();
-  };
-
-  return React.createElement("div", {
-    style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"},
-    onClick:function(e){if(e.target===e.currentTarget)onClose();}
-  },
-    React.createElement("div", {style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:480,padding:24,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}},
-      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}, React.createElement(X,{size:20})),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
-        React.createElement("span",{style:{fontSize:22}}, "⚡"),
-        React.createElement("div",null,
-          React.createElement("h3",{style:{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Cadastro Rápido"),
-          React.createElement("div",{style:{fontSize:11,color:K.dim}},"Campos mínimos — edite depois")
-        )
-      ),
-      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:14}},
-        ["jud","adm"].map(function(t){return React.createElement("button",{key:t,onClick:function(){setTipo(t);},style:{flex:1,padding:"8px",borderRadius:11,border:tipo===t?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.08)",background:tipo===t?"rgba(0,229,255,.1)":"transparent",color:tipo===t?K.txt:K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}},t==="jud"?"⚖️ Judicial":"📁 Administrativo");})
-      ),
-      React.createElement("div",{style:{marginBottom:10}},
-        React.createElement("label",{style:lblSt},"Assunto *"),
-        React.createElement("input",{style:{...inpSt,marginTop:4},value:assunto,onChange:function(e){setAssunto(e.target.value);},placeholder:"Ex: Impugnação ao edital REVALIDA",autoFocus:true,
-          onKeyDown:function(e){if(e.key==="Enter")salvar();}})
-      ),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
-        React.createElement("div",null,
-          React.createElement("label",{style:lblSt},"Nº SEI"),
-          React.createElement("input",{style:{...inpSt,marginTop:4},value:sei,onChange:function(e){setSei(e.target.value);},placeholder:"26.0.000000-0"})
-        ),
-        React.createElement("div",null,
-          React.createElement("label",{style:lblSt},"Prazo Final"),
-          React.createElement("input",{type:"date",style:{...inpSt,marginTop:4},value:prazo,onChange:function(e){setPrazo(e.target.value);}})
-        )
-      ),
-      React.createElement("div",{style:{marginBottom:16}},
-        React.createElement("label",{style:lblSt},"Tipo de Peça"),
-        React.createElement("select",{style:{...inpSt,marginTop:4},value:peca,onChange:function(e){setPeca(e.target.value);}},
-          React.createElement("option",{value:""},"Selecionar..."),
-          TIPOS_PECA.map(function(t){return React.createElement("option",{key:t,value:t},t);})
-        )
-      ),
-      React.createElement("div",{style:{display:"flex",gap:10}},
-        React.createElement("button",{onClick:salvar,style:{flex:1,...btnPrim,justifyContent:"center",padding:"12px",fontSize:13,fontWeight:800}},"⚡ Cadastrar"),
-        React.createElement("button",{onClick:onClose,style:{...btnGhost,padding:"12px 16px",fontSize:12}},"Cancelar")
-      )
-    )
-  );
-}
-
-
-/* === EXPORT FICHA PROCESSO === */
-var exportProcPDF = function(p) {
-  var isJ = p.tipo === "jud";
-  var fmt = function(d){ if(!d)return "-"; try{return new Date(d+"T12:00:00").toLocaleDateString("pt-BR");}catch(e){return d;} };
-  var html = [
-    "<html><head><meta charset='UTF-8'>",
-    "<style>body{font-family:Arial,sans-serif;font-size:12px;margin:32px;color:#111;}",
-    "h1{font-size:16px;font-weight:bold;margin-bottom:4px;}",
-    "h2{font-size:13px;color:#444;font-weight:normal;margin-top:0;}",
-    ".grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:16px 0;}",
-    ".field{border-bottom:1px solid #e5e7eb;padding:4px 0;}",
-    ".label{font-size:10px;color:#666;text-transform:uppercase;font-weight:bold;}",
-    ".value{font-size:12px;}",
-    ".obs{background:#f9fafb;border-radius:6px;padding:10px;margin-top:12px;font-size:11px;color:#444;}",
-    "@media print{@page{margin:20mm;}}",
-    "</style></head><body>",
-    "<h1>"+(isJ?"⚖️ Processo Judicial":"📁 Processo Administrativo")+"</h1>",
-    "<h2>"+p.assunto+"</h2>",
-    "<hr style='border:none;border-top:2px solid #111;margin:8px 0'/>",
-    "<div class='grid'>",
-    p.num?"<div class='field'><div class='label'>Nº Judicial</div><div class='value'>"+p.num+"</div></div>":"",
-    p.numeroSEI?"<div class='field'><div class='label'>Nº SEI</div><div class='value'>"+p.numeroSEI+"</div></div>":"",
-    isJ&&p.tribunal?"<div class='field'><div class='label'>Tribunal</div><div class='value'>"+p.tribunal+"</div></div>":"",
-    isJ&&p.tipoAcao?"<div class='field'><div class='label'>Tipo de Ação</div><div class='value'>"+p.tipoAcao+"</div></div>":"",
-    p.tipoPeca?"<div class='field'><div class='label'>Tipo de Peça</div><div class='value'>"+p.tipoPeca+"</div></div>":"",
-    isJ&&p.parteContraria?"<div class='field'><div class='label'>Parte Contrária</div><div class='value'>"+p.parteContraria+"</div></div>":"",
-    p.prazoFinal?"<div class='field'><div class='label'>Prazo Final</div><div class='value'>"+fmt(p.prazoFinal)+"</div></div>":"",
-    p.pubDJe?"<div class='field'><div class='label'>Pub. DJe</div><div class='value'>"+fmt(p.pubDJe)+"</div></div>":"",
-    p.status?"<div class='field'><div class='label'>Status</div><div class='value'>"+p.status+"</div></div>":"",
-    p.fase?"<div class='field'><div class='label'>Fase</div><div class='value'>"+p.fase+"</div></div>":"",
-    p.responsavel?"<div class='field'><div class='label'>Responsável</div><div class='value'>"+p.responsavel+"</div></div>":"",
-    p.horasTrabalhadas?"<div class='field'><div class='label'>Horas Trabalhadas</div><div class='value'>"+p.horasTrabalhadas+"h</div></div>":"",
-    "</div>",
-    p.proxProv?"<div class='obs'><strong>Próxima Providência:</strong> "+p.proxProv+"</div>":"",
-    p.obs?"<div class='obs'><strong>Observações:</strong> "+p.obs+"</div>":"",
-    "<div style='margin-top:24px;font-size:10px;color:#999;text-align:right'>Gerado em "+new Date().toLocaleString("pt-BR")+" · COJUR/CFM</div>",
-    "</body></html>"
-  ].join("");
-  var w = window.open("","_blank");
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(function(){ w.print(); }, 500);
-};
-
-
-/* === ETIQUETAS MODAL === */
-function EtiquetasModal(eP){
-  var st=eP.st,dp=eP.dp,onClose=eP.onClose;
-  var s1=React.useState("");var nome=s1[0],setNome=s1[1];
-  var s2=React.useState("#00e5ff");var cor=s2[0],setCor=s2[1];
-  var CORES=["#00e5ff","#00ff88","#ffb800","#ff2e5b","#b84dff","#fb923c","#f472b6","#38bdf8","#a3e635","#94a3b8"];
-
-  var criar=function(){
-    if(!nome.trim())return;
-    dp({type:"ADD_ETIQUETA",nome:nome.trim(),cor:cor});
-    setNome("");
-  };
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.3)",borderRadius:22,width:"100%",maxWidth:500,padding:24,position:"relative"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}>{React.createElement(X,{size:20})}</button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-          <span style={{fontSize:22}}>🏷️</span>
-          <div>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Etiquetas Personalizadas</h3>
-            <div style={{fontSize:11,color:K.dim}}>Organize seus processos com etiquetas coloridas</div>
-          </div>
-        </div>
-
-        {/* Create new */}
-        <div style={{marginBottom:16,padding:"14px",borderRadius:14,border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.04)"}}>
-          <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>Nova etiqueta</div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input style={{...inpSt,flex:1}} value={nome} onChange={function(e){setNome(e.target.value);}} placeholder="Ex: REVALIDA, Aguardando MPF..." onKeyDown={function(e){if(e.key==="Enter")criar();}}/>
-            <button onClick={criar} style={{...btnPrim,padding:"0 16px",flexShrink:0}}>Criar</button>
-          </div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {CORES.map(function(c){return(
-              <div key={c} onClick={function(){setCor(c);}} style={{width:24,height:24,borderRadius:6,background:c,cursor:"pointer",border:cor===c?"3px solid #fff":"2px solid transparent",boxSizing:"border-box"}}/>
-            );})}
-          </div>
-        </div>
-
-        {/* Existing labels */}
-        <div style={{maxHeight:300,overflowY:"auto"}}>
-          {(!st.etiquetas||!st.etiquetas.length)&&<div style={{textAlign:"center",padding:"24px",color:K.dim,fontSize:13}}>Nenhuma etiqueta criada ainda.</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {(st.etiquetas||[]).map(function(e){
-              var count=[...st.adm,...st.jud].filter(function(p){return (p.tags||[]).includes(e.id);}).length;
-              return(
-                <div key={e.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:11,border:"1px solid rgba(255,255,255,.07)",background:"rgba(255,255,255,.025)"}}>
-                  <div style={{width:14,height:14,borderRadius:4,background:e.cor,flexShrink:0}}/>
-                  <span style={{flex:1,fontSize:13,fontWeight:600,color:K.txt}}>{e.nome}</span>
-                  <span style={{fontSize:11,color:K.dim}}>{count} processo{count!==1?"s":""}</span>
-                  <button onClick={function(){if(window.confirm("Remover etiqueta '"+e.nome+"'?"))dp({type:"DEL_ETIQUETA",id:e.id});}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:"2px 6px",borderRadius:6,fontSize:12}}>✕</button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-
-/* === EMAIL ALERT MODAL === */
-function EmailAlertModal(eaP){
-  var onClose=eaP.onClose,st=eaP.st;
-  var s1=React.useState("");var email=s1[0],setEmail=s1[1];
-  var s2=React.useState(false);var loading=s2[0],setLoad=s2[1];
-  var s3=React.useState(null);var result=s3[0],setResult=s3[1];
-
-  var enviar=function(){
-    if(!email.trim())return;
-    setLoad(true);setResult(null);
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/email-alert",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email:email.trim()})
-    }).then(function(r){return r.json();}).then(function(d){
-      setResult(d);setLoad(false);
-    }).catch(function(){
-      setResult({error:"Erro de conexao"});setLoad(false);
-    });
-  };
-
-  var all=[...(st.adm||[]),...(st.jud||[])];
-  var urgentes=all.filter(function(p){return p.diasRestantes!=null&&p.diasRestantes>=0&&p.diasRestantes<=5&&!["Concluido","Arquivado"].includes(p.status);});
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"24px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:460,padding:24,position:"relative"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}>{React.createElement(X,{size:20})}</button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-          <span style={{fontSize:22}}>📧</span>
-          <div>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Alerta de Prazos por Email</h3>
-            <div style={{fontSize:11,color:K.dim}}>Envia agora um resumo dos prazos críticos</div>
-          </div>
-        </div>
-
-        <div style={{padding:"12px 14px",borderRadius:11,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.15)",marginBottom:16}}>
-          <div style={{fontSize:12,color:K.txt,fontWeight:700,marginBottom:4}}>
-            {urgentes.length} processo{urgentes.length!==1?"s":""} com prazo crítico (≤5du)
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:120,overflowY:"auto"}}>
-            {urgentes.slice(0,5).map(function(p){return(
-              <div key={p.id} style={{fontSize:11,color:K.dim,display:"flex",justifyContent:"space-between"}}>
-                <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
-                <span style={{flexShrink:0,marginLeft:8,color:p.diasRestantes<=2?"#ff2e5b":"#ffb800",fontWeight:700}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-              </div>
-            );})}
-          </div>
-        </div>
-
-        <div style={{marginBottom:12}}>
-          <label style={lblSt}>Seu email</label>
-          <input style={{...inpSt,marginTop:4}} value={email} onChange={function(e){setEmail(e.target.value);}} placeholder="joao@cfm.org.br" type="email" onKeyDown={function(e){if(e.key==="Enter")enviar();}}/>
-        </div>
-
-        {!loading&&!result&&<button onClick={enviar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>
-          📧 Enviar alerta agora
-        </button>}
-
-        {loading&&<div style={{textAlign:"center",padding:"16px",color:"#00e5ff",fontSize:12,fontFamily:"Orbitron,monospace"}}>Enviando...</div>}
-
-        {result&&<div style={{padding:"12px 14px",borderRadius:11,background:result.ok||result.preview?"rgba(0,255,136,.08)":"rgba(255,46,91,.08)",border:"1px solid "+(result.ok||result.preview?"rgba(0,255,136,.25)":"rgba(255,46,91,.25)"),fontSize:12,color:result.ok||result.preview?"#00ff88":"#ff2e5b"}}>
-          {result.ok?"✅ Email enviado com sucesso!":result.preview?"✅ Serviço ativo ("+result.urgentes+" processos). Configure RESEND_API_KEY no Supabase para ativar envio real.":result.error||"Erro ao enviar"}
-        </div>}
-
-        <div style={{marginTop:14,fontSize:10,color:K.dim,lineHeight:1.5}}>
-          Para envio automático diário às 7h30, configure RESEND_API_KEY + ALERT_EMAIL nos secrets do Supabase Edge Functions e ative um cron job.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-/* === TOAST NOTIFICATIONS === */
-var _toastId = 0;
-var _toastSetFn = null;
-var _tipState = {set: null, timer: null};
-var showTipG = function(p, e) {
-  if (!_tipState.set) return;
-  if (_tipState.timer) clearTimeout(_tipState.timer);
-  var x = e.clientX, y = e.clientY;
-  _tipState.timer = setTimeout(function(){ _tipState.set({p:p,x:x,y:y}); }, 400);
-};
-var hideTipG = function() {
-  if (_tipState.timer) clearTimeout(_tipState.timer);
-  if (_tipState.set) _tipState.set({p:null,x:0,y:0});
-};
-var showToast = function(msg, type) {
-  if (!_toastSetFn) return;
-  var id = ++_toastId;
-  var cor = type === 'success' ? '#00ff88' : type === 'error' ? '#ff2e5b' : type === 'warn' ? '#ffb800' : '#00e5ff';
-  var icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warn' ? '⚠' : 'ℹ';
-  _toastSetFn(function(prev) { return [...prev, {id, msg, cor, icon}]; });
-  setTimeout(function() {
-    _toastSetFn(function(prev) { return prev.filter(function(t) { return t.id !== id; }); });
-  }, 3000);
-};
-
-function ToastContainer() {
-  var s = React.useState([]); var toasts = s[0], setToasts = s[1];
-  React.useEffect(function() { _toastSetFn = setToasts; return function() { _toastSetFn = null; }; }, []);
-  if (!toasts.length) return null;
-  return React.createElement('div', {
-    style: {position:'fixed', bottom:24, right:24, zIndex:9999, display:'flex', flexDirection:'column', gap:8, pointerEvents:'none'}
-  }, toasts.map(function(t) {
-    return React.createElement('div', {key: t.id, style: {
-      display:'flex', alignItems:'center', gap:10, padding:'10px 16px',
-      background:'rgba(2,5,22,.97)', border:'1px solid '+t.cor+'44',
-      borderRadius:12, minWidth:260, maxWidth:380,
-      boxShadow:'0 8px 32px rgba(0,0,0,.6)',
-      animation:'slideIn .2s ease'
-    }},
-      React.createElement('span', {style:{color:t.cor, fontWeight:800, fontSize:14, flexShrink:0}}, t.icon),
-      React.createElement('span', {style:{color:'#e2e8f0', fontSize:12, fontFamily:'inherit', lineHeight:1.4}}, t.msg)
-    );
-  }));
-}
-
-
-/* === COMMAND PALETTE === */
-function CmdPalette(cpP) {
-  var st=cpP.st, dp=cpP.dp, onClose=cpP.onClose, sPg=cpP.sPg, sSel=cpP.sSel, setShowQuickAdd=cpP.setShowQuickAdd;
-  var s1=React.useState(""); var q=s1[0],setQ=s1[1];
-  var s2=React.useState(0); var sel=s2[0],setSel=s2[1];
-  var ref=React.useRef(null);
-  React.useEffect(function(){ if(ref.current) ref.current.focus(); }, []);
-
-  var all=[...(st.adm||[]),...(st.jud||[])];
-  var PAGES=[
-    {icon:"⊞",label:"Dashboard",action:function(){sPg("dashboard");onClose();}},
-    {icon:"⚖️",label:"Processos Judiciais",action:function(){sPg("jud");onClose();}},
-    {icon:"📁",label:"Processos Administrativos",action:function(){sPg("adm");onClose();}},
-    {icon:"🏃",label:"Em Execução",action:function(){sPg("exec");onClose();}},
-    {icon:"📅",label:"Calendário",action:function(){sPg("cal");onClose();}},
-    {icon:"📊",label:"Estatísticas",action:function(){sPg("stats");onClose();}},
-  ];
-  var ACTIONS=[
-    {icon:"⚡",label:"Cadastro rápido de processo",action:function(){setShowQuickAdd(true);onClose();}},
-    {icon:"🏷️",label:"Gerenciar etiquetas",action:function(){cpP.setShowEtiquetas(true);onClose();}},
-    {icon:"💾",label:"Salvar agora no Supabase",action:function(){try{cpP.syncToSupabase(serialize(st));}catch(e){}onClose();}},
-    {icon:"🕐",label:"Histórico de versões",action:function(){cpP.setShowHistory(true);onClose();}},
-  ];
-
-  var qLow=q.toLowerCase();
-  var filteredProcs=q.length>1?all.filter(function(p){return (p.assunto||"").toLowerCase().includes(qLow)||(p.num||"").toLowerCase().includes(qLow)||(p.numeroSEI||"").toLowerCase().includes(qLow);}).slice(0,5):[];
-  var filteredPages=PAGES.filter(function(p){return p.label.toLowerCase().includes(qLow);});
-  var filteredActions=ACTIONS.filter(function(a){return a.label.toLowerCase().includes(qLow);});
-  var items=[
-    ...filteredProcs.map(function(p){return {icon:p.tipo==="jud"?"⚖️":"📁",label:p.assunto,hint:p.tipoPeca,action:function(){sSel(p);sPg(p.tipo==="jud"?"jud":"adm");onClose();}};}),
-    ...filteredPages,
-    ...filteredActions
-  ];
-
-  var handleKey=function(e){
-    if(e.key==="ArrowDown"){setSel(function(s){return Math.min(s+1,items.length-1);});}
-    if(e.key==="ArrowUp"){setSel(function(s){return Math.max(s-1,0);});}
-    if(e.key==="Enter"&&items[sel]){items[sel].action();}
-    if(e.key==="Escape"){onClose();}
-  };
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:9000,display:"flex",justifyContent:"center",alignItems:"flex-start",paddingTop:80}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div style={{width:"100%",maxWidth:560,background:"rgba(2,5,22,.98)",border:"1px solid rgba(0,229,255,.25)",borderRadius:16,overflow:"hidden",boxShadow:"0 24px 64px rgba(0,0,0,.8)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid rgba(0,229,255,.1)"}}>
-          <span style={{color:"#4e6a8a",fontSize:14}}>⌕</span>
-          <input ref={ref} value={q} onChange={function(e){setQ(e.target.value);setSel(0);}} onKeyDown={handleKey}
-            placeholder="Buscar processos, páginas, ações..."
-            style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:14,fontFamily:"inherit"}}/>
-          <span style={{fontSize:11,color:"#4e6a8a",background:"rgba(255,255,255,.06)",padding:"2px 6px",borderRadius:5}}>ESC</span>
-        </div>
-        <div style={{maxHeight:360,overflowY:"auto"}}>
-          {!items.length&&<div style={{padding:"24px",textAlign:"center",color:"#4e6a8a",fontSize:13}}>Digite para buscar processos, páginas ou ações</div>}
-          {items.length>0&&(
-            <div>
-              {filteredProcs.length>0&&<div style={{padding:"6px 16px 2px",fontSize:10,color:"#4e6a8a",textTransform:"uppercase",letterSpacing:".05em",fontWeight:700}}>Processos</div>}
-              {items.map(function(item,i){return(
-                <div key={i} onClick={item.action}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",background:sel===i?"rgba(0,229,255,.08)":"transparent",borderLeft:sel===i?"2px solid #00e5ff":"2px solid transparent"}}
-                  onMouseEnter={function(){setSel(i);}}>
-                  <span style={{fontSize:14,flexShrink:0}}>{item.icon}</span>
-                  <span style={{flex:1,fontSize:13,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</span>
-                  {item.hint&&<span style={{fontSize:11,color:"#4e6a8a",flexShrink:0}}>{item.hint}</span>}
-                  {sel===i&&<span style={{fontSize:10,color:"#00e5ff",flexShrink:0}}>↵</span>}
-                </div>
-              );})}
-            </div>
-          )}
-        </div>
-        <div style={{padding:"8px 16px",borderTop:"1px solid rgba(0,229,255,.08)",display:"flex",gap:16,fontSize:10,color:"#4e6a8a"}}>
-          <span>↑↓ navegar</span><span>↵ selecionar</span><span>ESC fechar</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-/* === SKELETON LOADING === */
-function SkeletonCard() {
-  return React.createElement("div", {
-    style: {padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.06)",animation:"pulse 1.5s infinite"}
-  },
-    React.createElement("div", {style:{height:10,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:8,width:"30%"}}),
-    React.createElement("div", {style:{height:13,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:6,width:"80%"}}),
-    React.createElement("div", {style:{height:10,borderRadius:4,background:"rgba(255,255,255,.06)",width:"50%"}})
-  );
-}
-
-function SkeletonDashboard() {
-  return React.createElement("div", {style:{padding:"18px 20px"}},
-    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}},
-      [1,2,3,4].map(function(i){return React.createElement("div",{key:i,style:{padding:16,borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.06)",animation:"pulse 1.5s infinite"}},
-        React.createElement("div",{style:{height:10,borderRadius:4,background:"rgba(255,255,255,.08)",marginBottom:8,width:"60%"}}),
-        React.createElement("div",{style:{height:28,borderRadius:4,background:"rgba(255,255,255,.1)",width:"40%"}})
-      );})
-    ),
-    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}},
-      [1,2,3,4,5,6].map(function(i){return React.createElement(SkeletonCard,{key:i});})
-    )
-  );
-}
-
-
-/* === ANIMATED COUNTER === */
-function AnimatedNumber({value, color, size}) {
-  var s = React.useState(0); var displayed = s[0], setDisplayed = s[1];
-  React.useEffect(function() {
-    var target = Number(value) || 0;
-    if (target === 0) { setDisplayed(0); return; }
-    var start = 0;
-    var duration = 800;
-    var startTime = null;
-    var step = function(timestamp) {
-      if (!startTime) startTime = timestamp;
-      var progress = Math.min((timestamp - startTime) / duration, 1);
-      var ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setDisplayed(Math.round(ease * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [value]);
-  return React.createElement('span', {
-    style: {fontSize: size||28, fontWeight:800, color:color||'#00e5ff', fontFamily:'Orbitron,monospace', animation:'countUp .4s ease'}
-  }, displayed);
-}
-
-
-/* === TRIBUNAL BADGE === */
-var TRIB_COLORS = {
-  "TRF-1": {bg:"rgba(59,130,246,.15)", border:"rgba(59,130,246,.35)", color:"#60a5fa"},
-  "TRF-2": {bg:"rgba(99,102,241,.15)", border:"rgba(99,102,241,.35)", color:"#818cf8"},
-  "TRF-3": {bg:"rgba(168,85,247,.15)", border:"rgba(168,85,247,.35)", color:"#c084fc"},
-  "TRF-4": {bg:"rgba(20,184,166,.15)", border:"rgba(20,184,166,.35)", color:"#2dd4bf"},
-  "TRF-5": {bg:"rgba(245,158,11,.12)", border:"rgba(245,158,11,.3)", color:"#fbbf24"},
-  "TRF-6": {bg:"rgba(236,72,153,.12)", border:"rgba(236,72,153,.3)", color:"#f472b6"},
-  "STJ": {bg:"rgba(251,191,36,.12)", border:"rgba(251,191,36,.3)", color:"#fbbf24"},
-  "STF": {bg:"rgba(239,68,68,.12)", border:"rgba(239,68,68,.3)", color:"#f87171"},
-  "TJDFT": {bg:"rgba(16,185,129,.12)", border:"rgba(16,185,129,.3)", color:"#34d399"},
-  "CFM": {bg:"rgba(0,255,136,.08)", border:"rgba(0,255,136,.2)", color:"#00ff88"},
-};
-var TribBadge = function(tbP) {
-  var trib = tbP.trib;
-  if (!trib) return null;
-  var c = TRIB_COLORS[trib] || {bg:"rgba(255,255,255,.06)",border:"rgba(255,255,255,.15)",color:"#94a3b8"};
-  return React.createElement("span", {
-    style: {padding:"2px 7px",borderRadius:5,background:c.bg,border:"1px solid "+c.border,
-      fontSize:10,fontWeight:800,color:c.color,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}
-  }, trib);
-};
-
-
-/* === PROCESS TOOLTIP === */
-function ProcTooltip() {
-  const [state, setState] = React.useState({p:null,x:0,y:0});
-  React.useEffect(function(){
-    _tipState.set = setState;
-    return function(){ _tipState.set = null; };
-  }, []);
-  const p = state.p, x = state.x, y = state.y;
-  if (!p) return null;
-  const cor = p.diasRestantes <= 2 ? "#ff2e5b" : p.diasRestantes <= 5 ? "#ffb800" : "#00e5ff";
-  const fmt = function(d){ if(!d) return "—"; try{ return (d instanceof Date?d:new Date(d+"T12:00:00")).toLocaleDateString("pt-BR"); }catch(e){ return String(d); } };
-  const left = Math.min(x + 16, window.innerWidth - 310);
-  const top = Math.min(y + 8, window.innerHeight - 340);
-  const STATUS_COLORS = {"Concluído":"#00ff88","Em Elaboração":"#ffb800","Arquivado":"#4e6a8a"};
-  const sCor = STATUS_COLORS[p.status] || cor;
-  return (
-    <div style={{
-      position:"fixed", left:left, top:top, zIndex:9999,
-      width:300, background:"rgba(2,5,22,.98)",
-      border:"1px solid "+cor+"55", borderTop:"2px solid "+cor,
-      borderRadius:14, padding:14, pointerEvents:"none",
-      boxShadow:"0 20px 50px rgba(0,0,0,.85)"
-    }}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-        <div style={{flex:1,minWidth:0}}>
-          {p.tipo==="jud" && p.tribunal &&
-            <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:cor+"22",border:"1px solid "+cor+"44",color:cor,fontFamily:"monospace",fontWeight:800,marginRight:4}}>{p.tribunal}</span>
-          }
-          {p.tipoPeca && <span style={{fontSize:10,color:"#4e6a8a"}}>{p.tipoPeca}</span>}
-        </div>
-        <div style={{fontSize:13,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",background:cor+"18",padding:"3px 8px",borderRadius:6,flexShrink:0}}>
-          {p.diasRestantes===0?"HOJE":p.diasRestantes<0?Math.abs(p.diasRestantes)+"du ATRASO":p.diasRestantes+"du"}
-        </div>
-      </div>
-      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:10,lineHeight:1.4}}>
-        {p.assunto}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:8}}>
-        {[
-          ["Prazo Final", fmt(p.prazoFinal), null],
-          ["Status", p.status||"—", sCor],
-          p.parteContraria ? ["Parte Contrária", p.parteContraria, null] : null,
-          p.responsavel ? ["Responsável", p.responsavel, null] : null,
-          p.num ? ["Nº Judicial", p.num, "#7dd3fc"] : null,
-          p.orgao ? ["Órgão", p.orgao, null] : null,
-        ].filter(Boolean).slice(0,6).map(function(item){
-          return (
-            <div key={item[0]} style={{padding:"5px 7px",borderRadius:7,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)"}}>
-              <div style={{fontSize:9,color:"#4e6a8a",fontWeight:700,textTransform:"uppercase",letterSpacing:".4px",marginBottom:1}}>{item[0]}</div>
-              <div style={{fontSize:11,color:item[2]||"#cbd5e1",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item[1]}</div>
-            </div>
-          );
-        })}
-      </div>
-      {p.proxProv && (
-        <div style={{padding:"6px 9px",borderRadius:8,background:"rgba(184,77,255,.1)",border:"1px solid rgba(184,77,255,.25)",fontSize:11,color:"#e2e8f0",lineHeight:1.5}}>
-          <span style={{color:"#b84dff",fontWeight:800}}>→ </span>
-          {p.proxProv.slice(0,90)}{p.proxProv.length>90?"…":""}
-        </div>
-      )}
-      {!p.proxProv && p.obs && (
-        <div style={{padding:"6px 9px",borderRadius:8,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
-          {p.obs.slice(0,90)}{p.obs.length>90?"…":""}
-        </div>
-      )}
-      <div style={{marginTop:8,fontSize:9,color:"rgba(255,255,255,.2)",textAlign:"right"}}>segure o mouse · clique para abrir</div>
-    </div>
-  );
-}
-
-
+/* ═══ FORM MODAL ═══ */
 const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
   const[form,setForm]=useState(()=>({...(initial||{})}));
   const[confirmDel,setCD]=useState(false);
@@ -2276,8 +2048,23 @@ const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
                   <input style={inpSt} type="number" min={1} max={5} value={form[f.key]??3} onChange={e=>set(f.key,parseInt(e.target.value)||3)}/>
                 ):f.type==="date"?(
                   <div>
-                    <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>{set(f.key,e.target.value?new Date(e.target.value+"T12:00:00"):null);if(f.key==="pubDJe"&&e.target.value){var np=calcPrazoDJe(e.target.value,form.intersticio||15);if(np){set("prazoFinal",np instanceof Date?np:new Date(np+"T12:00:00"));showToast("Prazo final calculado automaticamente do DJe","success");}}}}/>
-                    {f.key==="pubDJe"&&form.pubDJe&&(function(){var np=calcPrazoDJe(form.pubDJe instanceof Date?form.pubDJe.toISOString().split("T")[0]:form.pubDJe,form.intersticio||15);var npStr=np?(np instanceof Date?np:new Date(np+"T12:00:00")).toLocaleDateString("pt-BR"):"—";return React.createElement("div",{style:{marginTop:4,padding:"4px 8px",borderRadius:7,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",fontSize:10,color:"#00e5ff",display:"flex",gap:6,alignItems:"center"}},React.createElement("span",null,"📅"),React.createElement("span",null,"Prazo calculado: "+npStr+" ("+((form.intersticio||15)+"du")+")"));})()}
+                  <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>{
+                    var val=e.target.value?new Date(e.target.value+"T12:00:00"):null;
+                    set(f.key,val);
+                    // Auto-calc prazoFinal when pubDJe changes
+                    if(f.key==="pubDJe"&&val){
+                      var np=calcPrazoDJe(val,form.intersticio||15);
+                      if(np){set("prazoFinal",np);showToast&&showToast("Prazo calculado automaticamente do DJe","success");}
+                    }
+                  }}/>
+                  {f.key==="pubDJe"&&form.pubDJe&&(function(){
+                    var np=calcPrazoDJe(form.pubDJe instanceof Date?form.pubDJe:new Date(form.pubDJe+"T12:00:00"),form.intersticio||15);
+                    if(!np) return null;
+                    var npStr=(np instanceof Date?np:new Date(np+"T12:00:00")).toLocaleDateString("pt-BR");
+                    return React.createElement("div",{style:{marginTop:4,padding:"4px 10px",borderRadius:8,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",fontSize:11,color:"#00e5ff",display:"flex",gap:6,alignItems:"center"}},
+                      "📅 Prazo calculado: ",React.createElement("strong",null,npStr)," (",((form.intersticio||15)+"du"),")"
+                    );
+                  })()}
                   </div>
                 ):(
                   <input style={inpSt} type="text" value={form[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.ph||""}/>
@@ -2325,6 +2112,8 @@ const F_JUD=[
   {key:"tribunal",label:"Tribunal",type:"select",options:TRIBS},{key:"orgao",label:"Órgão / Gabinete"},{key:"responsavel",label:"Responsável"},{key:"linkRef",label:"Link de Referência",full:true},{key:"linkSEI",label:"Link Processo SEI",ph:"https://sei.cfm.org.br/sei/...",full:true},
   {key:"tipoAcao",label:"Tipo de Ação",type:"select",options:TACOES},{key:"tipoPeca",label:"Tipo de Peça",type:"select",options:TIPOS_PECA},
   {key:"parteContraria",label:"Parte Contrária"},{key:"prazoFinal",label:"Prazo Final",type:"date"},
+  {key:"dataSustentacao",label:"Data/Hora da Sustentação Oral",type:"datetime-local",ph:""},
+  {key:"tempoFala",label:"Tempo de fala (min)",type:"number",ph:"15"},
   {key:"pubDJe",label:"Data Publicação DJe",type:"date",ph:"Data da publicação no DJe"},{key:"intersticio",label:"Prazo em dias úteis",type:"number",ph:"Auto por tipo de peça"},
   {key:"status",label:"Status",type:"select",options:STS},{key:"fase",label:"Fase",type:"select",options:PHS},
   {key:"impacto",label:"Impacto (1-5)",type:"number"},{key:"complexidade",label:"Complexidade (1-5)",type:"number"},
@@ -2346,25 +2135,23 @@ const extValue=p=>p.tipo==="jud"?(p.parteContraria||"—"):(p.interessado||"—"
 const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,noreferrer")}catch(e){}};
 
 /* PROCESS CARD */
-const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
-  const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);
-  const [tipPos,setTipPos]=React.useState(null);
-  const tipTimer=React.useRef(null);
-  const onEnter=function(e){
-    clearTimeout(tipTimer.current);
-    var x=e.clientX,y=e.clientY;
-    tipTimer.current=setTimeout(function(){setTipPos({x:x,y:y});},400);
-  };
-  const onLeave=function(){
-    clearTimeout(tipTimer.current);
-    setTipPos(null);
-  };
-  const fmt=function(d){if(!d)return"—";try{return(d instanceof Date?d:new Date(d+"T12:00:00")).toLocaleDateString("pt-BR");}catch(ex){return String(d);}};
-  const cor=p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff";
-  const sCor=p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":cor;
-  return(
-  <div onClick={e=>{e.stopPropagation();oc?.(p)}} className={"cj-soft"+(p.diasRestantes===0?" cj-ring-pulse":"")} style={{position:"relative",background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.diasRestantes===0?"#ff2e5b":p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55";onEnter(e);}} onMouseMove={function(e){if(tipPos)setTipPos({x:e.clientX,y:e.clientY});}} onMouseLeave={function(e){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22";onLeave();}}>
-    <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:`linear-gradient(180deg,${accent},transparent 88%)`}}/>
+const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
+  <div onClick={e=>{e.stopPropagation();oc?.(p)}} className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55"}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22"}}>
+    <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,borderRadius:"0 0 0 20px",background:`linear-gradient(180deg,${accent},${accent}44 60%,transparent)`}}/>
+    {isSustAlerta(p)&&(
+      <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,background:"rgba(255,46,91,.18)",borderBottom:"2px solid rgba(255,46,91,.8)",padding:"5px 14px",display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:13,animation:"textBlink .9s ease-in-out infinite"}}>🎤</span>
+        <span style={{fontSize:10,fontWeight:900,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"textBlink .9s ease-in-out infinite",flex:1}}>SUSTENTAÇÃO ORAL</span>
+        {(function(){var cd=getSustCountdown(p);return cd?(
+          <span style={{fontSize:11,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,monospace",animation:"textBlink .9s ease-in-out infinite"}}>{cd}</span>
+        ):(
+          <span style={{fontSize:9,fontWeight:700,color:"rgba(255,100,120,.9)",background:"rgba(255,46,91,.2)",padding:"2px 7px",borderRadius:4}}>
+            {p.dataSustentacao?(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}
+          </span>
+        );})()}
+        <span style={{fontSize:9,fontWeight:700,color:"#ff2e5b",background:"rgba(255,46,91,.25)",padding:"2px 8px",borderRadius:4,whiteSpace:"nowrap"}}>⚡ ENVIE AGORA</span>
+      </div>
+    )}
     <div style={{padding:compact?"8px 12px 6px":"14px 16px 10px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))"}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
         <div style={{display:"flex",gap:10,minWidth:0}}>
@@ -2374,21 +2161,32 @@ const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
           <div style={{minWidth:0}}>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
               <Bd color={p.tipo==="jud"?K.pu:K.ac}>{p.tipo==="jud"?"Judicial":"Administrativo"}</Bd>
-              {p.tipoPeca&&<div style={{display:"inline-flex",alignItems:"center",padding:"3px 8px",borderRadius:6,background:getPecaCor(p.tipoPeca)+"20",border:"1px solid "+getPecaCor(p.tipoPeca)+"55",color:getPecaCor(p.tipoPeca),fontSize:9,fontWeight:900,letterSpacing:".8px",fontFamily:"Orbitron,monospace",textTransform:"uppercase",flexShrink:0,boxShadow:"0 0 8px "+getPecaCor(p.tipoPeca)+"30"}}>{getPecaLabel(p.tipoPeca)}</div>}
+              {p.dataSustentacao&&p.tipoPeca==="Sustentação Oral"&&<div style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:6,background:"rgba(255,46,91,.18)",border:"1px solid rgba(255,46,91,.5)",color:"#ff2e5b",fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",flexShrink:0,animation:isSustAlerta(p)?"textBlink .9s ease-in-out infinite":"none"}}>
+                🎤 {(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}
+              </div>}
             </div>
-            <div style={{fontSize:14,fontWeight:800,color:K.txt,fontFamily:"'JetBrains Mono',monospace",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.num||"Novo cadastro"}</div>
+            {p.tipoPeca&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"5px 10px",borderRadius:8,background:getPecaCor(p.tipoPeca)+"14",borderLeft:"3px solid "+getPecaCor(p.tipoPeca),marginLeft:-2}}>
+              <span style={{fontSize:15,fontWeight:900,color:getPecaCor(p.tipoPeca),letterSpacing:".3px",textShadow:"0 0 18px "+getPecaCor(p.tipoPeca)+"66",fontFamily:"inherit",lineHeight:1.2}}>{p.tipoPeca}</span>
+              <span style={{fontSize:9,fontWeight:700,color:getPecaCor(p.tipoPeca),opacity:.6,fontFamily:"Orbitron,monospace",letterSpacing:".5px"}}>{getPecaLabel(p.tipoPeca)}</span>
+            </div>}
+            <div title={p.num||""} style={{fontSize:14,fontWeight:800,color:K.txt,fontFamily:"'JetBrains Mono',monospace",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.num||"Novo cadastro"}</div>
             {p.numeroSEI&&<div onClick={function(e){e.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText(p.numeroSEI).then(function(){showCopyToast("SEI "+p.numeroSEI);});}} title={"Clique para copiar SEI: "+p.numeroSEI} style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"#7dd3fc",marginTop:3,cursor:"pointer",padding:"2px 6px",borderRadius:5,background:"rgba(125,211,252,.1)",border:"1px solid rgba(125,211,252,.15)",display:"inline-flex",alignItems:"center",gap:4,userSelect:"none"}}>🗂 SEI {p.numeroSEI}</div>}
           </div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-          <UB d={p.diasRestantes}/><SB s={p.score}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+            <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
+            {p.prazoFinal&&<div style={{fontSize:9,color:uC(p.diasRestantes),opacity:.7,fontFamily:"monospace",textAlign:"center"}}>{(function(){try{var d=p.prazoFinal instanceof Date?p.prazoFinal:new Date(p.prazoFinal+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}catch(e){return "";}})()}</div>}
+          </div>
+          <SB s={p.score}/>
+          <DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
         </div>
       </div>
       {isExecucao(p)&&<div className="cj-pulse" style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.5)",borderRadius:8,padding:"3px 8px",fontSize:9,color:"#00e5ff",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>⚡ EM EXECUÇÃO</div>}
       {isAcompanhamento(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.45)",borderRadius:8,padding:"3px 8px",fontSize:9,color:"#b84dff",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>👁 EM ACOMPANHAM.</div>}
       {isProtocolar(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(0,255,136,.12)",border:"1px solid rgba(0,255,136,.45)",color:"#00ff88",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(0,255,136,.7)"}}>📤 PROTOCOLAR NO TRIBUNAL</div>}
       {isCorrecao(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(255,184,0,.12)",border:"1px solid rgba(255,184,0,.45)",color:"#ffb800",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(255,184,0,.7)"}}>✏️ AGUARDANDO CORREÇÃO</div>}
-      <div style={{fontSize:15,fontWeight:800,color:K.txt,marginTop:8,lineHeight:1.45}}>{p.assunto||"Sem assunto"}</div>
+      <div title={p.assunto||""} style={{fontSize:15,fontWeight:800,color:K.txt,marginTop:8,lineHeight:1.45}}>{p.assunto||"Sem assunto"}</div>
     </div>
 
     <div style={{padding:"14px 16px 16px"}}>
@@ -2407,7 +2205,6 @@ const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
         <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
         <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
         {p.tipo==="jud"&&<Bd color={K.pu}><Scale size={10}/>{p.tribunal}</Bd>}
-        {!isA&&p.tribunal&&<TribBadge trib={p.tribunal}/>}
         {p.responsavel&&<Bd color={K.ac}><Users size={10}/>{p.responsavel}</Bd>}
         {p.depTerc&&<Bd color={K.wa}><Users size={10}/>Terceiros</Bd>}
         {p.reuniao&&<Bd color={K.ac}><Calendar size={10}/>Reunião</Bd>}
@@ -2421,7 +2218,7 @@ const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
       </div>
 
       {hasCustas(p)&&<div className="cj-custas-blink" onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:10,background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.45)",marginBottom:10}}>
-        <DollarSign size={13} color={K.wa}/><div><div style={{fontSize:10,fontWeight:800,color:K.wa}}>⚠️ RECOLHIMENTO DE CUSTAS OBRIGATÓRIO</div><div style={{fontSize:9,color:"#fde68a",marginTop:1}}>Este recurso exige preparo antes do protocolo.</div></div>
+        <DollarSign size={13} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:10,fontWeight:800,color:K.wa}}>CUSTAS OBRIGATÓRIAS</div>{(function(){var ci=getCustasInfo(p.tribunal);return ci?<div style={{fontSize:9,color:"#fde68a",marginTop:1}}>{ci.valor}</div>:<div style={{fontSize:9,color:"#fde68a",marginTop:1}}>Verifique preparo antes de protocolar</div>;})()}</div>
       </div>}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
         {p.linkSEI&&<button onClick={e=>{e.stopPropagation();window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:11,border:"1px solid rgba(0,229,255,.3)",background:"linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,229,255,.05))",color:"#00e5ff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,229,255,.18)",textShadow:"0 0 6px rgba(0,229,255,.6)",fontFamily:"inherit",whiteSpace:"nowrap"}}>🗂️ Processo SEI</button>}
@@ -2448,49 +2245,8 @@ const PC=({item:p,onClick:oc,dp,compact,liveTime})=>{
         ):null;})()}
       </div>
       <div style={{marginTop:8,fontSize:10,color:K.dim2,textAlign:"right"}}>Atualizado {fmt(p.ultMov||NOW)}</div>
-      {/* Progress bar */}
-      {p.progresso!=null&&Number(p.progresso)>0&&(
-        <div style={{margin:"0 16px 10px",height:5,borderRadius:3,background:"rgba(255,255,255,.1)",overflow:"hidden"}}>
-          <div style={{height:"100%",width:Math.min(100,Number(p.progresso))+"%",background:Number(p.progresso)>=100?"#00ff88":accent,borderRadius:2,transition:"width .4s ease"}}/>
-        </div>
-      )}
-      {/* Status line */}
-      <div style={{height:5,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.status==="Arquivado"?"#4e6a8a":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":accent+"66"}}/>
     </div>
-    {tipPos&&(
-      <div style={{position:"fixed",left:Math.min((tipPos?tipPos.x:0)+10,window.innerWidth-310),top:Math.max((tipPos?tipPos.y:0)-320,10),zIndex:9999,width:300,
-        background:"rgba(2,5,22,.99)",border:"1px solid "+cor+"55",borderTop:"2px solid "+cor,
-        borderRadius:14,padding:14,pointerEvents:"none",
-        boxShadow:"0 20px 50px rgba(0,0,0,.85)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <div style={{flex:1,minWidth:0}}>
-            {p.tribunal&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:cor+"22",border:"1px solid "+cor+"44",color:cor,fontFamily:"monospace",fontWeight:800,marginRight:4}}>{p.tribunal}</span>}
-            {p.tipoPeca&&<span style={{fontSize:10,color:"#4e6a8a"}}>{p.tipoPeca}</span>}
-          </div>
-          <span style={{fontSize:12,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",background:cor+"18",padding:"2px 8px",borderRadius:6}}>
-            {p.diasRestantes===0?"HOJE":p.diasRestantes<0?Math.abs(p.diasRestantes)+"du ATRASO":p.diasRestantes+"du"}
-          </span>
-        </div>
-        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8,lineHeight:1.4}}>{p.assunto}</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:p.proxProv||p.obs?8:0}}>
-          {[["Prazo",fmt(p.prazoFinal),null],["Status",p.status||"—",sCor],
-            p.parteContraria?["Parte",p.parteContraria,null]:null,
-            p.responsavel?["Responsável",p.responsavel,null]:null,
-          ].filter(Boolean).map(function(it){return(
-            <div key={it[0]} style={{padding:"4px 7px",borderRadius:6,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}>
-              <div style={{fontSize:9,color:"#4e6a8a",fontWeight:700,textTransform:"uppercase",marginBottom:1}}>{it[0]}</div>
-              <div style={{fontSize:11,color:it[2]||"#cbd5e1",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it[1]}</div>
-            </div>
-          );})}
-        </div>
-        {p.proxProv&&<div style={{padding:"5px 8px",borderRadius:7,background:"rgba(184,77,255,.1)",border:"1px solid rgba(184,77,255,.25)",fontSize:11,color:"#e2e8f0",lineHeight:1.4}}>
-          <span style={{color:"#b84dff",fontWeight:800}}>→ </span>{p.proxProv.slice(0,80)}{p.proxProv.length>80?"…":""}
-        </div>}
-        {!p.proxProv&&p.obs&&<div style={{padding:"5px 8px",borderRadius:7,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",fontSize:11,color:"#94a3b8",lineHeight:1.4}}>
-          {p.obs.slice(0,80)}{p.obs.length>80?"…":""}
-        </div>}
-      </div>
-    )}
+    <div style={{height:4,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?K.su:p.status==="Em Elaboração"?K.wa:p.status==="Arquivado"?K.dim:accent,opacity:.7}}/>
   </div>
 )};
 /* KANBAN with localStorage persistence */
@@ -2517,6 +2273,15 @@ const KanbanV=({items,dp,ss,colKey})=>{
     if(ph)saveCols([...cols,ph]);
   };
   const removeCol=function(ph){saveCols(cols.filter(function(c){return c!==ph;}));};
+  /* Column drag reorder */
+  const[colDragIdx,sColDragIdx]=useState(null);
+  const[colOverIdx,sColOverIdx]=useState(null);
+  const handleColDragStart=function(idx){sColDragIdx(idx);};
+  const handleColDrop=function(targetIdx){
+    if(colDragIdx===null||colDragIdx===targetIdx)return;
+    var next=[...cols];var moved=next.splice(colDragIdx,1)[0];next.splice(targetIdx,0,moved);
+    saveCols(next);sColDragIdx(null);sColOverIdx(null);
+  };
   return(
   <div style={{display:"flex",flexDirection:"column",gap:12}}>
     <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -2531,26 +2296,38 @@ const KanbanV=({items,dp,ss,colKey})=>{
       <button onClick={function(){saveCols([...DEFAULT_KANBAN_COLS]);}} style={{...btnGhost,padding:"3px 10px",fontSize:10}}>Resetar</button>
     </div>
     <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:12,minHeight:400}}>
-      {cols.map(function(ph){var col=items.filter(function(p){return p.fase===ph;}).sort(function(a,b){return b.score-a.score;});var isO=oc===ph;return(
-        <div key={ph} className={isO?"cj-kd":""} onDragOver={function(e){e.preventDefault();sOc(ph);}} onDragLeave={function(){sOc(null);}} onDrop={function(e){e.preventDefault();sOc(null);if(!did)return;var pr=items.find(function(p){return p.id===did;});if(pr&&pr.fase!==ph)dp({type:"UPD",id:did,isAdm:pr.tipo==="adm",ch:{fase:ph}});sDid(null);}} style={{minWidth:260,flex:"0 0 270px",background:"rgba(0,229,255,.02)",borderRadius:14,padding:12,border:"1px solid "+(isO?K.ac+"55":K.brd),boxShadow:isO?"0 0 20px rgba(0,229,255,.12)":"none",transition:"all .2s"}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,padding:"0 4px",alignItems:"center"}}>
-            <span style={{fontSize:11,fontWeight:700,color:K.txt,letterSpacing:".2px"}}>{ph}</span>
+      {cols.map(function(ph,colIdx){var col=items.filter(function(p){return p.fase===ph;}).sort(function(a,b){return b.score-a.score;});var isO=oc===ph;var isColOver=colOverIdx===colIdx&&colDragIdx!==null&&colDragIdx!==colIdx;return(
+        <div key={ph} className={isO?"cj-kd":""}
+          draggable onDragStart={function(e){handleColDragStart(colIdx);e.dataTransfer.effectAllowed="move";}}
+          onDragOver={function(e){e.preventDefault();if(colDragIdx!==null){sColOverIdx(colIdx);}else{sOc(ph);}}}
+          onDragLeave={function(){sOc(null);sColOverIdx(null);}}
+          onDrop={function(e){e.preventDefault();sOc(null);sColOverIdx(null);if(colDragIdx!==null){handleColDrop(colIdx);sColDragIdx(null);return;}if(!did)return;var pr=items.find(function(p){return p.id===did;});if(pr&&pr.fase!==ph)dp({type:"UPD",id:did,isAdm:pr.tipo==="adm",ch:{fase:ph}});sDid(null);}}
+          style={{minWidth:260,flex:"0 0 270px",background:isO?"rgba(0,229,255,.06)":"rgba(0,229,255,.02)",borderRadius:14,padding:12,border:"1px solid "+(isColOver?"rgba(184,77,255,.6)":isO?K.ac+"55":K.brd),boxShadow:isO?"0 0 20px rgba(0,229,255,.12)":isColOver?"0 0 20px rgba(184,77,255,.15)":"none",transition:"all .2s",opacity:colDragIdx===colIdx?0.5:1}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,padding:"0 4px",alignItems:"center",cursor:"grab"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <GripVertical size={12} color={K.dim2}/>
+              <span style={{fontSize:11,fontWeight:700,color:K.txt,letterSpacing:".2px"}}>{ph}</span>
+            </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:10,fontWeight:700,color:K.dim,fontFamily:"'JetBrains Mono',monospace",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"2px 8px"}}>{col.length}</span>
               <button onClick={function(){removeCol(ph);}} style={{background:"none",border:"none",color:K.dim2,cursor:"pointer",padding:"2px",lineHeight:1}} title="Remover coluna"><X size={10}/></button>
             </div>
           </div>
           <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,minHeight:60}}>
-            {col.map(function(p){return(
-              <div key={p.id} draggable onDragStart={function(e){sDid(p.id);e.dataTransfer.effectAllowed="move";}} style={{opacity:did===p.id?0.4:1,cursor:"grab"}}>
+            {col.map(function(p){var pcor=getPecaCor(p.tipoPeca);return(
+              <div key={p.id} draggable onDragStart={function(e){sDid(p.id);sColDragIdx(null);e.dataTransfer.effectAllowed="move";e.stopPropagation();}} onDragEnd={function(){sDid(null);}} style={{opacity:did===p.id?0.35:1,cursor:"grab",transition:"opacity .15s"}}>
                 <div onClick={function(){ss(p);}} style={{background:K.card,border:"1px solid "+K.brd,borderRadius:12,padding:"10px 12px",borderLeft:"3px solid "+uC(p.diasRestantes),transition:"all .2s",boxShadow:"0 4px 12px rgba(0,0,0,.2)"}} onMouseEnter={function(e){e.currentTarget.style.background=K.cardH;e.currentTarget.style.boxShadow="0 0 14px rgba(0,229,255,.08), 0 4px 16px rgba(0,0,0,.3)";}} onMouseLeave={function(e){e.currentTarget.style.background=K.card;e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.2)";}}>
-                  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><GripVertical size={12} color={K.dim2}/><span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"Novo"}</span></div>
+                  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                    <GripVertical size={12} color={K.dim2}/>
+                    <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"Novo"}</span>
+                    <div style={{marginLeft:"auto",padding:"1px 5px",borderRadius:4,background:pcor+"18",color:pcor,fontSize:8,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
+                  </div>
                   <div style={{fontSize:12,fontWeight:600,color:K.txt,marginBottom:6,lineHeight:1.4}}>{p.assunto||"Sem assunto"}</div>
-                  <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}><UB d={p.diasRestantes}/><SB s={p.score}/><DoneBtn small onClick={function(){dp({type:"COMPLETE_P",id:p.id});}}/></div>
+                  <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><SB s={p.score}/><DoneBtn small onClick={function(){dp({type:"COMPLETE_P",id:p.id});}}/></div>
                 </div>
               </div>
             );})}
-            {!col.length&&<div style={{padding:"20px 10px",textAlign:"center",color:K.dim2,fontSize:11,border:"1px dashed rgba(0,229,255,.1)",borderRadius:10}}>Arraste processos aqui</div>}
+            {!col.length&&<div style={{padding:"20px 10px",textAlign:"center",color:K.dim2,fontSize:11,border:"1px dashed "+(isO?"rgba(0,229,255,.4)":"rgba(0,229,255,.1)"),borderRadius:10,background:isO?"rgba(0,229,255,.04)":"transparent",transition:"all .2s"}}>Arraste processos aqui</div>}
           </div>
         </div>
       );})}
@@ -2584,13 +2361,210 @@ const FP=({f,sf,isJ})=>{const[op,sOp]=useState(false);const ac=Object.values(f).
     </div>}
   </div>
 )};
-const applyF=(items,f)=>{let r=items;if(f.urg&&f.urg!=="all")r=r.filter(p=>uL(p.diasRestantes)===f.urg);if(f.st&&f.st!=="all")r=r.filter(p=>p.status===f.st);if(f.ph&&f.ph!=="all")r=r.filter(p=>p.fase===f.ph);if(f.peca&&f.peca!=="all")r=r.filter(p=>p.tipoPeca===f.peca);if(f.tr&&f.tr!=="all")r=r.filter(p=>p.tribunal===f.tr);if(f.dtIni)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))>=f.dtIni);if(f.dtFim)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))<=f.dtFim);if(f.semMov)r=r.filter(p=>(p.semMov||0)>=Number(f.semMov));if(f.dep==="Sim")r=r.filter(p=>p.depTerc);if(f.dep==="Não")r=r.filter(p=>!p.depTerc);if(f.reun==="Sim")r=r.filter(p=>p.reuniao);if(f.reun==="Não")r=r.filter(p=>!p.reuniao);if(f.sust==="Sim")r=r.filter(p=>p.sustentacao);if(f.sust==="Não")r=r.filter(p=>!p.sustentacao);if(f.semAcao==="Sim")r=r.filter(p=>!p.proxProv);if(f.semAcao==="Não")r=r.filter(p=>!!p.proxProv);if(f.semResp==="Sim")r=r.filter(p=>!p.responsavel);if(f.semResp==="Não")r=r.filter(p=>!!p.responsavel);if(f.resp){const q=f.resp.toLowerCase();r=r.filter(p=>(p.responsavel||"").toLowerCase().includes(q))}if(f.sq){const q=f.sq.toLowerCase();r=r.filter(p=>(p.num||"").toLowerCase().includes(q)||(p.numeroSEI||"").toLowerCase().includes(q)||(p.assunto||"").toLowerCase().includes(q)||(p.responsavel||"").toLowerCase().includes(q)||(p.orgao||"").toLowerCase().includes(q)||(p.interessado||"").toLowerCase().includes(q)||(p.parteContraria||"").toLowerCase().includes(q))}return r};
+/* ═══ FUZZY SEARCH ═══ */
+const fuzzyMatch=(text,query)=>{if(!query||!text)return false;const t=text.toLowerCase(),q=query.toLowerCase();if(t.includes(q))return true;let ti=0;for(let qi=0;qi<q.length;qi++){const c=q[qi];let found=false;while(ti<t.length){if(t[ti]===c){found=true;ti++;break;}ti++;}if(!found)return false;}return true;};
+
+const applyF=(items,f)=>{let r=items;if(f.urg&&f.urg!=="all")r=r.filter(p=>uL(p.diasRestantes)===f.urg);if(f.st&&f.st!=="all")r=r.filter(p=>p.status===f.st);if(f.ph&&f.ph!=="all")r=r.filter(p=>p.fase===f.ph);if(f.peca&&f.peca!=="all")r=r.filter(p=>p.tipoPeca===f.peca);if(f.tr&&f.tr!=="all")r=r.filter(p=>p.tribunal===f.tr);if(f.dtIni)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))>=f.dtIni);if(f.dtFim)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))<=f.dtFim);if(f.semMov)r=r.filter(p=>(p.semMov||0)>=Number(f.semMov));if(f.dep==="Sim")r=r.filter(p=>p.depTerc);if(f.dep==="Não")r=r.filter(p=>!p.depTerc);if(f.reun==="Sim")r=r.filter(p=>p.reuniao);if(f.reun==="Não")r=r.filter(p=>!p.reuniao);if(f.sust==="Sim")r=r.filter(p=>p.sustentacao);if(f.sust==="Não")r=r.filter(p=>!p.sustentacao);if(f.semAcao==="Sim")r=r.filter(p=>!p.proxProv);if(f.semAcao==="Não")r=r.filter(p=>!!p.proxProv);if(f.semResp==="Sim")r=r.filter(p=>!p.responsavel);if(f.semResp==="Não")r=r.filter(p=>!!p.responsavel);if(f.resp){const q=f.resp.toLowerCase();r=r.filter(p=>(p.responsavel||"").toLowerCase().includes(q))}if(f.sq){const q=f.sq;r=r.filter(p=>fuzzyMatch(p.num||"",q)||fuzzyMatch(p.numeroSEI||"",q)||fuzzyMatch(p.assunto||"",q)||fuzzyMatch(p.responsavel||"",q)||fuzzyMatch(p.orgao||"",q)||fuzzyMatch(p.interessado||"",q)||fuzzyMatch(p.parteContraria||"",q)||fuzzyMatch(p.tipoPeca||"",q)||fuzzyMatch(p.tribunal||"",q)||fuzzyMatch((p.tags||[]).join(" "),q))}return r};
+
+/* ═══ CONFIRM DIALOG ═══ */
+function ConfirmDialog({title,msg,onConfirm,onCancel,danger}){
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(8px)",zIndex:2000,display:"flex",justifyContent:"center",alignItems:"center",padding:20}} onClick={function(e){if(e.target===e.currentTarget)onCancel();}}>
+      <div className="cj-sc" style={{background:K.modal,border:"1px solid "+(danger?K.cr:K.ac)+"33",borderRadius:20,padding:24,maxWidth:420,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.7)"}}>
+        <h3 style={{margin:"0 0 8px",fontSize:16,fontWeight:800,color:danger?K.cr:K.txt}}>{title}</h3>
+        <div style={{fontSize:13,color:K.dim,lineHeight:1.6,marginBottom:20}}>{msg}</div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button onClick={onCancel} style={{...btnGhost,padding:"8px 16px",fontSize:12}}>Cancelar</button>
+          <button onClick={onConfirm} style={{...btnPrim,padding:"8px 16px",fontSize:12,color:danger?K.cr:K.ac,borderColor:danger?K.cr+"55":K.ac+"55",background:danger?K.crG:K.acG}}>{danger?"Confirmar exclusão":"Confirmar"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ QUICK-ADD MODAL (Cmd+N) ═══ */
+function QuickAddModal({dp,onClose,st}){
+  var sT=useState("jud");var tipo=sT[0],setTipo=sT[1];
+  var sNum=useState("");var num=sNum[0],setNum=sNum[1];
+  var sAss=useState("");var ass=sAss[0],setAss=sAss[1];
+  var sPeca=useState("Manifestação");var peca=sPeca[0],setPeca=sPeca[1];
+  var sPrazo=useState(30);var prazo=sPrazo[0],setPrazo=sPrazo[1];
+  var sDup=useState(null);var dup=sDup[0],setDup=sDup[1];
+  /* Detecção de duplicata */
+  var checkDup=function(v){setNum(v);if(!v||v.length<5){setDup(null);return;}var norm=v.replace(/[.\-\/\s]/g,"");var found=[...st.adm,...st.jud].find(function(p){return p.num&&p.num.replace(/[.\-\/\s]/g,"")===norm;});setDup(found||null);};
+  var salvar=function(){
+    if(tipo==="jud"){dp({type:"ADD_J",d:{num:num,assunto:ass,tipoPeca:peca,prazoFinal:addD(NOW,prazo)}});}
+    else{dp({type:"ADD_A",d:{num:num,assunto:ass,tipoPeca:peca,prazoFinal:addD(NOW,prazo)}});}
+    onClose();
+  };
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(10px)",zIndex:1800,display:"flex",justifyContent:"center",alignItems:"center",padding:20}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div className="cj-sc" style={{background:K.modal,border:"1px solid "+K.ac+"33",borderRadius:22,padding:24,maxWidth:480,width:"100%",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+          <Zap size={20} color={K.ac}/><h3 style={{margin:0,fontSize:16,fontWeight:800,color:K.ac,fontFamily:"Orbitron,sans-serif"}}>Cadastro Rápido</h3>
+          <span style={{marginLeft:"auto",fontSize:10,color:K.dim,background:"rgba(255,255,255,.05)",padding:"2px 8px",borderRadius:6,fontFamily:"monospace"}}>Cmd+N</span>
+          <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={18}/></button>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <button onClick={function(){setTipo("jud");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="jud"?K.pu+"55":K.brd),background:tipo==="jud"?K.puG:"transparent",color:tipo==="jud"?K.pu:K.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Judicial</button>
+          <button onClick={function(){setTipo("adm");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="adm"?K.ac+"55":K.brd),background:tipo==="adm"?K.acG:"transparent",color:tipo==="adm"?K.ac:K.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Administrativo</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div><label style={lblSt}>Número do processo</label><input style={inpSt} value={num} onChange={function(e){checkDup(e.target.value);}} placeholder="0000000-00.0000.0.00.0000"/></div>
+          {dup&&<div style={{padding:"8px 12px",borderRadius:8,background:K.waG,border:"1px solid "+K.wa+"44",fontSize:11,color:K.wa}}>Processo já cadastrado: {dup.assunto} ({dup.status})</div>}
+          <div><label style={lblSt}>Assunto</label><input style={inpSt} value={ass} onChange={function(e){setAss(e.target.value);}} placeholder="Descrição breve do processo"/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><label style={lblSt}>Tipo de peça</label><select style={inpSt} value={peca} onChange={function(e){setPeca(e.target.value);}}>{TIPOS_PECA.map(function(t){return <option key={t} value={t} style={{background:K.modal}}>{t}</option>;})}</select></div>
+            <div><label style={lblSt}>Prazo (dias úteis)</label><input type="number" style={inpSt} value={prazo} onChange={function(e){setPrazo(Number(e.target.value)||30);}} min="1" max="365"/></div>
+          </div>
+        </div>
+        <button onClick={salvar} disabled={!ass.trim()||!!dup} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",marginTop:14,opacity:(!ass.trim()||!!dup)?0.4:1,cursor:(!ass.trim()||!!dup)?"not-allowed":"pointer"}}>
+          <Plus size={14}/>Cadastrar {tipo==="jud"?"Judicial":"Administrativo"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ BULK ACTION BAR ═══ */
+function BulkActionBar({selected,onClear,dp,items}){
+  var sAction=useState("");var action=sAction[0],setAction=sAction[1];
+  var sValue=useState("");var value=sValue[0],setValue=sValue[1];
+  if(!selected||!selected.length) return null;
+  var aplicar=function(){
+    if(!action||!value) return;
+    selected.forEach(function(id){
+      var proc=items.find(function(p){return p.id===id;});
+      if(!proc) return;
+      var ch={};
+      if(action==="status") ch.status=value;
+      if(action==="fase") ch.fase=value;
+      if(action==="responsavel") ch.responsavel=value;
+      dp({type:"UPD",id:id,isAdm:proc.tipo==="adm",ch:ch});
+    });
+    onClear();setAction("");setValue("");
+  };
+  return(
+    <div className="cj-sc" style={{position:"fixed",bottom:60,left:"50%",transform:"translateX(-50%)",zIndex:500,display:"flex",alignItems:"center",gap:12,padding:"10px 20px",borderRadius:16,background:K.modal,border:"1px solid "+K.ac+"44",boxShadow:"0 12px 40px rgba(0,0,0,.6),0 0 20px "+K.ac+"22",backdropFilter:"blur(14px)"}}>
+      <div style={{fontSize:13,fontWeight:700,color:K.ac,fontFamily:"Orbitron,monospace"}}>{selected.length}</div>
+      <span style={{fontSize:12,color:K.dim}}>selecionado{selected.length>1?"s":""}</span>
+      <select style={{...inpSt,width:120,padding:"6px 8px",fontSize:11}} value={action} onChange={function(e){setAction(e.target.value);setValue("");}}>
+        <option value="" style={{background:K.modal}}>Ação...</option>
+        <option value="status" style={{background:K.modal}}>Alterar Status</option>
+        <option value="fase" style={{background:K.modal}}>Alterar Fase</option>
+        <option value="responsavel" style={{background:K.modal}}>Responsável</option>
+      </select>
+      {action==="status"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{STS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
+      {action==="fase"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{PHS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
+      {action==="responsavel"&&<input style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}} placeholder="Nome"/>}
+      <button onClick={aplicar} disabled={!action||!value} style={{...btnPrim,padding:"6px 14px",fontSize:11,opacity:(!action||!value)?0.4:1}}>Aplicar</button>
+      <button onClick={onClear} style={{...btnGhost,padding:"6px 10px",fontSize:11}}>Limpar</button>
+    </div>
+  );
+}
+
+/* ═══ AUDIT LOG PAGE ═══ */
+const AuditLogPg=({st})=>{
+  var log=st.auditLog||[];
+  var sFilter=useState("");var filter=sFilter[0],setFilter=sFilter[1];
+  var filtered=filter?log.filter(function(e){return e.action.toLowerCase().includes(filter.toLowerCase())||e.detail.toLowerCase().includes(filter.toLowerCase());}):log;
+  var actionLabel=function(a){var map={"UPD":"Atualização","ADD_A":"Novo admin","ADD_J":"Novo judicial","DEL_P":"Exclusão","COMPLETE_P":"Conclusão","LINK_P":"Vinculação","UNLINK_P":"Desvinculação","ADD_MOV":"Movimentação","TCLP":"Checklist","ADD_R":"Nova reunião","ADD_S":"Nova sustentação","ADD_NOTA":"Nova nota","ADD_LEMBRETE":"Novo lembrete"};return map[a]||a;};
+  return(
+    <div className="cj-pg">
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+        <History size={22} color={K.ac}/><h2 style={{margin:0,fontSize:22,fontWeight:800,color:K.txt}}>Log de Auditoria</h2>
+        <span style={{fontSize:12,color:K.dim,fontFamily:"monospace"}}>{filtered.length} registros</span>
+        <input style={{...inpSt,maxWidth:200,padding:"6px 12px",fontSize:12,marginLeft:"auto"}} value={filter} onChange={function(e){setFilter(e.target.value);}} placeholder="Filtrar ações..."/>
+      </div>
+      {!filtered.length&&<EmptyState icon="clock" color={K.dim2} title="Nenhum registro de auditoria" sub="As ações no app serão registradas automaticamente aqui"/>}
+      <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:600,overflowY:"auto"}}>
+        {filtered.slice(0,100).map(function(e,i){return(
+          <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"8px 14px",borderRadius:10,background:i%2===0?"rgba(255,255,255,.02)":"transparent",border:"1px solid "+K.brd}}>
+            <div style={{fontSize:9,color:K.dim,fontFamily:"'JetBrains Mono',monospace",minWidth:130}}>{new Date(e.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>
+            <div style={{padding:"2px 8px",borderRadius:6,background:K.acG,color:K.ac,fontSize:10,fontWeight:700,minWidth:90,textAlign:"center"}}>{actionLabel(e.action)}</div>
+            <div style={{fontSize:11,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={e.detail}>{e.detail||"—"}</div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+};
+
+/* ═══ PROCESS LINK PANEL (inside DetMod) ═══ */
+function ProcessLinkPanel({proc,st,dp,ss}){
+  var linked=(proc.linkedIds||[]).map(function(id){return[...st.adm,...st.jud].find(function(p){return p.id===id;});}).filter(Boolean);
+  var sSearch=useState("");var sq=sSearch[0],setSq=sSearch[1];
+  var all=[...st.adm,...st.jud].filter(function(p){return p.id!==proc.id&&!(proc.linkedIds||[]).includes(p.id);});
+  var results=sq.length>=2?all.filter(function(p){return fuzzyMatch(p.num||"",sq)||fuzzyMatch(p.assunto||"",sq);}).slice(0,5):[];
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{...lblSt,marginBottom:6}}>Processos vinculados</div>
+      {linked.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:8}}>
+        {linked.map(function(lp){return(
+          <div key={lp.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,background:"rgba(0,229,255,.04)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){ss(lp);}}>
+            <Link size={12} color={K.ac}/>
+            <span style={{fontSize:11,color:K.ac,fontFamily:"monospace"}}>{lp.num||"—"}</span>
+            <span style={{fontSize:11,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lp.assunto}</span>
+            <button onClick={function(e){e.stopPropagation();dp({type:"UNLINK_P",id1:proc.id,id2:lp.id});}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:2}}><X size={12}/></button>
+          </div>
+        );})}
+      </div>}
+      <div style={{display:"flex",gap:6}}>
+        <input style={{...inpSt,flex:1,padding:"6px 10px",fontSize:11}} value={sq} onChange={function(e){setSq(e.target.value);}} placeholder="Buscar processo para vincular..."/>
+      </div>
+      {results.length>0&&<div style={{marginTop:4,border:"1px solid "+K.brd,borderRadius:8,overflow:"hidden"}}>
+        {results.map(function(rp){return(
+          <div key={rp.id} onClick={function(){dp({type:"LINK_P",id1:proc.id,id2:rp.id});setSq("");}} style={{padding:"6px 10px",fontSize:11,cursor:"pointer",display:"flex",gap:8,alignItems:"center",borderBottom:"1px solid "+K.brd}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(0,229,255,.06)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+            <Plus size={10} color={K.su}/><span style={{color:K.ac,fontFamily:"monospace"}}>{rp.num||"—"}</span><span style={{color:K.txt}}>{rp.assunto}</span>
+          </div>
+        );})}
+      </div>}
+    </div>
+  );
+}
+
+/* ═══ PDF FICHA EXPORT ═══ */
+var exportProcessPDF=function(p){
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ficha - '+((p.num||p.assunto)||"Processo")+'</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;color:#1a1a1a;font-size:13px;line-height:1.6}h1{font-size:18px;border-bottom:2px solid #0284c7;padding-bottom:8px;color:#0284c7}h2{font-size:14px;margin-top:16px;color:#334155;border-bottom:1px solid #e2e8f0;padding-bottom:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.field{padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}.field-l{font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600}.field-v{font-size:13px;margin-top:2px}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}ul{padding-left:20px}li{margin-bottom:4px}.footer{margin-top:24px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}@media print{body{margin:0}}</style></head><body>';
+  html+='<h1>COJUR/CFM — Ficha do Processo</h1>';
+  html+='<div class="grid">';
+  var fields=[["Número",p.num||"—"],["SEI",p.numeroSEI||"—"],["Assunto",p.assunto||"—"],["Status",p.status||"—"],["Tipo",p.tipo==="jud"?"Judicial":"Administrativo"],["Tipo de Peça",p.tipoPeca||"—"],["Responsável",p.responsavel||"—"],["Fase",p.fase||"—"]];
+  if(p.tipo==="jud"){fields.push(["Tribunal",p.tribunal||"—"],["Tipo de Ação",p.tipoAcao||"—"],["Parte Contrária",p.parteContraria||"—"]);}
+  else{fields.push(["Órgão",p.orgao||"—"],["Interessado",p.interessado||"—"]);}
+  fields.push(["Prazo Final",p.prazoFinal?fmt(toD(p.prazoFinal)):"—"],["Dias Úteis Restantes",(p.diasRestantes||0)+"du"],["Score",p.score||0],["Impacto",p.impacto||3],["Complexidade",p.complexidade||3]);
+  fields.forEach(function(f){html+='<div class="field"><div class="field-l">'+f[0]+'</div><div class="field-v">'+f[1]+'</div></div>';});
+  html+='</div>';
+  if(p.proxProv){html+='<h2>Próxima Providência</h2><p>'+p.proxProv+'</p>';}
+  if(p.obs){html+='<h2>Observações</h2><p>'+p.obs.replace(/\n/g,"<br>")+'</p>';}
+  if(p.destaque){html+='<h2>Destaque</h2><p>'+p.destaque+'</p>';}
+  if(p.checklist&&p.checklist.length){html+='<h2>Checklist de Elaboração</h2><ul>';p.checklist.forEach(function(c){var t=typeof c==="string"?c:c.text;var d=typeof c==="object"&&c.done;html+='<li style="'+(d?"text-decoration:line-through;color:#94a3b8":"")+'">'+t+'</li>';});html+='</ul>';}
+  if(p.hist&&p.hist.length){html+='<h2>Histórico de Movimentações</h2><ul>';p.hist.slice().reverse().forEach(function(h){html+='<li><strong>'+(h.data||h.d?fmt(toD(h.data||h.d)):"—")+'</strong> — '+(h.txt||h.e||"—")+'</li>';});html+='</ul>';}
+  html+='<div class="footer">Gerado pelo COJUR Nexus em '+new Date().toLocaleDateString("pt-BR")+" às "+new Date().toLocaleTimeString("pt-BR")+'</div>';
+  html+='</body></html>';
+  var w=window.open("","_blank");if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);}
+};
+
+/* ═══ PUSH NOTIFICATION HELPER ═══ */
+var requestPushPermission=function(){
+  if(!("Notification" in window))return Promise.resolve(false);
+  if(Notification.permission==="granted")return Promise.resolve(true);
+  return Notification.requestPermission().then(function(p){return p==="granted";});
+};
+var sendPushNotification=function(title,body){
+  if(Notification.permission==="granted"){try{new Notification(title,{body:body,icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%23020816'/><text x='32' y='42' text-anchor='middle' font-size='24' fill='%2300e5ff'>N</text></svg>"});}catch(e){}}
+};
+var checkAndNotifyDeadlines=function(all){
+  var criticos=all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=3&&!["Concluído","Arquivado","Suspenso"].includes(p.status);});
+  if(criticos.length>0){
+    sendPushNotification("COJUR Nexus — Prazos Críticos",criticos.length+" processo"+(criticos.length>1?"s":"")+" com prazo em até 3 dias úteis");
+  }
+};
 
 /* ═══════════════════════════════════════ */
 /* ═══ PAGES ═══ */
 /* ═══════════════════════════════════════ */
 
-const DashPg=({st,dp,sp,ss,liveTime})=>{
+const DashPg=({st,dp,sp,ss})=>{
   const all=[...st.adm,...st.jud],crit=all.filter(p=>p.diasRestantes<=10);
   const urgData=[{name:"Crítico",value:crit.length,color:K.cr},{name:"Intermediário",value:all.filter(p=>p.diasRestantes>10&&p.diasRestantes<30).length,color:K.wa},{name:"Normal",value:all.filter(p=>p.diasRestantes>=30).length,color:K.su}];
   const wkD=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);return{dia:d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".",""),n:all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),d)===0).length}});
@@ -2621,7 +2595,7 @@ const DashPg=({st,dp,sp,ss,liveTime})=>{
               <div style={{fontSize:10,color:K.dim,marginTop:2}}>Aprovados pelo chefe do contencioso — aguardando protocolo</div></div>
               <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(0,255,136,.8)"}}>{prot.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} onMouseEnter={function(e){showTipG(p,e);}} onMouseLeave={hideTipG} style={{padding:"5px 10px",borderRadius:8,background:"rgba(0,255,136,.1)",border:"1px solid rgba(0,255,136,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#00ff88",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(0,255,136,.1)",border:"1px solid rgba(0,255,136,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#00ff88",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
           </div>}
           {corr.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(255,184,0,.12),rgba(255,184,0,.05))",border:"1px solid rgba(255,184,0,.45)",animation:"cjCorrecao 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("correcao")}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
@@ -2630,7 +2604,7 @@ const DashPg=({st,dp,sp,ss,liveTime})=>{
               <div style={{fontSize:10,color:K.dim,marginTop:2}}>Retornados pelo chefe para revisão antes do protocolo</div></div>
               <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(255,184,0,.8)"}}>{corr.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} onMouseEnter={function(e){showTipG(p,e);}} onMouseLeave={hideTipG} style={{padding:"5px 10px",borderRadius:8,background:"rgba(255,184,0,.1)",border:"1px solid rgba(255,184,0,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#ffb800",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(255,184,0,.1)",border:"1px solid rgba(255,184,0,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#ffb800",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
           </div>}
         </div>
       );})()}
@@ -2638,40 +2612,61 @@ const DashPg=({st,dp,sp,ss,liveTime})=>{
       <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
         <SC icon={Upload} label="Protocolar" value={all.filter(p=>isProtocolar(p)).length} color={K.su} sub="Aprovado pelo chefe" onClick={()=>sp("protocolar")}/>
         <SC icon={PenLine} label="Em Correção" value={all.filter(p=>isCorrecao(p)).length} color={K.wa} sub="Retornado p/ revisão" onClick={()=>sp("correcao")}/>
-        <SC icon={Layers} label="Ativos" value={all.filter(p=>p.status==="Ativo").length} color={K.ac} onClick={()=>sp("priorities")}/>
+        <SC icon={Layers} label="Ativos" value={all.filter(p=>p.status==="Ativo").length} color={K.ac} onClick={()=>sp("priorities")} sparkData={(function(){var r=st.realizados||[];var d=[];for(var i=6;i>=0;i--){var day=addD(NOW,-i);var c=r.filter(function(x){return x.realizadoEm&&diffD(toD(x.realizadoEm),day)===0;}).length;d.push(c);}return d;})()}/>
         <SC icon={FolderOpen} label="Admin" value={st.adm.length} color={K.ac} onClick={()=>sp("admin")}/>
         <SC icon={Scale} label="Judiciais" value={st.jud.length} color={K.pu} onClick={()=>sp("judicial")}/>
-        <SC icon={CheckCircle} label="Realizados" value={(st.realizados||[]).length} color={K.su} onClick={()=>sp("done")}/>
-        <SC icon={Flame} label="Críticos" value={crit.length} color={K.cr} onClick={()=>sp("priorities")}/>
+        <SC icon={CheckCircle} label="Realizados" value={(st.realizados||[]).length} color={K.su} onClick={()=>sp("done")} sparkData={(function(){var r=st.realizados||[];var d=[];for(var i=6;i>=0;i--){var day=addD(NOW,-i);var c=r.filter(function(x){return x.realizadoEm&&diffD(toD(x.realizadoEm),day)===0;}).length;d.push(c);}return d;})()}/>
+        <SC icon={Flame} label="Críticos" value={crit.length} color={K.cr} onClick={()=>sp("priorities")} sparkData={(function(){var d=[];for(var i=6;i>=0;i--){var day=addD(NOW,-i);var c=all.filter(function(p){var dr=bizDiff(toD(p.prazoFinal),day);return dr>=0&&dr<=10;}).length;d.push(c);}return d;})()}/>
         <SC icon={Target} label="Prov. Hoje" value={all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),NOW)<=0).length} color={K.ac} onClick={()=>sp("today")}/>
         <SC icon={Users} label="Aguardando" value={all.filter(p=>p.depTerc).length} color={K.wa} onClick={()=>sp("waiting")}/>
         <SC icon={Gavel} label="Sust. Oral" value={st.sust.length} color={K.pu} sub={st.sust.length?`Próxima: ${fmtS(toD(st.sust[0].data))}`:"—"} onClick={()=>sp("agenda")}/>
         <SC icon={Calendar} label="Reuniões" value={st.reun.length} color={K.ac} sub={`Hoje: ${st.reun.filter(r=>diffD(toD(r.data),NOW)===0).length}`} onClick={()=>sp("agenda")}/>
         <SC icon={Plane} label="Viagens" value={st.viag.length} color={K.su} sub={st.viag.length?`Próxima: ${fmtS(toD(st.viag[0].dataIda))}`:"Nenhuma"} onClick={()=>sp("agenda")}/>
       </div>
+      {/* Heatmap de prazos — próximas 6 semanas */}
+      <div style={{marginBottom:24}}>
+        <PrazoHeatmap items={all}/>
+      </div>
       {(function(){var procs=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).sort(function(a,b){return b.iaS-a.iaS;});var top=procs[0];if(!top)return null;var b=iaBadge(top.iaS);var sug=iaSugestao(top);return(
         <div onClick={function(){sp("ia");}} style={{marginBottom:16,padding:"10px 18px",borderRadius:14,background:"linear-gradient(135deg, rgba(168,85,247,.12), rgba(0,212,255,.07))",border:"1px solid rgba(168,85,247,.25)",display:"flex",alignItems:"center",gap:14,cursor:"pointer",transition:"all .2s"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.25)";}}>
           <span style={{fontSize:22}}>🧠</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,marginBottom:2,letterSpacing:".5px",textTransform:"uppercase"}}>IA Nexus · Prioridade #1</div>
-            <div style={{fontSize:13,fontWeight:700,color:K.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{top.assunto}</div>
+            <div title={top.assunto||""} style={{fontSize:13,fontWeight:700,color:K.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{top.assunto}</div>
             <div style={{fontSize:11,color:K.dim,marginTop:1}}>{sug.emoji} {sug.txt}</div>
           </div>
           <span className={b.cls}>{b.emoji} {b.txt}</span>
           <span style={{fontSize:11,color:K.dim,flexShrink:0}}>Ver painel →</span>
         </div>
       );})()}
-      {(function(){var criticos=[...st.adm,...st.jud].filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2&&!["Concluído","Arquivado"].includes(p.status);});return criticos.length>0?(
-        <div style={{marginBottom:14,padding:"10px 16px",borderRadius:12,background:"rgba(255,46,91,.12)",border:"1px solid rgba(255,46,91,.35)",display:"flex",alignItems:"center",gap:12,animation:"ringPulse 2s ease-in-out infinite"}}>
-          <span style={{fontSize:14}}>🚨</span>
-          <span style={{fontSize:12,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".3px"}}>{criticos.length} PROCESSO{criticos.length>1?"S":""} COM PRAZO CRÍTICO</span>
-          <div style={{display:"flex",gap:6,flex:1,overflowX:"auto"}}>
-            {criticos.slice(0,3).map(function(p){return(
-              <span key={p.id} style={{whiteSpace:"nowrap",fontSize:11,padding:"2px 8px",borderRadius:6,background:"rgba(255,46,91,.15)",color:"#ff2e5b",fontWeight:700}}>{p.assunto.slice(0,20)}… {p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-            );})}
+            {(function(){
+        var sust48=[...st.adm,...st.jud].filter(isSustAlerta);
+        if(!sust48.length) return null;
+        return(
+          <div style={{marginBottom:14,padding:"12px 18px",borderRadius:14,background:"rgba(255,46,91,.12)",border:"2px solid rgba(255,46,91,.7)",display:"flex",alignItems:"center",gap:12,animation:"neonBlink .9s ease-in-out infinite"}}>
+            <span style={{fontSize:20,animation:"textBlink .9s ease-in-out infinite",flexShrink:0}}>🎤</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:900,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:4}}>ALERTA — SUSTENTAÇÃO ORAL</div>
+              {sust48.map(function(p){
+                var cd=getSustCountdown(p);
+                return(
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
+                    <span title={p.assunto||""} style={{fontSize:11,color:"rgba(255,150,160,.9)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
+                    {cd&&<span style={{fontSize:11,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,monospace",flexShrink:0}}>{cd}</span>}
+                    {!cd&&p.dataSustentacao&&<span style={{fontSize:10,color:"rgba(255,100,120,.8)",flexShrink:0}}>{new Date(p.dataSustentacao).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{textAlign:"right",fontSize:10,color:"rgba(255,100,120,.9)",flexShrink:0}}>
+              <div style={{fontWeight:800,marginBottom:2}}>⚡ ENVIE AGORA:</div>
+              <div>📹 Vídeo virtual</div>
+              <div>📄 Memoriais</div>
+              <div>✍️ Inscrição presencial</div>
+            </div>
           </div>
-        </div>
-      ):null;}())}
+        );
+      })()}
       <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:24}}>
         <Bx onClick={()=>sp("today")} title="Abrir página Hoje"><SH icon={Target} title="Painel Operacional de Hoje"/><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           <SC icon={Flame} label="Vence Hoje" value={todayDue.length} color={K.cr} onClick={()=>sp("today")}/>
@@ -2679,28 +2674,12 @@ const DashPg=({st,dp,sp,ss,liveTime})=>{
           <SC icon={Calendar} label="Reuniões Hoje" value={st.reun.filter(r=>diffD(toD(r.data),NOW)===0).length} color={K.ac} onClick={()=>sp("agenda")}/>
           <SC icon={Gavel} label="Sustentações 7 dias" value={st.sust.filter(s=>{const d=diffD(toD(s.data),NOW);return d>=0&&d<=7}).length} color={K.pu} onClick={()=>sp("agenda")}/>
         </div></Bx>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
-          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
-            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-          </div>
-          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-        </div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Tudo com próxima providência</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Tudo com próxima providência</div>}</div></Bx>
         <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando/parados"><SH icon={Timer} title="Parados 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{stale.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Sem parados relevantes</div>}</div></Bx>
-        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
-          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
-            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-          </div>
-          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-        </div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma pendência externa</div>}</div></Bx>
+        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma pendência externa</div>}</div></Bx>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
-        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} liveTime={liveTime}/>)}</div></Bx>
+        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
         <Bx onClick={()=>sp("judicial")} title="Abrir prazos judiciais"><SH icon={Scale} title="Prazos Judiciais" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("judicial")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.jud].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
@@ -2714,12 +2693,10 @@ const DashPg=({st,dp,sp,ss,liveTime})=>{
 
 /* PROCESS LIST PAGE */
 
-const ProcList=({type,st,dp,ss,compact,liveTime})=>{
-  const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null),[chipF,setChipF]=useState("todos");
+const ProcList=({type,st,dp,ss,compact})=>{
+  const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null);
   const isA=type==="admin",isJ=!isA,raw=isA?st.adm:st.jud;
-  const filtered=applyF(raw,fil);
-  const chipFiltered=chipF==="todos"?filtered:chipF==="critico"?filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}):chipF==="urgente"?filtered.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}):filtered.filter(function(p){return p.status===chipF;});
-  const sorted=[...chipFiltered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
+  const filtered=applyF(raw,fil),sorted=[...filtered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
   const doSave=form=>{if(showForm==="new")dp({type:isA?"ADD_A":"ADD_J",d:form});else dp({type:"UPD",id:showForm.id,isAdm:isA,ch:form});sSF(null)};
   const doDelete=()=>{dp({type:"DEL_P",id:showForm.id});sSF(null)};
 
@@ -2727,7 +2704,7 @@ const ProcList=({type,st,dp,ss,compact,liveTime})=>{
     <div className="cj-pg">
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
         <h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>{isA?"Processos Administrativos SEI":"Prazos Judiciais"}</h2>
-        <Bd color={K.ac}>{chipFiltered.length}/{raw.length}</Bd>
+        <Bd color={K.ac}>{filtered.length}/{raw.length}</Bd>
         <button style={btnPrim} onClick={()=>sSF("new")}><Plus size={14}/>Novo {isA?"Processo":"Prazo"}</button>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="crit"?K.cr:K.brd,color:fil.quick==="crit"?K.cr:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="crit"?"":"crit",urg:fil.quick==="crit"?fil.urg:"Crítico"})}>Críticos</button>
@@ -2741,15 +2718,12 @@ const ProcList=({type,st,dp,ss,compact,liveTime})=>{
         <div style={{display:"flex",gap:4}}>{[["score","Score"],["urgency","Urgência"],["date","Data"]].map(([k,l])=><button key={k} onClick={()=>sSb(k)} style={{...btnGhost,padding:"5px 12px",fontSize:11,borderColor:sb===k?K.ac:K.brd,color:sb===k?K.ac:K.dim}}>{l}</button>)}</div>
         <div style={{display:"flex",gap:4}}>{[["cards",LayoutGrid,"Cards"],["kanban",Columns3,"Kanban"],["table",Table2,"Tabela"]].map(([k,I,l])=><button key={k} onClick={()=>sVw(k)} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:vw===k?K.ac:K.brd,color:vw===k?K.ac:K.dim,display:"flex",alignItems:"center",gap:4}}><I size={13}/>{l}</button>)}</div>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-        {[["todos","Todos",null],["critico","🚨 Críticos",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2;}).length],["urgente","⚠️ Urgentes",raw.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5;}).length],["Ativo","● Ativos",null],["Em Elaboração","✍ Em Elab.",null]].map(function(ch){var isActive=chipF===ch[0];var count=ch[2]!=null?ch[2]:raw.filter(function(p){return p.status===ch[0];}).length;if(ch[2]===0&&ch[0]!=="todos")return null;return React.createElement("button",{key:ch[0],onClick:function(){setChipF(ch[0]);},style:{padding:"4px 10px",borderRadius:16,border:isActive?"1px solid rgba(0,229,255,.5)":"1px solid rgba(255,255,255,.1)",background:isActive?"rgba(0,229,255,.12)":"transparent",color:isActive?K.txt:K.dim,fontSize:11,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}},ch[1],count>0&&ch[0]!=="todos"?React.createElement("span",{style:{background:"rgba(0,229,255,.15)",borderRadius:10,padding:"0 5px",fontSize:10,marginLeft:3}},count):null);})}
-      </div>
       {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} compact={compact}/>)}</div>}
       {vw==="kanban"&&<KanbanV items={sorted} dp={dp} ss={ss}/>}
       {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
         <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
-        <td style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
-        <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
+        <td title={p.assunto||""} style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
+        <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div title={isA?(p.interessado||""):(p.tribunal||"")} style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div title={isA?(p.orgao||""):(p.parteContraria||"")} style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
         <td style={{padding:"10px 14px",color:K.dim}}>{fmt(p.prazoFinal)}</td>
         <td style={{padding:"10px 14px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:uC(p.diasRestantes)}}>{p.diasRestantes}</td>
         <td style={{padding:"10px 14px"}}><SB s={p.score}/></td>
@@ -2783,15 +2757,7 @@ const TodayPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const tdI=all.fi
         <Bx><SH icon={Gavel} title="Sustentações próximas"/>{nextS.map(s=><div key={s.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.puG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</div><div style={{fontSize:13,fontWeight:600,color:K.txt,marginTop:4}}>{s.tema}</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>{s.tribunal} · {fmt(toD(s.data))}</div></div>)}{!nextS.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Sem sustentações próximas</div>}</Bx>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.06)";showTipG(p,e);}} onMouseLeave={function(){hideTipG();}}>
-          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:p.status==="Concluído"?"#00ff88":p.status==="Em Elaboração"?"#ffb800":p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#fb923c":"rgba(0,229,255,.3)"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-            <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",flex:1}}>{p.num||"Sem nº"}</span>
-            <TribBadge trib={p.tipo==="jud"?p.tribunal:"ADM"}/>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"Orbitron,monospace",color:p.diasRestantes<=2?"#ff2e5b":p.diasRestantes<=5?"#ffb800":"#00e5ff"}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-          </div>
-          <div style={{fontSize:11,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-        </div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum processo sem ação</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum processo sem ação</div>}</div></Bx>
         <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando"><SH icon={Timer} title="Parados há 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{stale.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nada parado acima do limite</div>}</div></Bx>
       </div>
     </div>
@@ -2804,7 +2770,7 @@ const WeekPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const wI=all.filt
     <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Esta Semana</h2><Bd color={K.ac}>{wI.length} vencimentos</Bd><Bd color={K.wa}>{wM.length} reuniões</Bd></div>
     <Bx className="cj-up" style={{marginBottom:20}} onClick={()=>sp("calendar")} title="Abrir calendário"><SH icon={Activity} title="Carga Diária"/><div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10}}>{dL.map((d,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:11,color:K.dim,marginBottom:6}}>{d.day}</div><div style={{height:80,background:"rgba(255,255,255,.03)",borderRadius:6,display:"flex",flexDirection:"column",justifyContent:"flex-end",overflow:"hidden"}}><div style={{height:`${Math.min(100,(d.h/8)*100)}%`,background:d.h>6?`linear-gradient(180deg,${K.cr},${K.cr}88)`:`linear-gradient(180deg,${K.ac},${K.ac}66)`,borderRadius:"4px 4px 0 0",transition:"height .6s ease"}}/></div><div style={{fontSize:13,fontWeight:700,color:d.h>6?K.cr:K.txt,marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>{d.h}h</div></div>)}</div></Bx>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-      <Bx onClick={()=>wI[0]?ss(wI[0]):sp("priorities")} title="Abrir ranking/prioridades"><SH icon={Flame} title="Ranking"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{wI.slice(0,8).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:i===0?K.crG:"transparent",borderRadius:10,cursor:"pointer"}} onMouseEnter={e=>{if(i)e.currentTarget.style.background="rgba(255,255,255,.03)"}} onMouseLeave={e=>{if(i)e.currentTarget.style.background="transparent"}}><div style={{width:24,height:24,borderRadius:6,background:i<3?K.cr+"20":K.ac+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:i<3?K.cr:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>#{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><UB d={p.diasRestantes}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/></div></div>)}</div></Bx>
+      <Bx onClick={()=>wI[0]?ss(wI[0]):sp("priorities")} title="Abrir ranking/prioridades"><SH icon={Flame} title="Ranking"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{wI.slice(0,8).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:i===0?K.crG:"transparent",borderRadius:10,cursor:"pointer"}} onMouseEnter={e=>{if(i)e.currentTarget.style.background="rgba(255,255,255,.03)"}} onMouseLeave={e=>{if(i)e.currentTarget.style.background="transparent"}}><div style={{width:24,height:24,borderRadius:6,background:i<3?K.cr+"20":K.ac+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:i<3?K.cr:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>#{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/></div></div>)}</div></Bx>
       <Bx onClick={()=>sp("agenda")} title="Abrir agenda"><SH icon={Calendar} title="Compromissos da Semana"/>{wM.map(r=><div key={r.id} onClick={e=>{e.stopPropagation();sp("agenda")}} style={{padding:"10px 0",borderBottom:`1px solid ${K.brd}`,display:"flex",gap:12,alignItems:"center",cursor:"pointer"}}><div style={{textAlign:"center",minWidth:50}}><div style={{fontSize:11,color:K.dim}}>{fmtS(toD(r.data))}</div><div style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</div></div><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:K.txt}}>{r.titulo}</div><div style={{fontSize:11,color:K.dim}}>{r.local}</div></div></div>)}</Bx>
     </div>
   </div>
@@ -2816,7 +2782,7 @@ const PrioPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].sort((a,b)=>b.score-
     <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{all.slice(0,15).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:K.card,border:`1px solid ${K.brd}`,borderRadius:12,borderLeft:`3px solid ${uC(p.diasRestantes)}`,cursor:"pointer",transition:"all .25s"}} onMouseEnter={e=>{e.currentTarget.style.background=K.cardH;e.currentTarget.style.transform="translateX(4px)"}} onMouseLeave={e=>{e.currentTarget.style.background=K.card;e.currentTarget.style.transform="none"}}>
       <div style={{width:32,height:32,borderRadius:8,background:i<3?K.crG:i<7?K.waG:K.acG,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:i<3?K.cr:i<7?K.wa:K.ac,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>#{i+1}</div>
       <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:8,marginBottom:4}}><span style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</span><Bd>{p.tipo==="jud"?"Judicial":"Admin"}</Bd>{p.tipo==="jud"&&<Bd color={K.pu}>{p.tribunal}</Bd>}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim2}}>Próxima: {p.proxProv}</div></div>
-      <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}} onClick={e=>e.stopPropagation()}><SB s={p.score}/><UB d={p.diasRestantes}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/><IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{fase:v}})} color={K.ac}/></div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}} onClick={e=>e.stopPropagation()}><SB s={p.score}/><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/><IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{fase:v}})} color={K.ac}/></div>
     </div>)}</div>
   </div>
 )};
@@ -2827,7 +2793,7 @@ const WaitPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].filter(p=>p.depTerc)
     <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{all.map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:K.card,border:`1px solid ${K.brd}`,borderRadius:12,borderLeft:`3px solid ${p.semMov>=15?K.cr:K.wa}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=K.cardH} onMouseLeave={e=>e.currentTarget.style.background=K.card}>
       <div style={{width:48,height:48,borderRadius:10,background:p.semMov>=15?K.crG:K.waG,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{fontSize:18,fontWeight:800,color:p.semMov>=15?K.cr:K.wa,fontFamily:"'JetBrains Mono',monospace"}}>{p.semMov}</div><div style={{fontSize:9,color:K.dim,textTransform:"uppercase"}}>dias</div></div>
       <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginTop:2}}>{p.assunto}</div></div>
-      <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}} onClick={e=>e.stopPropagation()}><UB d={p.diasRestantes}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>{p.semMov>=10&&<Bd color={K.cr}><AlertTriangle size={10}/>Cobrar</Bd>}<IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:v}})}/></div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}} onClick={e=>e.stopPropagation()}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>{p.semMov>=10&&<Bd color={K.cr}><AlertTriangle size={10}/>Cobrar</Bd>}<IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:v}})}/></div>
     </div>)}</div>
   </div>
 )};
@@ -3024,6 +2990,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
         {!isJ&&React.createElement(function(){var[showP,sShowP]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(){sShowP(true);},style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(184,77,255,.32)",background:"rgba(184,77,255,.08)",color:"#b84dff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(184,77,255,.16)",fontFamily:"inherit"}},"📋 Elaborar Parecer"),showP&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShowP(false);}}));},null)}
         {React.createElement(function(){var[showTpl,sShowTpl]=useState(false);return(<><button onClick={()=>sShowTpl(true)} style={{...btnGhost,padding:"8px 12px",color:"#b84dff",borderColor:"rgba(184,77,255,.3)"}}><Zap size={14}/>IA Estrutura</button>{showTpl&&<IATplModal proc={p} onClose={()=>sShowTpl(false)}/>}</>);})}
         <button onClick={()=>onEdit(p)} style={{...btnGhost,padding:"8px 12px"}}><PenLine size={14}/>Editar</button>
+        <button onClick={function(){exportProcessPDF(p);}} style={{...btnGhost,padding:"8px 12px",color:K.su,borderColor:K.su+"33"}}><FileText size={14}/>PDF</button>
         <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10}}><X size={20}/></button>
       </div>
 
@@ -3043,14 +3010,25 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
           </div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
-          <UB d={p.diasRestantes}/><SB s={p.score}/>
+          <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><SB s={p.score}/>
           <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
           <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
           {p.linkRef&&<button onClick={e=>{e.stopPropagation();openRef(p.linkRef)}} style={{...btnGhost,padding:"6px 10px",fontSize:11,color:K.ac,borderColor:K.ac+"44"}}>Abrir link</button>}
         </div>
         {hasCustas(p)&&<div className="cj-custas-blink" style={{marginTop:12,display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:"rgba(245,158,11,.14)",border:"1px solid rgba(245,158,11,.5)"}}>
-          <DollarSign size={16} color={K.wa}/><div><div style={{fontSize:11,fontWeight:800,color:K.wa}}>⚠️ ATENÇÃO: RECOLHIMENTO DE CUSTAS OBRIGATÓRIO</div><div style={{fontSize:10,color:"#fde68a",marginTop:2}}>O recurso "{p.tipoAcao}" exige preparo judicial. Providencie GRU/DARF antes de protocolar, sob pena de deserção.</div></div>
+          <DollarSign size={16} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:11,fontWeight:800,color:K.wa}}>RECOLHIMENTO DE CUSTAS OBRIGATÓRIO</div><div style={{fontSize:10,color:"#fde68a",marginTop:2}}>O recurso "{p.tipoAcao}" exige preparo judicial. Providencie GRU/DARF antes de protocolar, sob pena de deserção.</div>
+          {(function(){var ci=getCustasInfo(p.tribunal);return ci?(<div style={{marginTop:6,padding:"6px 10px",borderRadius:8,background:"rgba(255,184,0,.12)",border:"1px solid rgba(255,184,0,.25)",fontSize:10}}>
+            <div style={{color:"#fde68a",fontWeight:700}}>{ci.label}</div>
+            <div style={{color:"#fbbf24",marginTop:2}}>Valor estimado: {ci.valor}</div>
+            {ci.url&&<a href={ci.url} target="_blank" rel="noopener noreferrer" className="cj-link" style={{fontSize:10,color:"#fbbf24",marginTop:3,display:"inline-block"}}>Acessar sistema de GRU</a>}
+          </div>):null;})()}
+          </div>
         </div>}
+      </div>
+
+      {/* Status workflow stepper */}
+      <div style={{padding:"0 28px"}} onClick={function(e){e.stopPropagation();}}>
+        <StatusStepper current={p.status} onSet={function(v){dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}});}}/>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1.15fr .85fr",gap:0}}>
@@ -3086,18 +3064,67 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
 
           {p.hist&&p.hist.length>0&&<div style={{marginBottom:22}}>
             <div style={{...lblSt,marginBottom:8}}>Histórico de Movimentações</div>
-            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:180,overflowY:"auto"}}>
-              {p.hist.slice().reverse().slice(0,10).map(function(h,i){return(
-                <div key={i} style={{padding:"8px 12px",borderRadius:10,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.08)",fontSize:11}}>
-                  <div style={{color:K.dim,fontSize:9,marginBottom:3,fontFamily:"'JetBrains Mono',monospace"}}>{h.data||"—"} · {h.user||"COJUR"}</div>
-                  <div style={{color:K.txt}}>{h.txt}</div>
+            <div style={{position:"relative",paddingLeft:24,maxHeight:280,overflowY:"auto"}}>
+              {/* Vertical timeline line */}
+              <div style={{position:"absolute",left:8,top:4,bottom:4,width:2,background:`linear-gradient(180deg,${K.ac}55,${K.pu}33,transparent)`,borderRadius:2}}/>
+              {p.hist.slice().reverse().slice(0,15).map(function(h,i){var isFirst=i===0;return(
+                <div key={i} style={{position:"relative",paddingBottom:14,paddingLeft:16}}>
+                  {/* Timeline dot */}
+                  <div style={{position:"absolute",left:-4,top:6,width:10,height:10,borderRadius:"50%",background:isFirst?K.ac:K.dim2,border:"2px solid "+(isFirst?K.ac+"88":K.brd),boxShadow:isFirst?"0 0 10px "+K.ac+"55":"none",zIndex:1}}/>
+                  <div style={{padding:"10px 14px",borderRadius:12,background:isFirst?"rgba(0,229,255,.06)":"rgba(255,255,255,.02)",border:"1px solid "+(isFirst?"rgba(0,229,255,.18)":"rgba(255,255,255,.06)"),transition:"all .2s"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <div style={{fontSize:9,color:isFirst?K.ac:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{h.data||h.d?fmt(toD(h.data||h.d)):"—"}</div>
+                      <div style={{fontSize:9,color:K.dim2,background:"rgba(255,255,255,.04)",padding:"1px 6px",borderRadius:4}}>{h.user||"COJUR"}</div>
+                    </div>
+                    <div style={{fontSize:12,color:isFirst?K.txt:"#94a3b8",lineHeight:1.5}}>{h.txt||h.e||"—"}</div>
+                  </div>
                 </div>
               );})}
             </div>
+            {/* Inline add movimentação */}
+            {React.createElement(function(){
+              var s=useState("");var novoMov=s[0],setNovoMov=s[1];
+              var s2=useState(false);var added=s2[0],setAdded=s2[1];
+              return React.createElement("div",{style:{display:"flex",gap:8,marginTop:8}},
+                React.createElement("input",{
+                  value:novoMov,
+                  onChange:function(e){setNovoMov(e.target.value);setAdded(false);},
+                  onKeyDown:function(e){if(e.key==="Enter"&&novoMov.trim()){dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);}},
+                  placeholder:"Adicionar movimentação...",
+                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:11}
+                }),
+                React.createElement("button",{
+                  onClick:function(){if(!novoMov.trim())return;dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);},
+                  style:{...btnGhost,padding:"8px 12px",fontSize:11,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
+                },added?"✅ Adicionado":"+ Registrar")
+              );
+            },null)}
+          </div>}
+          {/* Show add form even when hist is empty */}
+          {(!p.hist||!p.hist.length)&&<div style={{marginBottom:22}}>
+            <div style={{...lblSt,marginBottom:8}}>Histórico de Movimentações</div>
+            <div style={{padding:"16px",textAlign:"center",borderRadius:12,border:"1px dashed "+K.brd,color:K.dim2,fontSize:12,marginBottom:8}}>Nenhuma movimentação registrada</div>
+            {React.createElement(function(){
+              var s=useState("");var novoMov=s[0],setNovoMov=s[1];
+              var s2=useState(false);var added=s2[0],setAdded=s2[1];
+              return React.createElement("div",{style:{display:"flex",gap:8}},
+                React.createElement("input",{
+                  value:novoMov,
+                  onChange:function(e){setNovoMov(e.target.value);setAdded(false);},
+                  onKeyDown:function(e){if(e.key==="Enter"&&novoMov.trim()){dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);}},
+                  placeholder:"Primeira movimentação...",
+                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:11}
+                }),
+                React.createElement("button",{
+                  onClick:function(){if(!novoMov.trim())return;dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);},
+                  style:{...btnGhost,padding:"8px 12px",fontSize:11,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
+                },added?"✅ Adicionado":"+ Registrar")
+              );
+            },null)}
           </div>}
           {isJ&&(function(){var prazo=p.pubDJe?calcPrazoDJe(p.pubDJe,p.intersticio||15):null;var du=prazo?diffD(prazo,NOW):null;var sys=getTribSistema(p.tribunal);return(
             <div style={{marginBottom:22}}>
-              <div style={lblSt} onClick={function(){if(setDjeProc&&isJ)setDjeProc(p);}} title="Clique para buscar DJe automaticamente" style={{cursor:isJ?"pointer":"default"}}>Sistema · DJe · Protocolo {isJ?"(clique p/ buscar DJe)":""}</div>
+              <div style={{...lblSt,cursor:isJ?"pointer":"default"}} onClick={function(){if(setDjeProc&&isJ)setDjeProc(p);}} title="Clique para buscar DJe automaticamente">Sistema · DJe · Protocolo {isJ?"(clique p/ buscar DJe)":""}</div>
               {p.num&&<div style={{marginBottom:8,padding:"8px 14px",borderRadius:10,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}}>Nº Judicial</span>
                   <span style={{fontFamily:"'JetBrains Mono',monospace",color:"#00e5ff",fontWeight:700,fontSize:13}}>{p.num}</span>
@@ -3117,39 +3144,13 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                   <div style={{fontSize:18,fontWeight:800,color:du<=0?"#ff2e5b":du<=5?"#ffb800":"#00e5ff",fontFamily:"Orbitron,monospace",textShadow:"0 0 10px currentColor"}}>{du<=0?"VENCIDO":du+"du"}</div>
                   <div style={{fontSize:10,color:K.dim,marginTop:2}}>Vence: {fmt(prazo)} · Pub: {fmt(toD(p.pubDJe))}</div>
                 </div>}
-                {!p.pubDJe?(function(){
-                  var calculado=calcPrazoDJe(p.pubDJe,p.intersticio||15);
-                  var calculadoStr=calculado?(calculado instanceof Date?calculado:new Date(calculado+"T12:00:00")).toLocaleDateString("pt-BR"):"—";
-                  var duCalc=calculado?diffD(calculado instanceof Date?calculado:new Date(calculado+"T12:00:00"),NOW):null;
-                  var cor=duCalc!=null?(duCalc<=2?"#ff2e5b":duCalc<=5?"#ffb800":"#00e5ff"):"#4e6a8a";
-                  return React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.2)"}},
-                    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
-                      React.createElement("span",{style:{fontSize:10,color:"#4e6a8a",textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}},"⚡ Prazo calculado do DJe"),
-                      React.createElement("div",{style:{display:"flex",gap:12,flexWrap:"wrap",marginTop:4,width:"100%"}},
-                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
-                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Pub. DJe: "),
-                          React.createElement("span",{style:{fontWeight:700}},(p.pubDJe instanceof Date?p.pubDJe:new Date(p.pubDJe+"T12:00:00")).toLocaleDateString("pt-BR"))
-                        ),
-                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
-                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Interstício: "),
-                          React.createElement("span",{style:{fontWeight:700}},(p.intersticio||15)+"du")
-                        ),
-                        React.createElement("div",{style:{fontSize:12,color:"#e2e8f0"}},
-                          React.createElement("span",{style:{color:"#4e6a8a",fontSize:10}},"Prazo Final: "),
-                          React.createElement("span",{style:{fontWeight:800,color:cor}},calculadoStr)
-                        ),
-                        duCalc!=null&&React.createElement("div",{style:{padding:"2px 8px",borderRadius:6,background:cor+"22",border:"1px solid "+cor+"44",fontSize:11,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}},
-                          duCalc===0?"HOJE":duCalc<0?"VENCIDO":duCalc+"du"
-                        )
-                      )
-                    )
-                  );
-                })():<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:"#4e6a8a"}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
+                {!p.pubDJe&&<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:K.dim}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
                 </div>}
               </div>
             </div>
           );})()}
+          <ProcessLinkPanel proc={p} st={st} dp={dp} ss={ss}/>
           <div style={{marginBottom:22}}>
             <div style={lblSt}>Identificação e vínculo</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -3254,7 +3255,7 @@ const DonePg=({st,ss})=>{const itens=[...(st.realizados||[])].sort((a,b)=>toD(b.
           </tbody>
         </table>
       </div>
-      {!itens.length&&<div style={{padding:30,textAlign:"center",color:K.dim2}}>Nenhum processo concluído ainda.</div>}
+      {!itens.length&&<EmptyState icon="done" color={K.su} title="Nenhum processo concluído ainda" sub="Conclua processos para vê-los aqui"/>}
     </Bx>
   </div>
 )};
@@ -3425,7 +3426,7 @@ function IAPainel({st,ss,sp}){
     });
     if(!isWorkDay){resumo+="\n(Hoje é fim de semana — plano para próxima segunda-feira)";}
     var iaPrompt="Você é assistente jurídico da COJUR/CFM. Planeje o dia de João Gabriel.\n\n"+resumo+"\nREGRAS:\n- Horário fixo: "+H_INI+" às "+H_FIM+" ("+H_DIA+"h úteis)\n- Respeite eventos fixos que bloqueiam tempo\n- Estimativas: Parecer=2-3h, Agravo=2h, Contraminuta=2h, Manifestação=1-2h, Embargos=45min, Ofício=30min, Despacho=15min\n- Reserve 15min final para revisão\n- Sem travessão no texto. Seja direto.\n\nFormato obrigatório:\n📅 PLANO DO DIA — [data]\n🕒 "+H_INI+" às "+H_FIM+"\n\n[lista de tarefas]:\n⬜ HH:MM-HH:MM · [tarefa] · [tempo] · [prioridade]\n\n📊 RESUMO:\n- Tarefas: X\n- Tempo alocado: Xh\n- Críticos cobertos: X\n[alerta se houver críticos fora do horário]";
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();setPlano(txt||"Plano não gerado.");setLoad(false);})
     .catch(function(){setPlano("Erro ao gerar plano.");setLoad(false);});
@@ -3575,11 +3576,7 @@ function ProtocolarPg({st,dp,ss}){
         </div>
         <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(0,255,136,.8)"}}>{items.length}</div>
       </div>
-      {!items.length&&<div style={{textAlign:"center",padding:60,color:K.dim2}}>
-        <div style={{fontSize:48,marginBottom:12}}>✅</div>
-        <div style={{fontSize:15,fontWeight:700,color:K.txt}}>Nenhum processo pendente de protocolo</div>
-        <div style={{fontSize:12,color:K.dim,marginTop:6}}>Quando o chefe do contencioso aprovar uma peça, ela aparecerá aqui</div>
-      </div>}
+      {!items.length&&<EmptyState icon="done" color={K.su} title="Nenhum processo pendente de protocolo" sub="Quando o chefe do contencioso aprovar uma peça, ela aparecerá aqui"/>}
       <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:12}}>
         {items.map((p,i)=>{var sys=getTribSistema(p.tribunal);return(
           <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(0,255,136,.08),rgba(2,5,20,.97))",border:"1px solid rgba(0,255,136,.35)",boxShadow:"0 0 20px rgba(0,255,136,.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjProtocolar 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
@@ -3599,7 +3596,7 @@ function ProtocolarPg({st,dp,ss}){
                 <div style={{fontSize:11,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0}} onClick={function(e){e.stopPropagation();}}>
-                <UB d={p.diasRestantes}/>
+                <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
                 {sys&&<button onClick={function(){window.open(sys.url,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:12,border:"1px solid rgba(0,255,136,.4)",background:"linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.06))",color:"#00ff88",fontSize:11,fontWeight:800,cursor:"pointer",boxShadow:"0 0 14px rgba(0,255,136,.25)",textShadow:"0 0 6px rgba(0,255,136,.7)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",whiteSpace:"nowrap"}}>
                   {sys.icone} Abrir {sys.sistema}
                 </button>}
@@ -3632,11 +3629,7 @@ function CorrecaoPg({st,dp,ss}){
         </div>
         <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(255,184,0,.8)"}}>{items.length}</div>
       </div>
-      {!items.length&&<div style={{textAlign:"center",padding:60,color:K.dim2}}>
-        <div style={{fontSize:48,marginBottom:12}}>✅</div>
-        <div style={{fontSize:15,fontWeight:700,color:K.txt}}>Nenhuma peça em fase de correção</div>
-        <div style={{fontSize:12,color:K.dim,marginTop:6}}>Quando uma peça for retornada pelo chefe, ela aparecerá aqui</div>
-      </div>}
+      {!items.length&&<EmptyState icon="done" color={K.wa} title="Nenhuma peça em fase de correção" sub="Quando uma peça for retornada pelo chefe, ela aparecerá aqui"/>}
       <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:12}}>
         {items.map((p,i)=>(
           <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(255,184,0,.08),rgba(2,5,20,.97))",border:"1px solid rgba(255,184,0,.38)",boxShadow:"0 0 20px rgba(255,184,0,.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjCorrecao 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
@@ -3656,7 +3649,7 @@ function CorrecaoPg({st,dp,ss}){
                 <div style={{fontSize:11,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0}} onClick={function(e){e.stopPropagation();}}>
-                <UB d={p.diasRestantes}/>
+                <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
                 <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Pronto p/ Protocolo"}});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:11,border:"1px solid rgba(0,255,136,.35)",background:"rgba(0,255,136,.08)",color:"#00ff88",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                   <Upload size={12}/>Mover p/ Protocolar
                 </button>
@@ -3726,22 +3719,92 @@ const MuralPg=({st,dp})=>{
   );
 };
 
-const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"settings",icon:Settings,label:"Configurações"}];
+const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"auditlog",icon:History,label:"Auditoria"},{id:"settings",icon:Settings,label:"Configurações"}];
+
+
+/* === EMAIL ALERT MODAL === */
+function EmailAlertModal({st, onClose}) {
+  const [email, setEmail] = useState("joaogabriel0112@gmail.com");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const all = [...(st.adm||[]),...(st.jud||[])];
+  const urgentes = all.filter(function(p){
+    return p.prazoFinal && !["Concluído","Arquivado"].includes(p.status) &&
+           p.diasRestantes >= 0 && p.diasRestantes <= 5;
+  }).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
+
+  const enviar = function(){
+    if(!email.trim()) return;
+    setLoading(true); setResult(null);
+    // Build email HTML inline and send via edge function
+    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/email-alert", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:email.trim(), processos: urgentes.map(function(p){return {
+        assunto:p.assunto, tipoPeca:p.tipoPeca||"—",
+        tribunal:p.tribunal||p.orgao||"—", diasRestantes:p.diasRestantes,
+        prazoFinal:p.prazoFinal instanceof Date?p.prazoFinal.toISOString().split("T")[0]:p.prazoFinal
+      };})})
+    }).then(function(r){return r.json();}).then(function(d){
+      setResult(d); setLoading(false);
+    }).catch(function(){setResult({error:"Erro de conexão"});setLoading(false);});
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:24}}
+      onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:460,padding:24,position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:"#4e6a8a",cursor:"pointer",fontSize:18}}>✕</button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+          <span style={{fontSize:22}}>📧</span>
+          <div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Alerta de Prazos por Email</h3>
+            <div style={{fontSize:11,color:"#4e6a8a"}}>Enviar resumo dos {urgentes.length} processos críticos (≤5du)</div>
+          </div>
+        </div>
+        <div style={{maxHeight:200,overflowY:"auto",marginBottom:14}}>
+          {urgentes.length===0&&<div style={{textAlign:"center",padding:16,color:"#4e6a8a",fontSize:13}}>Nenhum processo com prazo crítico no momento.</div>}
+          {urgentes.map(function(p){var cor=p.diasRestantes<=2?"#ff2e5b":"#ffb800"; return(
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,marginBottom:4,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
+              <span style={{fontSize:12,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",flexShrink:0,minWidth:32}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+              <span style={{fontSize:11,color:"#e2e8f0",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
+              <span style={{fontSize:10,color:"#4e6a8a",flexShrink:0}}>{p.tipoPeca}</span>
+            </div>
+          );})}
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4e6a8a",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Seu email</label>
+          <input style={{...inpSt}} value={email} onChange={function(e){setEmail(e.target.value);}} type="email" placeholder="joao@cfm.org.br" onKeyDown={function(e){if(e.key==="Enter")enviar();}}/>
+        </div>
+        {!loading&&!result&&<button onClick={enviar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",fontSize:13}}>📧 Enviar alerta agora</button>}
+        {loading&&<div style={{textAlign:"center",padding:16,color:"#00e5ff",fontSize:12,fontFamily:"Orbitron,monospace"}}>Enviando...</div>}
+        {result&&<div style={{padding:"10px 14px",borderRadius:10,background:result.ok||result.preview?"rgba(0,255,136,.08)":"rgba(255,46,91,.08)",border:"1px solid "+(result.ok||result.preview?"rgba(0,255,136,.25)":"rgba(255,46,91,.25)"),fontSize:12,color:result.ok||result.preview?"#00ff88":"#ff2e5b"}}>
+          {result.ok?"✅ Email enviado!":result.preview?"✅ Função ativa. Configure RESEND_API_KEY no Supabase para ativar envio real.":result.error||"Erro ao enviar"}
+        </div>}
+        <div style={{marginTop:12,fontSize:10,color:"#4e6a8a",lineHeight:1.5}}>
+          Para envio automático diário às 7h30, configure RESEND_API_KEY + ALERT_EMAIL nos secrets do Supabase Edge Functions.
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [st, dp0] = useReducer(reducer, null, mkInit);
   const dp = function(action){
     setUndoStack(function(prev){return [...prev.slice(-9),{action,snapshot:st}];});
     dp0(action);
-    if(action.type==="ADD_J"||action.type==="ADD_A") showToast("success","Processo cadastrado com sucesso");
-    if(action.type==="UPD"&&action.ch&&action.ch.status==="Concluído") showToast("success","Processo marcado como concluído");
-    if(action.type==="DEL") showToast("warn","Processo removido");
   };
   const [pg, sPg] = useState("dashboard");
+  const [showEmailAlert, setShowEmailAlert] = useState(false);
+  const [_tick, setTick] = useState(0);
+  useEffect(function(){
+    var t = setInterval(function(){ setTick(function(n){return n+1;}); }, 60000);
+    return function(){ clearInterval(t); };
+  }, []);
   const [sel, sSel] = useState(null);
   const [editForm, sEF] = useState(null);
   const [sq, sSq] = useState("");
-  const [fChip, setFChip] = React.useState("todos");
   const [so, sSo] = useState(false);
   const [col, sCol] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -3750,39 +3813,20 @@ export default function App() {
   const Kref = darkMode ? KD : KL;
   // Sync global K (used by all components) — simple reassignment works for re-renders
   Object.assign(K, Kref);
-  // Patch style objects for current theme
-  inpSt.color = K.txt;
-  inpSt.border = "1px solid " + K.brd;
-  inpSt.background = K.acG;
-  lblSt.color = K.dim;
-  btnGhost.color = K.dim;
-  btnGhost.borderColor = K.brd;
-  btnDanger.borderColor = K.cr;
-  btnDanger.color = K.cr;
   const [toast, setToast] = useState(null);
   const showToast = function(type, msg) { setToast({type: type, msg: msg}); setTimeout(function(){ setToast(null); }, 3000); };
   const handleExport = function() { try { exportState(st); showToast("ok", "JSON exportado com sucesso"); } catch(e) { showToast("err", "Erro ao exportar"); } };
+  const handleExportCSV = function() { try { exportCSV(st); showToast("ok", "CSV exportado com sucesso"); } catch(e) { showToast("err", "Erro ao exportar CSV"); } };
   const handleImport = function(file) { importState(file, dp, function(res){ showToast(res === "ok" ? "ok" : "err", res === "ok" ? "Estado importado com sucesso" : "Arquivo JSON inválido"); }); };
 
-  useEffect(() => { injectCSS(); }, [darkMode]);
+  useEffect(() => { injectCSS(); }, []);
   useEffect(() => {
     document.body.style.background = K.bg;
     document.body.style.color = K.txt;
   }, [darkMode]);
 
   // Load persisted state on mount
-  const [loaded, setLoaded] = useState(false);
-  const [showCmdPalette, setShowCmdPalette] = React.useState(false);
-  const [syncStatus, setSyncStatus] = useState('ok'); // 'ok' | 'saving' | 'error'
-  const [liveTime, setLiveTime] = React.useState(new Date());
-  var liveTimeRef = React.useRef(new Date());
-  const [tooltip, setTooltip] = React.useState({p:null,x:0,y:0});
-  React.useEffect(function(){ _tipState.set = setTooltip; return function(){ _tipState.set = null; }; }, []);
-
-  var lastSyncRef = React.useRef(null);
-  const [showQuickAdd, setShowQuickAdd] = React.useState(false);
-  const [showEtiquetas, setShowEtiquetas] = React.useState(false);
-  const [showEmailAlert, setShowEmailAlert] = React.useState(false);
+  const [loaded, setLoaded] = useState(true);
   const [showAutoBackup, setShowAutoBackup] = useState(false);
   useEffect(function(){
     var today=new Date();
@@ -3803,89 +3847,42 @@ export default function App() {
   const [showStats, setShowStats] = useState(false);
   const [showSemanal, setShowSemanal] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [djeProc, setDjeProc] = useState(null);
   const [showIANovo, setShowIANovo] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [bulkSelected, setBulkSelected] = useState([]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const result = await Promise.race([
-          dbGet(),
-          new Promise(function(res){ setTimeout(function(){ res(null); }, 3000); })
+          storage.get(STORE_KEY),
+          new Promise(function(res){ setTimeout(function(){ res(null); }, 600); })
         ]);
-        if (!cancelled && result) {
-          const restored = rehydrate(typeof result === 'string' ? result : JSON.stringify(result));
+        if (!cancelled && result && result.value) {
+          const restored = rehydrate(result.value);
           dp({ type: "LOAD", state: restored });
         }
       } catch (e) {}
-      if (!cancelled) setLoaded(true);
     })();
     return function(){ cancelled = true; };
   }, []);
 
-  // Save to localStorage on every change (fast, synchronous)
+  // Save state to persistent storage with debounce
+  const saveTimer = useRef(null);
   useEffect(() => {
     if (!loaded) return;
-    try {
-      var data = serialize(st);
-      localStorage.setItem(STORE_KEY, data);
-    } catch(e) {}
-  }, [st, loaded]);
-
-  // Sync to Supabase every 10 seconds
-  var syncToSupabase = function(stateData) {
-    setSyncStatus('saving');
-    fetch(STATE_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({data: stateData})
-    }).then(function(r) {
-      setSyncStatus(r.ok ? 'ok' : 'error');
-      if (r.ok) { lastSyncRef.current = new Date(); }
-    }).catch(function() { setSyncStatus('error'); });
-  };
-
-  useEffect(() => {
-    if (!loaded) return;
-    var interval = setInterval(function() {
-      try { syncToSupabase(serialize(st)); } catch(e) {}
-    }, 10000);
-    return function() { clearInterval(interval); };
-  }, [st, loaded]);
-
-  // Live clock for countdown
-  useEffect(() => {
-    var tick = setInterval(function(){ var now=new Date(); setLiveTime(now); liveTimeRef.current=now; window._cjLiveTime=now; }, 60000);
-    window._cjLiveTime = new Date();
-    return function(){ clearInterval(tick); };
-  }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    var handleKey = function(e) {
-      var isInput = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);
-      if ((e.ctrlKey||e.metaKey) && e.key === 'k') { e.preventDefault(); setShowCmdPalette(function(v){return !v;}); }
-      if ((e.ctrlKey||e.metaKey) && e.key === 'n') { e.preventDefault(); setShowQuickAdd(true); }
-      if ((e.ctrlKey||e.metaKey) && e.key === 's') { e.preventDefault(); try{syncToSupabase(serialize(st));}catch(ex){} }
-      if (e.key === 'Escape') { setShowCmdPalette(false); setShowQuickAdd(false); setShowEtiquetas(false); setShowEmailAlert(false); setShowHistory(false); }
-    };
-    window.addEventListener('keydown', handleKey);
-    return function() { window.removeEventListener('keydown', handleKey); };
-  }, [st]);
-
-  // Save to Supabase on page close
-  useEffect(() => {
-    var saveNow = function() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async function(){
       try {
-        var data = serialize(st);
-        localStorage.setItem(STORE_KEY, data);
-        navigator.sendBeacon(STATE_URL, new Blob([JSON.stringify({data: data})], {type:'application/json'}));
-      } catch(e) {}
-    };
-    window.addEventListener('beforeunload', saveNow);
-    return function() { window.removeEventListener('beforeunload', saveNow); };
-  }, [st]);
+        await storage.set(STORE_KEY, serialize(st));
+      } catch (e) {
+        // Storage unavailable
+      }
+    }, 400);
+    return function(){ if(saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [st, loaded]);
 
   // Sync selected process with state
   useEffect(() => {
@@ -3899,11 +3896,22 @@ export default function App() {
   useEffect(() => {
     const handler = function(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      /* Ctrl+Z / Cmd+Z — undo (must be before the modifier guard) */
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        setUndoStack(function(prev){if(!prev.length){showToast("err","Nada para desfazer");return prev;}var last=prev[prev.length-1];dp0({type:'LOAD',state:last.snapshot});showToast("ok","Ação desfeita (Ctrl+Z)");return prev.slice(0,-1);});
+        return;
+      }
+      /* Cmd+N — quick-add */
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        setShowQuickAdd(true);
+        return;
+      }
       if (e.metaKey || e.ctrlKey) return;
       switch(e.key) {
-        case 'z': if(e.metaKey||e.ctrlKey){e.preventDefault();setUndoStack(function(prev){if(!prev.length)return prev;var last=prev[prev.length-1];dp0({type:'LOAD',state:last.snapshot});return prev.slice(0,-1);});} break;
         case '/': e.preventDefault(); document.querySelector('input[placeholder*="Buscar"]') && document.querySelector('input[placeholder*="Buscar"]').focus(); break;
-        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); break;
+        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); setShowQuickAdd(false); break;
         case 'p': case 'P': sPg('priorities'); break;
         case 'i': case 'I': sPg('ia'); break;
         case 'h': case 'H': sPg('today'); break;
@@ -3923,13 +3931,13 @@ export default function App() {
   const prazoUrgente = all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2&&!["Concluído","Arquivado","Suspenso"].includes(p.status);});
   const sr = useMemo(() => {
     if (!sq.trim()) return [];
-    const q = sq.toLowerCase();
-    return all.filter(p => (p.num||"").toLowerCase().includes(q) || (p.numeroSEI||"").toLowerCase().includes(q) || (p.assunto||"").toLowerCase().includes(q) || (p.orgao||"").toLowerCase().includes(q) || (p.interessado||"").toLowerCase().includes(q) || (p.parteContraria||"").toLowerCase().includes(q) || (p.tags||[]).some(t=>t.includes(q))||(p.tipoPeca||"").toLowerCase().includes(q)||(p.tribunal||"").toLowerCase().includes(q)).slice(0,10);
+    const q = sq;
+    return all.filter(p => fuzzyMatch(p.num||"",q) || fuzzyMatch(p.numeroSEI||"",q) || fuzzyMatch(p.assunto||"",q) || fuzzyMatch(p.orgao||"",q) || fuzzyMatch(p.interessado||"",q) || fuzzyMatch(p.parteContraria||"",q) || (p.tags||[]).some(t=>fuzzyMatch(t,q))||fuzzyMatch(p.tipoPeca||"",q)||fuzzyMatch(p.tribunal||"",q)||fuzzyMatch(p.responsavel||"",q)).slice(0,12);
   }, [sq, all]);
 
   const handleEdit = p => { sEF(p); sSel(null); };
   const handleEditSave = form => { dp({ type: "UPD", id: editForm.id, isAdm: editForm.tipo === "adm", ch: form }); sEF(null); };
-  const handleEditDel = () => { dp({ type: "DEL_P", id: editForm.id }); sEF(null); };
+  const handleEditDel = () => { setConfirmAction({title:"Excluir processo",msg:"Tem certeza que deseja excluir \""+((editForm&&editForm.assunto)||"")+"\"? Esta ação não pode ser desfeita.",danger:true,fn:function(){dp({type:"DEL_P",id:editForm.id});sEF(null);}}); };
 
   // Sound alert for critical deadlines
   useEffect(function(){
@@ -3949,12 +3957,15 @@ export default function App() {
     }
   },[prazoUrgente&&prazoUrgente.length]);
 
+  // Push notifications for critical deadlines
+  useEffect(function(){
+    requestPushPermission().then(function(granted){
+      if(granted) checkAndNotifyDeadlines(all);
+    });
+  },[]);
 
-  // Breadcrumb label
-  var PAGE_LABELS = {dashboard:"Dashboard","today":"Plano do Dia",week:"Semana",priorities:"Prioridades",ia:"IA Nexus",admin:"Processos Adm.",judicial:"Processos Jud.",execucao:"Em Execução",acompanhamento:"Acompanhamento",protocolar:"A Protocolar",correcao:"Em Correção",done:"Realizados",agenda:"Agenda",calendar:"Calendário",timeline:"Timeline",stats:"Estatísticas"};
-  var currentPageLabel = PAGE_LABELS[pg] || pg;
   const rP = () => {
-    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode, liveTime };
+    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode };
     switch (pg) {
       case "dashboard": return <DashPg {...pp} />;
       case "today": return <TodayPg {...pp} />;
@@ -3976,6 +3987,7 @@ export default function App() {
       case "lembretes": return <LembretePg {...pp} />;
       case "mural": return <MuralPg {...pp} />;
       case "analytics": return <AnalPg {...pp} />;
+      case "auditlog": return <AuditLogPg {...pp} />;
       case "settings": return <SettPg {...pp} />;
       default: return <DashPg {...pp} />;
     }
@@ -3993,27 +4005,10 @@ export default function App() {
         <button onClick={function(){handleExport();localStorage.setItem("cojur_last_backup",new Date().toISOString());setShowAutoBackup(false);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(0,255,136,.4)",background:"rgba(0,255,136,.1)",color:"#00ff88",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exportar JSON</button>
         <button onClick={function(){setShowAutoBackup(false);}} style={{background:"none",border:"none",color:"rgba(0,255,136,.6)",cursor:"pointer",fontSize:14}}>x</button>
       </div>}
+      {prazoUrgente&&prazoUrgente.length>0&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:3000,padding:"9px 20px",background:"rgba(200,20,60,.95)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 20px rgba(255,46,91,.4)"}}><span style={{fontSize:12,fontWeight:800,color:"#fff",flex:1,fontFamily:"Orbitron,sans-serif"}}>PRAZO CRITICO: {prazoUrgente[0].assunto} — {prazoUrgente[0].diasRestantes===0?"VENCE HOJE":prazoUrgente[0].diasRestantes+"du"}</span><button onClick={function(){sSel(prazoUrgente[0]);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.15)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ver</button></div>}
       {darkMode&&<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1,overflow:"hidden"}}><div style={{position:"absolute",left:0,right:0,height:"1px",background:"linear-gradient(90deg, transparent 10%, rgba(0,229,255,.28) 50%, transparent 90%)",animation:"scanLine 5s linear infinite"}} /></div>}
       <input ref={importRef} type="file" accept=".json" onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleImport(f); e.target.value = ""; }} style={{ display: "none" }} />
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-
-      {/* PRAZO URGENTE BANNER */}
-      {prazoUrgente && prazoUrgente.length > 0 && (
-        <div style={{position:"absolute",top:60,left:0,right:0,zIndex:200,background:"linear-gradient(90deg,rgba(255,46,91,.95),rgba(220,38,68,.95))",borderBottom:"1px solid rgba(255,100,130,.4)",padding:"6px 20px",display:"flex",alignItems:"center",gap:12,animation:"pulse 2s infinite"}}>
-          <span style={{fontSize:14}}>🚨</span>
-          <span style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"Orbitron,sans-serif",letterSpacing:".3px"}}>
-            {prazoUrgente.length} PROCESSO{prazoUrgente.length>1?"S":""} COM PRAZO CRÍTICO:
-          </span>
-          <div style={{display:"flex",gap:8,flex:1,overflowX:"auto"}}>
-            {prazoUrgente.slice(0,3).map(function(p){return(
-              <span key={p.id} onClick={function(){sS(p);}} style={{whiteSpace:"nowrap",fontSize:11,color:"rgba(255,255,255,.9)",background:"rgba(0,0,0,.2)",padding:"2px 8px",borderRadius:6,cursor:"pointer"}}>
-                {p.assunto.slice(0,30)}... ({p.diasRestantes===0?"HOJE":p.diasRestantes+"du"})
-              </span>
-            );})}
-          </div>
-          <span style={{fontSize:10,color:"rgba(255,255,255,.7)",whiteSpace:"nowrap"}}>Clique para abrir</span>
-        </div>
-      )}
 
       {/* SIDEBAR */}
       <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, overflow: "hidden", position:"relative" }}>
@@ -4028,7 +4023,7 @@ export default function App() {
           {NAV.map(({ id, icon: I, label: l }) => {
             const isAct = pg === id, isCrit = id === "priorities" && cn > 0;
             return (
-              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, borderLeft: isAct ? "3px solid #00e5ff" : "3px solid transparent", border: "1px solid " + (isAct ? "rgba(0,229,255,.25)" : "transparent"), background: isAct ? "linear-gradient(90deg, rgba(0,229,255,.15), rgba(0,229,255,.04))" : "transparent", color: isAct ? "#00e5ff" : K.dim, fontSize: 13, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
+              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, border: "1px solid transparent", background: isAct ? "linear-gradient(90deg, rgba(0,212,255,.12), rgba(0,212,255,.04))" : "transparent", color: isAct ? "#00d4ff" : K.dim, fontSize: 13, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
                 onMouseEnter={e => { if (!isAct) { e.currentTarget.style.background = "rgba(0,212,255,.05)"; e.currentTarget.style.color = K.txt; e.currentTarget.style.borderColor = "rgba(0,212,255,.12)"; } }}
                 onMouseLeave={e => { if (!isAct) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = K.dim; e.currentTarget.style.borderColor = "transparent"; } }}>
                 <I size={16} style={{filter:isAct?"drop-shadow(0 0 5px #00e5ff)":"none"}} />{!col && <span style={{fontFamily:isAct?"Orbitron,sans-serif":"inherit",fontSize:isAct?11:13,letterSpacing:isAct?".5px":"normal",textShadow:isAct?"0 0 8px rgba(0,229,255,.7)":"none"}}>{l}</span>}
@@ -4053,83 +4048,112 @@ export default function App() {
               <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",borderRadius:8,padding:"4px 10px"}}>
-            <span style={{color:"#4e6a8a",fontSize:12}}>COJUR</span>
-            <span style={{color:"#4e6a8a",fontSize:12,margin:"0 4px"}}>›</span>
-            <span style={{color:"#00e5ff",fontWeight:800,fontSize:12,textShadow:"0 0 8px rgba(0,229,255,.5)"}}>{currentPageLabel}</span>
-          </div>
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
             <input style={{ ...inpSt, paddingLeft: 40, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
-            {so && sq && sr.length > 0 && (
+            {so && sq && (
               <div className="cj-sc" style={{ position: "absolute", top: 44, left: 0, right: 0, background: K.modal, border: `1px solid ${K.brd}`, borderRadius: 12, padding: 8, zIndex: 100, maxHeight: 400, overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,.5)" }}>
-                {sr.map(p => (
+                {sr.length > 0 ? (<>
+                  <div style={{padding:"4px 12px 8px",fontSize:10,color:K.dim,fontWeight:700,letterSpacing:".5px",textTransform:"uppercase"}}>{sr.length} resultado{sr.length!==1?"s":""} encontrado{sr.length!==1?"s":""}</div>
+                  {sr.map(p => {var pcor=getPecaCor(p.tipoPeca);return(
                   <div key={p.id} onClick={() => { sSel(p); sSo(false); sSq(""); }} style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.05)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                     {p.tipo === "jud" ? <Scale size={14} color={K.pu} /> : <FolderOpen size={14} color={K.ac} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: K.ac, fontFamily: "'JetBrains Mono',monospace" }}>{p.num}{p.numeroSEI?` · SEI ${p.numeroSEI}`:""}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                        <div style={{ fontSize: 12, color: K.ac, fontFamily: "'JetBrains Mono',monospace" }}>{p.num||"Sem nº"}{p.numeroSEI?` · SEI ${p.numeroSEI}`:""}</div>
+                        <div style={{padding:"1px 6px",borderRadius:4,background:pcor+"20",border:"1px solid "+pcor+"44",color:pcor,fontSize:8,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
+                      </div>
                       <div style={{ fontSize: 12, color: K.txt, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.assunto}</div>
                       <div style={{ fontSize: 10, color: K.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.tipo==="jud"?`${p.tribunal||"—"} · ${p.parteContraria||"—"}`:`${p.interessado||"—"} · ${p.orgao||"—"}`}</div>
                     </div>
                     <UB d={p.diasRestantes} />
+                  </div>);})}
+                </>) : (
+                  <div style={{padding:"20px 16px",textAlign:"center"}}>
+                    <Search size={24} color={K.dim2} style={{marginBottom:8}}/>
+                    <div style={{fontSize:12,color:K.dim,fontWeight:600}}>Nenhum processo encontrado</div>
+                    <div style={{fontSize:10,color:K.dim2,marginTop:4}}>Tente termos diferentes ou use a busca fuzzy</div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap:"wrap", justifyContent:"flex-end" }}>
             <Bd color={K.ac}><Clock size={10}/>{NOW.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</Bd>
-            <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>Exportar JSON</button>
+            <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>JSON</button>
+            <button style={{ ...btnGhost, padding: "8px 12px", color: K.su, borderColor: "rgba(5,150,105,.25)" }} onClick={handleExportCSV}><Download size={14}/>CSV/Excel</button>
             <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar JSON</button>
             <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.18)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>⚖️</button>
             <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:17}}>✏️</button>
-            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Salvar agora no Supabase" onClick={function(){try{syncToSupabase(serialize(st));}catch(e){}}} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:12,border:"1px solid "+(syncStatus==="ok"?"rgba(0,255,136,.25)":syncStatus==="saving"?"rgba(255,184,0,.35)":"rgba(255,46,91,.35)"),background:syncStatus==="ok"?"rgba(0,255,136,.06)":syncStatus==="saving"?"rgba(255,184,0,.06)":"rgba(255,46,91,.06)",cursor:"pointer",flexShrink:0}}>
-              <span style={{fontSize:10,fontWeight:700,fontFamily:"Orbitron,monospace",color:syncStatus==="ok"?"#00ff88":syncStatus==="saving"?"#ffb800":"#ff2e5b"}}>
-                {syncStatus==="ok"?"💾":syncStatus==="saving"?"⏳":"⚠️"}
-              </span>
-            </button>
-            <button title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
-            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
-            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta de prazos por email" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(34,211,238,.2)",background:"rgba(34,211,238,.05)",cursor:"pointer",fontSize:17}}>📧</button>
-            <button onClick={function(){setShowEtiquetas(true);}} title="Etiquetas personalizadas" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.2)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🏷️</button>
-            <button onClick={function(){setShowQuickAdd(true);}} title="Cadastro rápido ⚡" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>⚡</button>
-            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>>🤖</button>
+            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
+            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
+            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📬</button>
+            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>🤖</button>
             <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:15}}>☰</button>
             <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
               {darkMode?<Sun size={17} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={17} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
             </button>
-            <div style={{ position: "relative", cursor: "pointer", width:40, height:40, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid rgba(0,229,255,.18)", background:"rgba(0,229,255,.06)", boxShadow:"0 0 12px rgba(0,229,255,.18)" }}>
-              <Bell size={18} color="#00e5ff" style={{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}} />
-              {cn > 0 && <div className="cj-pulse" style={{ position: "absolute", top: -4, right: -2, minWidth: 16, height: 16, padding:"0 4px", borderRadius: 999, background: K.cr, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#fff" }}>{cn}</div>}
-            </div>
+            {React.createElement(function(){
+              var sOpen=useState(false);var notifOpen=sOpen[0],setNotifOpen=sOpen[1];
+              var ref=useRef(null);
+              useEffect(function(){var h=function(e){if(ref.current&&!ref.current.contains(e.target))setNotifOpen(false);};document.addEventListener("mousedown",h);return function(){document.removeEventListener("mousedown",h);};},[]);
+              var alerts=[];
+              all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=5&&!["Concluído","Arquivado","Suspenso"].includes(p.status);}).forEach(function(p){alerts.push({type:"cr",icon:"🔴",title:p.diasRestantes===0?"PRAZO HOJE":"Prazo crítico: "+p.diasRestantes+"du",desc:p.assunto,proc:p});});
+              all.filter(function(p){return isProtocolar(p);}).forEach(function(p){alerts.push({type:"su",icon:"📤",title:"Protocolar no tribunal",desc:p.assunto,proc:p});});
+              all.filter(function(p){return isCorrecao(p);}).forEach(function(p){alerts.push({type:"wa",icon:"✏️",title:"Retornado para correção",desc:p.assunto,proc:p});});
+              (st.lembretes||[]).filter(function(l){return !l.done&&l.data&&l.data<=NOW.toISOString().slice(0,10);}).forEach(function(l){alerts.push({type:"wa",icon:"⏰",title:"Lembrete vencido",desc:l.texto});});
+              all.filter(function(p){return !p.proxProv&&p.status==="Ativo";}).forEach(function(p){alerts.push({type:"dim",icon:"⚠️",title:"Sem próxima providência",desc:p.num||p.assunto,proc:p});});
+              return React.createElement("div",{ref:ref,style:{position:"relative"}},
+                React.createElement("div",{onClick:function(){setNotifOpen(!notifOpen);},style:{cursor:"pointer",width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:notifOpen?"rgba(0,229,255,.15)":"rgba(0,229,255,.06)",boxShadow:"0 0 12px rgba(0,229,255,.18)",transition:"all .2s"}},
+                  React.createElement(Bell,{size:18,color:"#00e5ff",style:{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}}),
+                  cn>0&&React.createElement("div",{className:"cj-pulse",style:{position:"absolute",top:-4,right:-2,minWidth:16,height:16,padding:"0 4px",borderRadius:999,background:K.cr,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff"}},cn)
+                ),
+                notifOpen&&React.createElement("div",{className:"cj-sc",style:{position:"absolute",top:48,right:0,width:360,maxHeight:440,overflowY:"auto",background:K.modal,border:"1px solid "+K.brd,borderRadius:16,padding:8,zIndex:200,boxShadow:"0 20px 60px rgba(0,0,0,.7)"}},
+                  React.createElement("div",{style:{padding:"8px 12px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid "+K.brd,marginBottom:6}},
+                    React.createElement("span",{style:{fontSize:13,fontWeight:700,color:K.txt}},"Notificações"),
+                    React.createElement("span",{style:{fontSize:11,color:K.dim,fontFamily:"Orbitron,monospace"}},alerts.length)
+                  ),
+                  alerts.length?alerts.slice(0,12).map(function(a,i){
+                    var bc=a.type==="cr"?K.crG:a.type==="su"?K.suG:a.type==="wa"?K.waG:"rgba(255,255,255,.03)";
+                    var tc=a.type==="cr"?K.cr:a.type==="su"?K.su:a.type==="wa"?K.wa:K.dim;
+                    return React.createElement("div",{key:i,onClick:function(){if(a.proc){sSel(a.proc);setNotifOpen(false);}},style:{padding:"10px 12px",borderRadius:10,background:bc,border:"1px solid "+tc+"22",marginBottom:4,cursor:a.proc?"pointer":"default",transition:"all .15s"},onMouseEnter:function(e){if(a.proc)e.currentTarget.style.borderColor=tc+"55";},onMouseLeave:function(e){e.currentTarget.style.borderColor=tc+"22";}},
+                      React.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-start"}},
+                        React.createElement("span",{style:{fontSize:14,flexShrink:0,marginTop:1}},a.icon),
+                        React.createElement("div",{style:{flex:1,minWidth:0}},
+                          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:tc}},a.title),
+                          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},a.desc)
+                        )
+                      )
+                    );
+                  }):React.createElement("div",{style:{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:12}},"Nenhuma notificação pendente")
+                )
+              );
+            },null)}
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>{loaded ? React.createElement("div",{key:pg,className:"cj-page-enter",style:{width:"100%",height:"100%"}},rP()) : React.createElement(SkeletonDashboard, null)}</div>
+        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>{rP()}</div>
       </div>
 
       {/* MODALS */}
       {showGmail&&<GmailSEIModal dp={dp} onClose={function(){setShowGmail(false);}}/>}
       {minutaProc!==null&&<MinutaModal proc={minutaProc} onClose={function(){setMinutaProc(null);}}/> }
       {showStats&&<StatsModal st={st} onClose={function(){setShowStats(false);}}/> }
+      {showEmailAlert&&<EmailAlertModal st={st} onClose={function(){setShowEmailAlert(false);}}/> }
       {showSemanal&&<RelatorioSemanalModal st={st} onClose={function(){setShowSemanal(false);}}/> }
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
-      {showQuickAdd&&<QuickAddModal dp={dp} onClose={function(){setShowQuickAdd(false);}}/> }
-      {showEtiquetas&&<EtiquetasModal st={st} dp={dp} onClose={function(){setShowEtiquetas(false);}}/> }
-      {showEmailAlert&&<EmailAlertModal st={st} onClose={function(){setShowEmailAlert(false);}}/> }
-      <ToastContainer/>
-      <div style={{position:"fixed",bottom:70,right:20,zIndex:8000,background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.4)",borderRadius:8,padding:"4px 10px",fontSize:9,color:"#00e5ff",fontFamily:"Orbitron,monospace",fontWeight:700,letterSpacing:".5px",pointerEvents:"none"}}>NEXUS v2.0 ✦</div>
-      
-      {showCmdPalette&&<CmdPalette st={st} dp={dp} sPg={sPg} sSel={sSel} setShowQuickAdd={setShowQuickAdd} setShowEtiquetas={setShowEtiquetas} setShowHistory={setShowHistory} syncToSupabase={syncToSupabase} onClose={function(){setShowCmdPalette(false);}}/> }
+      {showQuickAdd&&<QuickAddModal dp={dp} st={st} onClose={function(){setShowQuickAdd(false);}}/>}
+      {confirmAction&&<ConfirmDialog title={confirmAction.title} msg={confirmAction.msg} danger={confirmAction.danger} onConfirm={function(){confirmAction.fn();setConfirmAction(null);}} onCancel={function(){setConfirmAction(null);}}/>}
+      <BulkActionBar selected={bulkSelected} onClear={function(){setBulkSelected([]);}} dp={dp} items={[...st.adm,...st.jud]}/>
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
       {showRevisao&&<RevisaoModal onClose={function(){setShowRevisao(false);}}/>}
       {sel && <DetMod item={sel} onClose={() => sSel(null)} dp={dp} onEdit={handleEdit} setDjeProc={setDjeProc} st={st} ss={sSel} />}
       {editForm && <FM key={editForm.id} title={`Editar: ${editForm.assunto || editForm.num || "Item"}`} fields={editForm.tipo === "adm" ? F_ADM : F_JUD} initial={editForm} onClose={() => sEF(null)} onSave={handleEditSave} onDelete={handleEditDel} />}
       {!focusMode&&<div style={{position:"fixed",bottom:14,left:col?80:230,zIndex:100,display:"flex",gap:8,flexWrap:"wrap"}}>
-        {[["H","Hoje"],["P","Prioridades"],["I","IA Nexus"],["C","Calendário"],["T","Timeline"],["F","Foco"],["Z","Desfazer"],["Esc","Fechar"]].map(function(k){return(
+        {[["H","Hoje"],["P","Prioridades"],["I","IA Nexus"],["C","Calendário"],["T","Timeline"],["F","Foco"],["⌘Z","Desfazer"],["⌘N","Novo"],["/","Buscar"],["Esc","Fechar"]].map(function(k){return(
           <div key={k[0]} style={{display:"flex",alignItems:"center",gap:4,fontSize:9,color:K.dim2,background:"rgba(0,0,0,.4)",borderRadius:6,padding:"2px 6px",border:"1px solid rgba(255,255,255,.05)"}}>
             <kbd style={{fontSize:9,color:K.dim,background:"rgba(255,255,255,.06)",borderRadius:3,padding:"0 3px",fontFamily:"'JetBrains Mono',monospace"}}>{k[0]}</kbd>
             <span>{k[1]}</span>
@@ -4167,7 +4191,7 @@ function IATplModal({proc,onClose}){
       "Use linguagem juridica formal e seja preciso."
     ];
     var prompt=lines.join("\n");
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/ai-proxy",{
+    fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
@@ -4199,10 +4223,7 @@ function IATplModal({proc,onClose}){
         {!result&&!loading&&<button onClick={generate} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:14,marginBottom:16}}>
           <Zap size={16}/>Gerar estrutura da {proc.tipoPeca||"peça"}
         </button>}
-        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}>
-          <div className="cj-pulse" style={{fontSize:32,marginBottom:12}}>🧠</div>
-          <div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Gerando estrutura...</div>
-        </div>}
+        {loading&&<div style={{padding:"16px 0"}}><SkeletonBlock lines={5} h={24}/><div style={{textAlign:"center",fontSize:11,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8,letterSpacing:"1px"}}>Gerando estrutura...</div></div>}
         {error&&<div style={{padding:"12px 16px",borderRadius:12,background:"rgba(255,46,91,.12)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:12}}>{error}</div>}
         {result&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -4221,7 +4242,7 @@ function IATplModal({proc,onClose}){
 /* ═══ PÁGINA PROTOCOLAR ═══ */
 
 /* ═══ PÁGINA EM EXECUÇÃO ═══ */
-const ExecucaoPg=({st,dp,ss,liveTime})=>{
+const ExecucaoPg=({st,dp,ss})=>{
   const items=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).filter(function(p){return isExecucao(p);}).sort(function(a,b){return b.iaS-a.iaS;});
   return(
     <div className="cj-pg">
@@ -4233,7 +4254,7 @@ const ExecucaoPg=({st,dp,ss,liveTime})=>{
         </div>
         {items.length>0&&<div className="cj-pulse" style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(0,229,255,.1)",border:"1px solid rgba(0,229,255,.4)",color:"#00e5ff",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
       </div>
-      {!items.length&&<div style={{textAlign:"center",padding:60}}><Zap size={48} color={K.dim2}/><div style={{fontSize:16,fontWeight:700,color:K.txt,marginTop:16,marginBottom:8}}>Nenhum processo em execução</div><div style={{fontSize:12,color:K.dim}}>Altere o status de um processo para "Em Execução"</div></div>}
+      {!items.length&&<EmptyState icon="rocket" color={K.ac} title="Nenhum processo em execução" sub="Altere o status de um processo para 'Em Execução'"/>}
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {items.map(function(p){var cor=getPecaCor(p.tipoPeca);return(
           <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.22)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
@@ -4245,7 +4266,7 @@ const ExecucaoPg=({st,dp,ss,liveTime})=>{
                   <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
                   <div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
                   {p.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",background:"rgba(125,211,252,.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
-                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes===0?(function(){var t=liveTime||window._cjLiveTime||new Date();var h=17-t.getHours();var m=60-t.getMinutes();if(h>=0&&h<=8)return h+"h"+String(m).padStart(2,"0")+"min";return"HOJE";}()):p.diasRestantes+"du"}</div>
+                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
                 </div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{p.assunto}</div>
                 {p.proxProv&&<div style={{fontSize:12,color:K.ac,background:"rgba(0,229,255,.05)",borderRadius:8,padding:"6px 10px",border:"1px solid rgba(0,229,255,.1)"}}><span style={{fontSize:10,color:K.dim,marginRight:6}}>Próxima:</span>{p.proxProv}</div>}
@@ -4274,7 +4295,7 @@ const ExecucaoPg=({st,dp,ss,liveTime})=>{
 };
 
 /* ═══ PÁGINA EM ACOMPANHAMENTO ═══ */
-const AcompanhamentoPg=({st,dp,ss,liveTime})=>{
+const AcompanhamentoPg=({st,dp,ss})=>{
   const items=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).filter(function(p){return isAcompanhamento(p);}).sort(function(a,b){return b.iaS-a.iaS;});
   return(
     <div className="cj-pg">
@@ -4286,7 +4307,7 @@ const AcompanhamentoPg=({st,dp,ss,liveTime})=>{
         </div>
         {items.length>0&&<div style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(168,85,247,.1)",border:"1px solid rgba(168,85,247,.4)",color:"#b84dff",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
       </div>
-      {!items.length&&<div style={{textAlign:"center",padding:60}}><Eye size={48} color={K.dim2}/><div style={{fontSize:16,fontWeight:700,color:K.txt,marginTop:16,marginBottom:8}}>Nenhum processo em acompanhamento</div><div style={{fontSize:12,color:K.dim}}>Altere o status e informe o motivo do acompanhamento</div></div>}
+      {!items.length&&<EmptyState icon="clock" color={K.pu} title="Nenhum processo em acompanhamento" sub="Altere o status e informe o motivo do acompanhamento"/>}
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {items.map(function(p){var cor=getPecaCor(p.tipoPeca);return(
           <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.2)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
