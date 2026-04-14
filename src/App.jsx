@@ -2229,6 +2229,7 @@ const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=
       {isAcompanhamento(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.45)",borderRadius:8,padding:"3px 8px",fontSize:9,color:"#b84dff",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>👁 EM ACOMPANHAM.</div>}
       {isProtocolar(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(0,255,136,.12)",border:"1px solid rgba(0,255,136,.45)",color:"#00ff88",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(0,255,136,.7)"}}>📤 PROTOCOLAR NO TRIBUNAL</div>}
       {isCorrecao(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(255,184,0,.12)",border:"1px solid rgba(255,184,0,.45)",color:"#ffb800",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(255,184,0,.7)"}}>✏️ AGUARDANDO CORREÇÃO</div>}
+      {p.tipoPeca==="Sustentação Oral"&&<div className="cj-pulse" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(184,77,255,.14)",border:"1px solid rgba(184,77,255,.5)",color:"#b84dff",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(184,77,255,.5)",animation:"cjPulse 2s ease-in-out infinite"}}>🎤 INSCRIÇÃO PARA SUSTENTAÇÃO ORAL</div>}
       <div title={p.assunto||""} style={{fontSize:15,fontWeight:800,color:K.txt,marginTop:8,lineHeight:1.45}}>{p.assunto||"Sem assunto"}</div>
     </div>
 
@@ -3067,9 +3068,12 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
           </div>):null;})()}
           </div>
         </div>}
+        {p.tipoPeca==="Sustentação Oral"&&<div className="cj-pulse" style={{marginTop:12,display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:"rgba(184,77,255,.12)",border:"1px solid rgba(184,77,255,.45)",animation:"cjPulse 2s ease-in-out infinite"}}>
+          <Gavel size={16} color="#b84dff"/><div><div style={{fontSize:11,fontWeight:800,color:"#b84dff"}}>INSCRIÇÃO PARA SUSTENTAÇÃO ORAL</div><div style={{fontSize:10,color:"#d8b4fe",marginTop:2}}>Verifique se a inscrição para sustentação oral foi realizada no tribunal. A inscrição deve ser feita antes do prazo limite de 48h úteis da sessão de julgamento.</div>
+          {p.dataSustentacao&&<div style={{fontSize:10,color:"#c084fc",marginTop:4,fontWeight:700}}>Sessão: {(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} — Deadline de envio: {getSustDeadlineStr(p)||"definir data"}</div>}
+          </div>
+        </div>}
       </div>
-
-      {/* Status workflow stepper */}
       <div style={{padding:"0 28px"}} onClick={function(e){e.stopPropagation();}}>
         <StatusStepper current={p.status} onSet={function(v){dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}});}}/>
       </div>
