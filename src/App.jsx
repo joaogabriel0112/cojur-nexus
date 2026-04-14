@@ -352,8 +352,6 @@ var FERIADOS_NAC = [
   "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
   "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25"
 ];
-/* Feriados distritais (DF) */
-var FERIADOS_DF=["2025-04-21","2025-11-30","2026-04-21","2026-11-30","2027-04-21","2027-11-30"];
 /* Recesso forense: 20/dez a 20/jan (art. 220 CPC) */
 var isRecessoForense=function(d){var m=d.getMonth(),day=d.getDate();return(m===11&&day>=20)||(m===0&&day<=20);};
 var isDU = function(d) {
@@ -361,7 +359,7 @@ var isDU = function(d) {
   if (dow === 0 || dow === 6) return false;
   if (isRecessoForense(d)) return false;
   var iso=d.toISOString().split("T")[0];
-  return FERIADOS_NAC.indexOf(iso)===-1 && FERIADOS_DF.indexOf(iso)===-1;
+  return FERIADOS_NAC.indexOf(iso)===-1;
 };
 var subDU = function(date, n) {
   // go back n business days from date
@@ -374,10 +372,40 @@ var isSustAlerta = function(p) {
   if (p.tipoPeca !== "Sustentação Oral") return false;
   var sust = new Date(p.dataSustentacao);
   if (isNaN(sust)) return false;
-  var limite = subDU(sust, 2); // 2 dias úteis antes = 48h úteis
-  limite.setHours(0, 0, 0, 0);
   var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  return hoje >= limite && hoje <= sust;
+  sust.setHours(0, 0, 0, 0);
+  if (hoje > sust) return false;
+  /* Alerta ativa quando faltam 5 du ou menos para a sessão */
+  var limite = subDU(sust, 5);
+  limite.setHours(0, 0, 0, 0);
+  return hoje >= limite;
+};
+/* Nível do alerta de sustentação:
+   "critico"  = deadline de 48h úteis já chegou ou passou (≤2 du antes da sessão)
+   "urgente"  = falta 1-2 du para o deadline de envio (3-4 du antes da sessão)
+   "preparo"  = tempo de preparar, mas já está próximo (5 du antes da sessão)
+   null       = fora da janela de alerta */
+var getSustNivel = function(p) {
+  if (!p.dataSustentacao) return null;
+  var sust = new Date(p.dataSustentacao);
+  if (isNaN(sust)) return null;
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  sust.setHours(0, 0, 0, 0);
+  if (hoje > sust) return null;
+  /* Contar dias úteis entre hoje e a sessão */
+  var du = 0; var d = new Date(hoje);
+  while (d < sust) { d.setDate(d.getDate() + 1); if (isDU(d)) du++; }
+  if (du <= 2) return "critico";
+  if (du <= 4) return "urgente";
+  if (du <= 5) return "preparo";
+  return null;
+};
+var getSustDeadlineStr = function(p) {
+  if (!p.dataSustentacao) return null;
+  var sust = new Date(p.dataSustentacao);
+  if (isNaN(sust)) return null;
+  var deadline = subDU(sust, 2);
+  return fmt(deadline);
 };
 var getSustCountdown = function(p) {
   if (!p.dataSustentacao) return null;
@@ -385,7 +413,7 @@ var getSustCountdown = function(p) {
   if (isNaN(sust)) return null;
   var agora = new Date();
   var diff = sust - agora;
-  if (diff < 0 || diff > 24 * 60 * 60 * 1000) return null; // só hoje
+  if (diff < 0 || diff > 24 * 60 * 60 * 1000) return null;
   var h = Math.floor(diff / 3600000);
   var m = Math.floor((diff % 3600000) / 60000);
   return h + "h " + String(m).padStart(2, "0") + "min";
@@ -2046,6 +2074,17 @@ const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
                   </label>
                 ):f.type==="number"?(
                   <input style={inpSt} type="number" min={1} max={5} value={form[f.key]??3} onChange={e=>set(f.key,parseInt(e.target.value)||3)}/>
+                ):f.type==="datetime-local"?(
+                  <input style={inpSt} type="datetime-local" value={
+                    form[f.key] instanceof Date
+                      ? form[f.key].toISOString().slice(0,16)
+                      : (form[f.key] && typeof form[f.key]==="string" && form[f.key].length>=10
+                          ? (form[f.key].length===10 ? form[f.key]+"T12:00" : form[f.key].slice(0,16))
+                          : "")
+                  } onChange={e=>{
+                    var val=e.target.value?new Date(e.target.value):null;
+                    set(f.key, val && !isNaN(val) ? val : e.target.value);
+                  }}/>
                 ):f.type==="date"?(
                   <div>
                   <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>{
@@ -2138,20 +2177,24 @@ const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,norefe
 const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
   <div onClick={e=>{e.stopPropagation();oc?.(p)}} className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55"}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22"}}>
     <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,borderRadius:"0 0 0 20px",background:`linear-gradient(180deg,${accent},${accent}44 60%,transparent)`}}/>
-    {isSustAlerta(p)&&(
-      <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,background:"rgba(255,46,91,.18)",borderBottom:"2px solid rgba(255,46,91,.8)",padding:"5px 14px",display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:13,animation:"textBlink .9s ease-in-out infinite"}}>🎤</span>
-        <span style={{fontSize:10,fontWeight:900,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"textBlink .9s ease-in-out infinite",flex:1}}>SUSTENTAÇÃO ORAL</span>
-        {(function(){var cd=getSustCountdown(p);return cd?(
-          <span style={{fontSize:11,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,monospace",animation:"textBlink .9s ease-in-out infinite"}}>{cd}</span>
-        ):(
-          <span style={{fontSize:9,fontWeight:700,color:"rgba(255,100,120,.9)",background:"rgba(255,46,91,.2)",padding:"2px 7px",borderRadius:4}}>
-            {p.dataSustentacao?(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}
-          </span>
-        );})()}
-        <span style={{fontSize:9,fontWeight:700,color:"#ff2e5b",background:"rgba(255,46,91,.25)",padding:"2px 8px",borderRadius:4,whiteSpace:"nowrap"}}>⚡ ENVIE AGORA</span>
-      </div>
-    )}
+    {isSustAlerta(p)&&(function(){
+      var nivel=getSustNivel(p);var cd=getSustCountdown(p);var dl=getSustDeadlineStr(p);
+      var cores={critico:{bg:"rgba(255,46,91,.18)",bd:"rgba(255,46,91,.8)",txt:"#ff2e5b",anim:"textBlink .9s ease-in-out infinite"},urgente:{bg:"rgba(255,184,0,.15)",bd:"rgba(255,184,0,.7)",txt:"#ffb800",anim:"cjPulse 1.8s ease infinite"},preparo:{bg:"rgba(0,229,255,.1)",bd:"rgba(0,229,255,.5)",txt:"#00e5ff",anim:"none"}};
+      var c=cores[nivel]||cores.preparo;
+      var msgs={critico:"PRAZO DE ENVIO VENCENDO — envie vídeo/memoriais agora!",urgente:"Prazo de envio em breve — deadline: "+(dl||"—"),preparo:"Prepare memoriais e inscrição — deadline de envio: "+(dl||"—")};
+      var labels={critico:"ENVIE AGORA",urgente:"PRAZO PRÓXIMO",preparo:"EM PREPARO"};
+      return(
+      <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,background:c.bg,borderBottom:"2px solid "+c.bd,padding:"5px 14px",display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:13,animation:c.anim}}>🎤</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:10,fontWeight:900,color:c.txt,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:nivel==="critico"?c.anim:"none"}}>SUSTENTAÇÃO ORAL</div>
+          <div style={{fontSize:9,color:c.txt,opacity:.8,marginTop:1}}>{msgs[nivel]}</div>
+        </div>
+        {cd&&<span style={{fontSize:11,fontWeight:800,color:c.txt,fontFamily:"Orbitron,monospace",animation:c.anim}}>{cd}</span>}
+        {!cd&&p.dataSustentacao&&<span style={{fontSize:9,fontWeight:700,color:c.txt,opacity:.8,flexShrink:0}}>{(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
+        <span style={{fontSize:9,fontWeight:700,color:c.txt,background:c.txt+"25",padding:"2px 8px",borderRadius:4,whiteSpace:"nowrap"}}>{labels[nivel]}</span>
+      </div>);
+    })()}
     <div style={{padding:compact?"8px 12px 6px":"14px 16px 10px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))"}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
         <div style={{display:"flex",gap:10,minWidth:0}}>
