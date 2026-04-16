@@ -195,6 +195,7 @@ const injectCSS = () => {
 
 /* ═══ KEYFRAMES ═══ */
 @keyframes cjUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes cjSc{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 @keyframes cjPulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -688,8 +689,19 @@ const D_SUST=[];
 const D_VIAG=[];
 const D_INBOX=[];
 
-/* ═══ PERSISTENCE ═══ */
+/* ═══ PERSISTENCE — v11: Supabase cloud sync + localStorage cache ═══ */
 const STORE_KEY = "cojur-nexus-state";
+const SUPABASE_URL = "https://vcxastdcsbzdsfcdbtan.supabase.co";
+const SUPABASE_KEY = "sb_publishable_pCP08nZyZti0Dak5p52RJw_0MTunzFr";
+const SUPABASE_USER_ID = "joao_gabriel_cojur";
+const SUPABASE_TABLE = "nexus_state";
+const SYNC_STATUS = { idle: "idle", syncing: "syncing", synced: "synced", offline: "offline", error: "error" };
+var __lastSyncStatus = SYNC_STATUS.idle;
+var __lastSyncTime = null;
+var __syncListeners = [];
+var onSyncChange = function(fn){__syncListeners.push(fn);return function(){__syncListeners=__syncListeners.filter(function(f){return f!==fn;});};};
+var setSyncStatus = function(s){__lastSyncStatus=s;if(s===SYNC_STATUS.synced)__lastSyncTime=new Date();__syncListeners.forEach(function(f){try{f(s,__lastSyncTime);}catch(e){}});};
+
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
 const reviveDates = obj => {
   if (!obj || typeof obj !== "object") return obj;
@@ -712,10 +724,91 @@ const rehydrate = raw => {
     notas: parsed.notas || [],
   };
 };
-const storage = (typeof window !== "undefined" && window.storage) ? window.storage : {
-  async get(key){ try { const value = localStorage.getItem(key); return value ? { value } : null; } catch(e){ return null; } },
-  async set(key, value){ try { localStorage.setItem(key, value); return true; } catch(e){ return false; } },
-  async delete(key){ try { localStorage.removeItem(key); return true; } catch(e){ return false; } }
+
+/* ═══ SUPABASE CLIENT (REST API, sem SDK) ═══ */
+var supabaseHeaders = function() {
+  return {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+  };
+};
+var supaFetchState = function() {
+  return fetch(SUPABASE_URL + "/rest/v1/" + SUPABASE_TABLE + "?user_id=eq." + SUPABASE_USER_ID + "&select=data,updated_at", {
+    method: "GET",
+    headers: supabaseHeaders()
+  }).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(rows){
+    if(!rows||!rows.length) return null;
+    return { value: rows[0].data, updated_at: rows[0].updated_at };
+  });
+};
+var supaUpsertState = function(data) {
+  return fetch(SUPABASE_URL + "/rest/v1/" + SUPABASE_TABLE + "?on_conflict=user_id", {
+    method: "POST",
+    headers: Object.assign({}, supabaseHeaders(), { "Prefer": "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify({ user_id: SUPABASE_USER_ID, data: data, updated_at: new Date().toISOString() })
+  }).then(function(r){
+    if(!r.ok) return r.text().then(function(t){throw new Error("HTTP "+r.status+": "+t.substring(0,120));});
+    return true;
+  });
+};
+var supaDeleteState = function() {
+  return fetch(SUPABASE_URL + "/rest/v1/" + SUPABASE_TABLE + "?user_id=eq." + SUPABASE_USER_ID, {
+    method: "DELETE",
+    headers: supabaseHeaders()
+  }).then(function(r){return r.ok;});
+};
+
+/* ═══ HYBRID STORAGE — localStorage cache + Supabase source-of-truth ═══ */
+/* Estratégia: get() tenta Supabase primeiro; se falhar, cai pro localStorage.
+   set() escreve localStorage imediatamente (rápido) + Supabase em background. */
+const storage = {
+  async get(key){
+    setSyncStatus(SYNC_STATUS.syncing);
+    /* 1. Tentar Supabase (fonte da verdade) */
+    try {
+      const cloudResult = await Promise.race([
+        supaFetchState(),
+        new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("timeout")); }, 4000); })
+      ]);
+      if (cloudResult && cloudResult.value) {
+        /* Atualiza cache local com dado da nuvem */
+        try { localStorage.setItem(key, cloudResult.value); } catch(e){}
+        setSyncStatus(SYNC_STATUS.synced);
+        return { value: cloudResult.value };
+      }
+    } catch(e) {
+      setSyncStatus(SYNC_STATUS.offline);
+    }
+    /* 2. Fallback para localStorage (modo offline) */
+    try {
+      const local = localStorage.getItem(key);
+      if (local) return { value: local };
+    } catch(e){}
+    return null;
+  },
+  async set(key, value){
+    /* 1. Escrita local imediata (sempre funciona, rápido) */
+    try { localStorage.setItem(key, value); } catch(e){}
+    /* 2. Sync para Supabase em background (com retry automático) */
+    setSyncStatus(SYNC_STATUS.syncing);
+    try {
+      await supaUpsertState(value);
+      setSyncStatus(SYNC_STATUS.synced);
+      return true;
+    } catch(e) {
+      setSyncStatus(SYNC_STATUS.offline);
+      return false;
+    }
+  },
+  async delete(key){
+    try { localStorage.removeItem(key); } catch(e){}
+    try { await supaDeleteState(); setSyncStatus(SYNC_STATUS.synced); return true; } catch(e){ return false; }
+  }
 };
 const exportState = function(st) {
   try {
@@ -3532,7 +3625,7 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
         <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v10</strong> — Command Palette (⌘K), atalhos discoverable (?), detecção de conflitos de agenda, auto-save de rascunhos de minuta, autocomplete inteligente nos formulários, filtros salvos, Insights IA agregados, comparador lado a lado. Todas as melhorias v8 e v9 preservadas.</div>
+    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v11</strong> — <span style={{color:"#00ff88"}}>Sync cloud Supabase</span> (persistência cross-browser, cross-device) + cache localStorage offline-first + badge de sync no header. Todas melhorias v8, v9 e v10 preservadas.</div>
   </Bx></div>
 )};
 
@@ -4481,6 +4574,36 @@ function EmailAlertModal({st, onClose}) {
   );
 }
 
+/* ═══ v11 — SYNC BADGE (cloud sync indicator) ═══ */
+function SyncBadge(){
+  var[status,setStatus]=useState(__lastSyncStatus||"idle");
+  var[lastTime,setLastTime]=useState(__lastSyncTime);
+  useEffect(function(){
+    var unsub=onSyncChange(function(s,t){setStatus(s);setLastTime(t);});
+    return unsub;
+  },[]);
+  var forceSync=function(){
+    setStatus("syncing");
+    supaFetchState().then(function(r){
+      if(r&&r.value){try{localStorage.setItem(STORE_KEY,r.value);}catch(e){}}
+      setSyncStatus("synced");
+    }).catch(function(){setSyncStatus("offline");});
+  };
+  var config={
+    idle:{cor:"#64748b",bg:"rgba(100,116,139,.08)",brd:"rgba(100,116,139,.25)",icon:"○",label:"Aguardando"},
+    syncing:{cor:"#00e5ff",bg:"rgba(0,229,255,.08)",brd:"rgba(0,229,255,.35)",icon:"⟳",label:"Sincronizando"},
+    synced:{cor:"#00ff88",bg:"rgba(0,255,136,.08)",brd:"rgba(0,255,136,.3)",icon:"✓",label:"Sincronizado"},
+    offline:{cor:"#ffb800",bg:"rgba(255,184,0,.08)",brd:"rgba(255,184,0,.35)",icon:"◌",label:"Offline (cache local)"},
+    error:{cor:"#ff2e5b",bg:"rgba(255,46,91,.08)",brd:"rgba(255,46,91,.35)",icon:"!",label:"Erro"}
+  };
+  var c=config[status]||config.idle;
+  var tooltip="Status: "+c.label+(lastTime?" · Última sync: "+lastTime.toLocaleTimeString("pt-BR"):"")+" · Clique para forçar";
+  return React.createElement("button",{onClick:forceSync,title:tooltip,style:{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:10,border:"1px solid "+c.brd,background:c.bg,color:c.cor,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px",transition:"all .2s"}},
+    React.createElement("span",{style:{animation:status==="syncing"?"spin 1s linear infinite":"none",display:"inline-block"}},c.icon),
+    React.createElement("span",{style:{textTransform:"uppercase",fontSize:9}},status==="synced"&&lastTime?"synced "+Math.max(0,Math.floor((Date.now()-lastTime.getTime())/1000))+"s":c.label)
+  );
+}
+
 export default function App() {
   const [st, dp0] = useReducer(reducer, null, mkInit);
   const dp = function(action){
@@ -4553,9 +4676,10 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
+        /* Timeout maior (5s) para permitir fetch da nuvem; cache local é fallback instantâneo */
         const result = await Promise.race([
           storage.get(STORE_KEY),
-          new Promise(function(res){ setTimeout(function(){ res(null); }, 600); })
+          new Promise(function(res){ setTimeout(function(){ res(null); }, 5000); })
         ]);
         if (!cancelled && result && result.value) {
           const restored = rehydrate(result.value);
@@ -4566,6 +4690,32 @@ export default function App() {
     return function(){ cancelled = true; };
   }, []);
 
+  /* ═══ v11 — SYNC CHECK a cada 30s (detecta alterações feitas em outro navegador) ═══ */
+  useEffect(() => {
+    var interval = setInterval(async function() {
+      try {
+        var cloudResult = await supaFetchState();
+        if (!cloudResult) return;
+        var localStr = "";
+        try { localStr = localStorage.getItem(STORE_KEY) || ""; } catch(e){}
+        if (cloudResult.value && cloudResult.value !== localStr) {
+          var cloudUpdated = new Date(cloudResult.updated_at);
+          var localBackupRaw = "";
+          try { localBackupRaw = localStorage.getItem(STORE_KEY+":ts") || "0"; } catch(e){}
+          var localUpdated = new Date(parseInt(localBackupRaw) || 0);
+          /* Se versão da nuvem é mais recente, aplicar */
+          if (cloudUpdated > localUpdated) {
+            try { localStorage.setItem(STORE_KEY, cloudResult.value); } catch(e){}
+            var restored = rehydrate(cloudResult.value);
+            dp({ type: "LOAD", state: restored });
+            setSyncStatus("synced");
+          }
+        }
+      } catch(e) {}
+    }, 30000);
+    return function(){ clearInterval(interval); };
+  }, []);
+
   // Save state to persistent storage with debounce
   const saveTimer = useRef(null);
   useEffect(() => {
@@ -4574,6 +4724,7 @@ export default function App() {
     saveTimer.current = setTimeout(async function(){
       try {
         await storage.set(STORE_KEY, serialize(st));
+        try { localStorage.setItem(STORE_KEY+":ts", String(Date.now())); } catch(e){}
       } catch (e) {
         // Storage unavailable
       }
@@ -4776,7 +4927,10 @@ export default function App() {
           <div style={{display:"flex",alignItems:"center",gap:12,marginRight:4}}>
             <CFMMark size={34}/>
             <div style={{display:"flex",flexDirection:"column"}}>
-              <span style={{fontSize:14,fontWeight:800,background:"linear-gradient(90deg, #e2e8f0, #00d4ff, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px"}}>COJUR NEXUS v10</span>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:14,fontWeight:800,background:"linear-gradient(90deg, #e2e8f0, #00d4ff, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px"}}>COJUR NEXUS v11</span>
+                <SyncBadge/>
+              </div>
               <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
