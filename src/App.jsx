@@ -337,6 +337,22 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 .cj-glass{background:rgba(0,229,255,.04);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(255,46,91,.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(255,46,91,.3)}}
 @keyframes textBlink{0%,100%{opacity:1}50%{opacity:.35}}
 .cj-sust-pulse{animation:neonBlink .9s ease-in-out infinite!important}
+
+/* ═══ SORTABLE TABLE HEADERS ═══ */
+.cj-table thead th.cj-sortable{cursor:pointer;user-select:none;transition:color .15s}
+.cj-table thead th.cj-sortable:hover{color:#00e5ff}
+.cj-table thead th.cj-sorted{color:#00e5ff}
+
+/* ═══ RESPONSIVE MOBILE ═══ */
+@media(max-width:900px){
+  .cj-side{width:60px!important}
+  .cj-side-label{display:none!important}
+  .cj-pg{padding:12px 8px!important}
+}
+@media(max-width:680px){
+  .cj-side{width:0!important;overflow:hidden!important;border:none!important}
+  .cj-pg{margin-left:0!important}
+}
 `;
   document.head.appendChild(s);
 };
@@ -445,16 +461,20 @@ const getInpSt=()=>({width:"100%",padding:"10px 12px",borderRadius:12,border:`1p
 const getLblSt=()=>({display:"block",fontSize:11,fontWeight:600,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4});
 const getBtnPrim=()=>({padding:"9px 18px",borderRadius:12,border:`1px solid ${K.ac}55`,background:`linear-gradient(135deg,${K.acG},${K.puG})`,boxShadow:`0 0 22px ${K.ac}44,0 12px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)`,color:K.ac,fontSize:13,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit",textShadow:`0 0 8px ${K.ac}aa`});
 const getBtnGhost=()=>({padding:"8px 14px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.dim,fontSize:13,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,transition:"all .18s",fontFamily:"inherit"});
-/* Legacy aliases — used by 200+ references, kept as getter proxies */
-const inpSt=new Proxy({},{get(_,p){return getInpSt()[p]},ownKeys(){return Object.keys(getInpSt())},getOwnPropertyDescriptor(_,p){const v=getInpSt();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getInpSt()}});
-const lblSt=new Proxy({},{get(_,p){return getLblSt()[p]},ownKeys(){return Object.keys(getLblSt())},getOwnPropertyDescriptor(_,p){const v=getLblSt();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getLblSt()}});
-const btnPrim=new Proxy({},{get(_,p){return getBtnPrim()[p]},ownKeys(){return Object.keys(getBtnPrim())},getOwnPropertyDescriptor(_,p){const v=getBtnPrim();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getBtnPrim()}});
-const btnGhost=new Proxy({},{get(_,p){return getBtnGhost()[p]},ownKeys(){return Object.keys(getBtnGhost())},getOwnPropertyDescriptor(_,p){const v=getBtnGhost();if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in getBtnGhost()}});
-const btnDanger=new Proxy({},{get(_,p){const base=getBtnGhost();const v={...base,borderColor:K.cr,color:K.cr};return v[p];},ownKeys(){return Object.keys({...getBtnGhost(),borderColor:"",color:""})},getOwnPropertyDescriptor(_,p){const v={...getBtnGhost(),borderColor:K.cr,color:K.cr};if(p in v)return{configurable:true,enumerable:true,value:v[p]};},has(_,p){return p in {...getBtnGhost(),borderColor:"",color:""}}});
+/* Legacy aliases — recriados como getters simples (sem Proxy) para compatibilidade com React style spread */
+const inpSt=getInpSt();
+const lblSt=getLblSt();
+const btnPrim=getBtnPrim();
+const btnGhost=getBtnGhost();
+const btnDanger={...getBtnGhost(),borderColor:K.cr,color:K.cr};
+/* Reatualiza estilos quando tema muda */
+const refreshStyles=()=>{Object.assign(inpSt,getInpSt());Object.assign(lblSt,getLblSt());Object.assign(btnPrim,getBtnPrim());Object.assign(btnGhost,getBtnGhost());Object.assign(btnDanger,{...getBtnGhost(),borderColor:K.cr,color:K.cr});};
 
 /* ═══ DATE ═══ */
 const curDate=(base)=>{const d=base?new Date(base):new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0,0)};
-const NOW=curDate();
+/* NOW é recalculado dinamicamente para evitar stale após horas com app aberto */
+const getNOW=()=>curDate();
+var NOW=getNOW();
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
 const diffD=(a,b)=>Math.ceil((a-b)/86400000);
 const isBiz=d=>{const w=curDate(d).getDay();return w!==0&&w!==6};
@@ -565,7 +585,7 @@ const recalc=p=>{const pf=toD(p.prazoFinal);const dr=bizDiff(pf,NOW);const tipoP
 
 /* ═══ DATA ═══ */
 let _nid=100;const nid=()=>"N"+(++_nid);
-const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,dataSustentacao:null,tempoFala:15,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,...ov});
+const mkA=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",interessado:"",orgao:"CFM",responsavel:"João Gabriel",linkRef:"",linkSEI:"",prazoFinal:addD(NOW,30),status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,dataSustentacao:null,tempoFala:15,tags:[],semMov:0,hist:[],checklist:[],tipo:"adm",progresso:0,tempoReal:0,...ov});
 const mkJ=ov=>recalc({id:nid(),num:"",numeroSEI:"",assunto:"",tribunal:"TRF-1",orgao:"Justiça Federal",responsavel:"João Gabriel",linkRef:"",linkSEI:"",tipoAcao:"Ação Ordinária",tipoPeca:"Manifestação",parteContraria:"",prazoFinal:addD(NOW,30),pubDJe:null,intersticio:15,status:"Ativo",fase:"Triagem",impacto:3,complexidade:3,destaque:"",obs:"",ultMov:NOW,proxProv:"",dataProv:null,estTempo:"",depTerc:false,reuniao:false,sustentacao:false,tags:[],semMov:0,hist:[],checklist:[],tipo:"jud",motivoAcompanhamento:"",progresso:0,...ov});
 
 
@@ -861,6 +881,19 @@ function reducerCore(st,a){
       listM[idxM]=p2;
       return a.isAdm?{...st,adm:listM}:{...st,jud:listM};
     }
+    /* ═══ DUPLICAR PROCESSO ═══ */
+    case "DUP_P":{
+      var src=[...st.adm,...st.jud].find(function(p){return p.id===a.id;});
+      if(!src) return st;
+      var dup={...src,id:nid(),status:"Ativo",fase:"Triagem",progresso:0,checklist:buildChecklist(src.tipoPeca,src),hist:[{data:toISO(new Date()),txt:"Processo duplicado de "+src.num}],realizadoEm:null,tempoReal:0};
+      if(src.tipo==="adm") return {...st,adm:[...st.adm,recalc(dup)]};
+      return {...st,jud:[...st.jud,recalc(dup)]};
+    }
+    /* ═══ REGISTRAR TEMPO REAL ═══ */
+    case "ADD_TEMPO":{
+      var tk=st.adm.some(function(p){return p.id===a.id;})?"adm":"jud";
+      return{...st,[tk]:st[tk].map(function(p){if(p.id!==a.id)return p;return{...p,tempoReal:(p.tempoReal||0)+a.minutos};})};
+    }
     case "ADD_LEMBRETE": { var nls=[...(st.lembretes||[])]; nls.push({id:nid(),texto:a.texto,data:a.data||"",done:false}); return {...st,lembretes:nls}; }
     case "UPD_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).map(function(l){return l.id===a.id?{...l,...a.ch}:l;})}; }
     case "DEL_LEMBRETE": { return {...st,lembretes:(st.lembretes||[]).filter(function(l){return l.id!==a.id;})}; }
@@ -937,7 +970,7 @@ const SB=({s})=>{const c=s>=70?K.cr:s>=45?K.wa:K.ac;const pct=Math.min(100,Math.
     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill={c} style={{fontSize:s>=100?9:10,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{s}</text>
   </svg>
 )};
-const SC=({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
+const SC=React.memo(({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
   const col=c||K.ac;
   return(
   <div className="cj-hud-tl cj-hud-br" role={onClick?"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(4,8,22,.97), rgba(2,5,14,.99))",border:"1px solid "+col+"28",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",boxShadow:"0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.borderColor=col+"50";e.currentTarget.style.boxShadow="0 0 24px "+col+"14, 0 0 0 1px "+col+"22, 0 22px 50px rgba(0,0,0,.5), inset 0 1px 0 "+col+"18";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=col+"28";e.currentTarget.style.boxShadow="0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10";}}>
@@ -955,8 +988,9 @@ const SC=({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
     </div>
     {sub&&<span style={{fontSize:10,color:K.dim2,fontFamily:"'JetBrains Mono',monospace"}}>{sub}</span>}
   </div>
-);};
-const SH=({icon:I,title:t,right})=>(
+);});
+/* SectionHeader */
+const SH=React.memo(({icon:I,title:t,right})=>(
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:10}}>
     <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
       {I&&<div style={{width:32,height:32,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.25)",boxShadow:"0 0 14px rgba(0,229,255,.22)",animation:"neonPulse 4s ease-in-out infinite"}}><I size={16} color="#00e5ff" style={{filter:"drop-shadow(0 0 6px rgba(0,229,255,.9))"}}/></div>}
@@ -964,11 +998,15 @@ const SH=({icon:I,title:t,right})=>(
     </div>
     {right}
   </div>
-);
-const Bx=({children,style:sx,className:cn,onClick,role,title})=><div className={"cj-shimmer cj-hud-tl cj-hud-br "+(cn||"")} title={title} role={onClick?role||"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(2,5,20,.97), rgba(1,3,12,.99))",backdropFilter:"blur(24px)",border:"1px solid rgba(0,229,255,.1)",boxShadow:"0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)",borderRadius:20,padding:20,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",animation:onClick?"neonPulse 5s ease-in-out infinite":"none",...sx}} onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";e.currentTarget.style.boxShadow="0 0 36px rgba(0,229,255,.1), 0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(0,229,255,.12)";}}} onMouseLeave={e=>{if(onClick){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor="rgba(0,229,255,.1)";e.currentTarget.style.boxShadow="0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)";}}}>{children}</div>;
-const AC=({icon:I,color:c,title:t,desc})=><div className="cj-soft" style={{background:`linear-gradient(180deg,${c}10,rgba(255,255,255,.02))`,border:`1px solid ${c}22`,borderRadius:14,padding:"12px 14px",display:"flex",gap:10}}><I size={16} color={c} style={{marginTop:2,flexShrink:0}}/><div><div style={{fontSize:12,fontWeight:700,color:c}}>{t}</div><div style={{fontSize:11,color:K.dim,marginTop:2,lineHeight:1.5}}>{desc}</div></div></div>;
-const PB=({value:v,max:m,color:c})=><div style={{height:8,borderRadius:999,background:"rgba(255,255,255,.05)",overflow:"hidden",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"}}><div style={{height:"100%",borderRadius:999,background:`linear-gradient(90deg,${c},${c}aa)`,boxShadow:`0 0 22px ${c}55`,width:`${Math.min(100,(v/m)*100)}%`,transition:"width .6s ease"}}/></div>;
-const DoneBtn=({onClick,small})=><button onClick={e=>{e.stopPropagation();onClick?.()}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:small?"6px 9px":"8px 12px",borderRadius:12,border:`1px solid ${K.su}33`,background:`linear-gradient(180deg,${K.suG},rgba(16,185,129,.08))`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",color:K.su,fontSize:small?11:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}><CheckCircle size={small?12:14}/>Feito</button>;
+));
+/* CardBox */
+const Bx=React.memo(({children,style:sx,className:cn,onClick,role,title})=><div className={"cj-shimmer cj-hud-tl cj-hud-br "+(cn||"")} title={title} role={onClick?role||"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(2,5,20,.97), rgba(1,3,12,.99))",backdropFilter:"blur(24px)",border:"1px solid rgba(0,229,255,.1)",boxShadow:"0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)",borderRadius:20,padding:20,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",animation:onClick?"neonPulse 5s ease-in-out infinite":"none",...sx}} onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";e.currentTarget.style.boxShadow="0 0 36px rgba(0,229,255,.1), 0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(0,229,255,.12)";}}} onMouseLeave={e=>{if(onClick){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor="rgba(0,229,255,.1)";e.currentTarget.style.boxShadow="0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)";}}}>{children}</div>);
+/* AlertCard */
+const AC=React.memo(({icon:I,color:c,title:t,desc})=><div className="cj-soft" style={{background:`linear-gradient(180deg,${c}10,rgba(255,255,255,.02))`,border:`1px solid ${c}22`,borderRadius:14,padding:"12px 14px",display:"flex",gap:10}}><I size={16} color={c} style={{marginTop:2,flexShrink:0}}/><div><div style={{fontSize:12,fontWeight:700,color:c}}>{t}</div><div style={{fontSize:11,color:K.dim,marginTop:2,lineHeight:1.5}}>{desc}</div></div></div>);
+/* ProgressBar */
+const PB=React.memo(({value:v,max:m,color:c})=><div style={{height:8,borderRadius:999,background:"rgba(255,255,255,.05)",overflow:"hidden",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"}}><div style={{height:"100%",borderRadius:999,background:`linear-gradient(90deg,${c},${c}aa)`,boxShadow:`0 0 22px ${c}55`,width:`${Math.min(100,(v/m)*100)}%`,transition:"width .6s ease"}}/></div>);
+/* DoneButton */
+const DoneBtn=React.memo(({onClick,small})=><button onClick={e=>{e.stopPropagation();onClick?.()}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:small?"6px 9px":"8px 12px",borderRadius:12,border:`1px solid ${K.su}33`,background:`linear-gradient(180deg,${K.suG},rgba(16,185,129,.08))`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",color:K.su,fontSize:small?11:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}><CheckCircle size={small?12:14}/>Feito</button>);
 
 /* ═══ SKELETON LOADING ═══ */
 const SkeletonBlock=({lines=3,h})=>(
@@ -1442,8 +1480,8 @@ function RelatorioModal(props) {
     var mes=new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
     var dados="Mes: "+mes+"\nTotal processos: "+total+"\nRealizados: "+real.length+"\nJudiciais: "+st.jud.length+"\nAdministrativos: "+st.adm.length+"\nSustentacoes: "+st.sust.length+"\nReunioes: "+st.reun.length;
     var lista=real.slice(0,15).map(function(p,i){return (i+1)+". "+p.assunto+" ("+p.tipoPeca+", "+(p.tipo==="jud"?"Judicial":"Adm")+")";}).join("\n");
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
-    .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem relatorio.");sLoad(false);}).catch(function(){sResult("Erro ao gerar.");sLoad(false);});
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2048,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
+    .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);return r.json();}).then(function(d){if(d.error){sResult("Erro da API: "+(d.error.message||"desconhecido"));sLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem relatorio.");sLoad(false);}).catch(function(e){sResult("Erro ao gerar: "+(e.message||"Verifique sua conexão."));sLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){sCopied(true);setTimeout(function(){sCopied(false);},2500);});}catch(e){}};
   return(
@@ -1784,6 +1822,20 @@ function MinutaModal({proc, onClose}) {
   var sMinuta=useState("");var minuta=sMinuta[0],setMinuta=sMinuta[1];
   var sCopied=useState(false);var copied=sCopied[0],setCopied=sCopied[1];
   var sObs=useState("");var obsExtra=sObs[0],setObs=sObs[1];
+  /* ═══ v10 — DRAFT AUTOSAVE ═══ */
+  var sDraftId=useState(null);var draftId=sDraftId[0],setDraftId=sDraftId[1];
+  var sDrafts=useState(function(){return loadDrafts();});var drafts=sDrafts[0],setDrafts=sDrafts[1];
+  var sTab=useState("gerar");var tab=sTab[0],setTab=sTab[1];
+  /* Auto-save a cada 2s quando minuta muda */
+  useEffect(function(){
+    if(!minuta||minuta.length<50)return;
+    var t=setTimeout(function(){
+      var id=draftId||("dr_"+Date.now());
+      var d={id:id,procId:proc&&proc.id,procNum:proc&&proc.num,procAssunto:proc&&proc.assunto,tipo:tipoMinuta,texto:minuta,createdAt:new Date().toISOString(),obs:obsExtra};
+      saveDraft(d);setDraftId(id);setDrafts(loadDrafts());
+    },2000);
+    return function(){clearTimeout(t);};
+  },[minuta,tipoMinuta,obsExtra]);
 
   var gerar=function(){
     setLoad(true);setMinuta("");
@@ -1793,10 +1845,10 @@ function MinutaModal({proc, onClose}) {
     }
     var instrucoes="REGRAS OBRIGATÓRIAS DE ESTILO COJUR/CFM:\n1. PROIBIDO travessão (use vírgula ou ponto)\n2. Use estrutura: RELATÓRIO, FUNDAMENTOS e CONCLUSÃO\n3. Cite NORMA + FATO + CONSEQUÊNCIA JURÍDICA em cada argumento\n4. Linguagem técnica, objetiva, sem redundâncias\n5. Parágrafos numerados quando houver mais de 3\n6. Endereçamento formal ao tribunal correspondente";
     var prompt="Você é advogado sênior do Conselho Federal de Medicina (CFM) especializado em Direito Administrativo e Processual Civil. Redija uma minuta completa de "+tipoMinuta+" seguindo rigorosamente as regras da COJUR/CFM.\n\n"+instrucoes+"\n\nContexto do processo:\n"+ctx+(obsExtra?"\n\nInstruções adicionais:\n"+obsExtra:"")+"\n\nRedija a peça completa, incluindo cabeçalho formal, qualificação das partes, fundamentos jurídicos (indicando os artigos aplicáveis) e pedido final. A peça deve estar pronta para revisão e protocolo.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})})
-    .then(function(r){return r.json();})
-    .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setMinuta(t||"Sem resultado.");setLoad(false);})
-    .catch(function(){setMinuta("Erro ao gerar. Verifique sua conexão.");setLoad(false);});
+    /* ═══ STREAMING SSE — texto aparece em tempo real ═══ */
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4096,stream:true,messages:[{role:"user",content:prompt}]})})
+    .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);if(!r.body||!r.body.getReader){return r.json().then(function(d){if(d.error){setMinuta("Erro: "+(d.error.message||"desconhecido"));setLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setMinuta(t||"Sem resultado.");setLoad(false);});}var reader=r.body.getReader();var decoder=new TextDecoder();var acc="";var buf="";function pump(){return reader.read().then(function(result){if(result.done){setLoad(false);return;}buf+=decoder.decode(result.value,{stream:true});var lines=buf.split("\n");buf=lines.pop()||"";lines.forEach(function(line){if(!line.startsWith("data: "))return;var data=line.slice(6).trim();if(data==="[DONE]")return;try{var ev=JSON.parse(data);if(ev.type==="content_block_delta"&&ev.delta&&ev.delta.text){acc+=ev.delta.text;setMinuta(acc);}}catch(e){}});return pump();});}return pump();})
+    .catch(function(e){setMinuta("Erro ao gerar: "+(e.message||"Verifique sua conexão."));setLoad(false);});
   };
 
   var copy=function(){try{navigator.clipboard.writeText(minuta).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
@@ -1805,13 +1857,41 @@ function MinutaModal({proc, onClose}) {
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
       <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.25)",borderRadius:22,width:"100%",maxWidth:820,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
           <span style={{fontSize:24}}>📝</span>
-          <div>
+          <div style={{flex:1}}>
             <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Gerador de Minuta Completa</h3>
             <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&proc.assunto||"Peça jurídica"} · {proc&&proc.num||"Novo processo"}</div>
           </div>
+          {/* ═══ v10 — TABS ═══ */}
+          <div style={{display:"flex",gap:4,background:"rgba(0,0,0,.3)",padding:3,borderRadius:10}}>
+            <button onClick={function(){setTab("gerar");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="gerar"?K.acG:"transparent",color:tab==="gerar"?K.ac:K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Gerar</button>
+            <button onClick={function(){setTab("drafts");setDrafts(loadDrafts());}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="drafts"?K.puG:"transparent",color:tab==="drafts"?K.pu:K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>Rascunhos {drafts.length>0&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:999,background:K.pu,color:"#fff"}}>{drafts.length}</span>}</button>
+          </div>
         </div>
+        {/* ═══ TAB DRAFTS ═══ */}
+        {tab==="drafts"&&<div>
+          {drafts.length===0?<div style={{padding:"40px 20px",textAlign:"center",color:K.dim}}>
+            <div style={{fontSize:36,marginBottom:12}}>📋</div>
+            <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:6}}>Nenhum rascunho salvo</div>
+            <div style={{fontSize:11}}>Minutas geradas são salvas automaticamente a cada 2 segundos</div>
+          </div>:<div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:440,overflowY:"auto"}}>
+            {drafts.map(function(d){return <div key={d.id} style={{padding:"12px 14px",borderRadius:11,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){setMinuta(d.texto);setTipoMinuta(d.tipo);setObs(d.obs||"");setDraftId(d.id);setTab("gerar");}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:10,color:K.pu,fontWeight:700,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:3}}>{d.tipo}</div>
+                  <div title={d.procAssunto||""} style={{fontSize:12,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.procAssunto||"Sem assunto"}</div>
+                  <div style={{fontSize:10,color:K.dim,marginTop:2,fontFamily:"'JetBrains Mono',monospace"}}>{d.procNum||"—"} · {d.texto.length} caracteres</div>
+                </div>
+                <button onClick={function(e){e.stopPropagation();if(confirm("Excluir rascunho?")){deleteDraft(d.id);setDrafts(loadDrafts());}}} style={{background:"none",border:"none",color:K.dim2,cursor:"pointer",padding:4}}><X size={14}/></button>
+              </div>
+              <div title={d.texto} style={{fontSize:10,color:K.dim2,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",lineHeight:1.5}}>{d.texto.substring(0,220)}</div>
+              <div style={{fontSize:9,color:K.dim2,marginTop:4}}>{new Date(d.createdAt).toLocaleString("pt-BR")}</div>
+            </div>;})}
+          </div>}
+        </div>}
+        {/* ═══ TAB GERAR ═══ */}
+        {tab==="gerar"&&<>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
           <div>
             <label style={lblSt}>Tipo de Peça</label>
@@ -1824,17 +1904,22 @@ function MinutaModal({proc, onClose}) {
             <textarea style={{...inpSt,minHeight:60,resize:"vertical",fontSize:11}} value={obsExtra} onChange={function(e){setObs(e.target.value);}} placeholder="Ex: Incluir pedido de tutela de urgência, enfatizar Lei 12.842/2013..."/>
           </div>
         </div>
-        <div style={{padding:"10px 14px",borderRadius:11,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",marginBottom:14,fontSize:11,color:K.dim,lineHeight:1.6}}>
-          <span style={{color:"#00e5ff",fontWeight:700}}>Padrão COJUR: </span>
-          Sem travessão · NORMA+FATO+CONSEQUÊNCIA · Estrutura: Relatório / Fundamentos / Conclusão · Linguagem técnica CFM
+        <div style={{padding:"10px 14px",borderRadius:11,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",marginBottom:14,fontSize:11,color:K.dim,lineHeight:1.6,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{flex:1}}><span style={{color:"#00e5ff",fontWeight:700}}>Padrão COJUR: </span>Sem travessão · NORMA+FATO+CONSEQUÊNCIA · Estrutura: Relatório / Fundamentos / Conclusão · Linguagem técnica CFM</span>
+          {minuta&&draftId&&<span style={{fontSize:10,color:K.su,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>💾 Auto-salvo</span>}
         </div>
         {!loading&&!minuta&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"13px",fontSize:14,letterSpacing:".3px"}}>
           📝 Gerar Minuta Completa de {tipoMinuta}
         </button>}
-        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}>
-          <div className="cj-pulse" style={{fontSize:38,marginBottom:12}}>📝</div>
+        {loading&&<div style={{textAlign:"center",padding:"16px 0",color:"#00e5ff"}}>
+          {!minuta&&<><div className="cj-pulse" style={{fontSize:38,marginBottom:12}}>📝</div>
           <div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Redigindo {tipoMinuta}...</div>
-          <div style={{fontSize:11,color:K.dim,marginTop:6}}>Pode levar 20-30 segundos — peça completa sendo gerada</div>
+          <div style={{fontSize:11,color:K.dim,marginTop:6}}>Texto aparecerá em tempo real via streaming</div></>}
+          {minuta&&<div style={{textAlign:"left"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Redigindo em tempo real...</div>
+            <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"#00e5ff"}}/>
+          </div>
+          <textarea readOnly value={minuta} style={{...inpSt,minHeight:300,resize:"vertical",fontSize:11,lineHeight:1.7,fontFamily:"inherit"}}/></div>}
         </div>}
         {minuta&&!loading&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -1849,6 +1934,7 @@ function MinutaModal({proc, onClose}) {
             <button onClick={gerar} style={{...btnGhost,padding:"11px 16px",fontSize:12}}>🔄 Regenerar</button>
           </div>
         </div>}
+        </>}
       </div>
     </div>
   );
@@ -1866,7 +1952,7 @@ function DjeAutoModal(djeP){
     setLoad(true);setErr("");setResult(null);
     var prompt="Pesquise no DJe a publicação mais recente do processo "+numero+" no "+trib+". Retorne JSON: {dataDJe, tipoAto, prazo, intersticio, resumo, encontrado}.";
     fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})})
-    .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Não encontrado. Verifique o número.");setLoad(false);}}).catch(function(){setErr("Erro de conexão.");setLoad(false);});
+    .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);return r.json();}).then(function(d){if(d.error){setErr("Erro da API: "+(d.error.message||"desconhecido"));setLoad(false);return;}var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{var jsonMatch=txt.match(/\{[\s\S]*\}/);if(!jsonMatch) throw new Error("JSON não encontrado");setResult(JSON.parse(jsonMatch[0]));setLoad(false);}catch(e){setErr("Não foi possível extrair dados. Verifique o número do processo e tente novamente.");setLoad(false);}}).catch(function(e){setErr("Erro de conexão: "+(e.message||""));setLoad(false);});
   };
   var aplicar=function(){if(!result||!result.dataDJe)return;dp({type:"UPD",id:proc.id,isAdm:false,ch:{pubDJe:result.dataDJe,intersticio:result.intersticio||15}});onClose();};
   return(
@@ -2044,10 +2130,11 @@ function StatsModal(stP){
 }
 
 /* ═══ FORM MODAL ═══ */
-const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
+const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
   const[form,setForm]=useState(()=>({...(initial||{})}));
   const[confirmDel,setCD]=useState(false);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const sugestoesFor=suggestions||{};
 
   return(
     <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:1100,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
@@ -2105,6 +2192,8 @@ const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
                     );
                   })()}
                   </div>
+                ):(sugestoesFor[f.key]&&sugestoesFor[f.key].length>0)?(
+                  <Autocomplete value={form[f.key]||""} onChange={v=>set(f.key,v)} suggestions={sugestoesFor[f.key]} placeholder={f.ph||""} style={inpSt}/>
                 ):(
                   <input style={inpSt} type="text" value={form[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.ph||""}/>
                 )}
@@ -2126,7 +2215,20 @@ const FM=({title,fields,initial,onSave,onClose,onDelete})=>{
           </div>
           <div style={{display:"flex",gap:10}}>
             <button style={btnGhost} onClick={onClose}>Cancelar</button>
-            <button style={btnPrim} onClick={()=>onSave(form)}><Save size={14}/>Salvar</button>
+            <button style={btnPrim} onClick={()=>{
+              /* ═══ VALIDAÇÃO DE FORMULÁRIO ═══ */
+              var erros=[];
+              if(!form.assunto||!form.assunto.trim()) erros.push("Assunto é obrigatório");
+              if(!form.prazoFinal) erros.push("Prazo Final é obrigatório");
+              if(form.impacto&&(form.impacto<1||form.impacto>5)) erros.push("Impacto deve ser entre 1 e 5");
+              if(form.complexidade&&(form.complexidade<1||form.complexidade>5)) erros.push("Complexidade deve ser entre 1 e 5");
+              if(form.progresso!==undefined&&(form.progresso<0||form.progresso>100)) erros.push("Progresso deve ser entre 0 e 100");
+              if(erros.length>0){
+                alert("⚠️ Corrija os seguintes campos:\n\n• "+erros.join("\n• "));
+                return;
+              }
+              onSave(form);
+            }}><Save size={14}/>Salvar</button>
           </div>
         </div>
       </div>
@@ -2174,7 +2276,8 @@ const extValue=p=>p.tipo==="jud"?(p.parteContraria||"—"):(p.interessado||"—"
 const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,noreferrer")}catch(e){}};
 
 /* PROCESS CARD */
-const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
+/* ProcessCard — memoizado para evitar re-renders desnecessários */
+const PC=React.memo(({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
   <div onClick={e=>{e.stopPropagation();oc?.(p)}} className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55"}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22"}}>
     <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,borderRadius:"0 0 0 20px",background:`linear-gradient(180deg,${accent},${accent}44 60%,transparent)`}}/>
     {isSustAlerta(p)&&(function(){
@@ -2289,10 +2392,12 @@ const PC=({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=
         ):null;})()}
       </div>
       <div style={{marginTop:8,fontSize:10,color:K.dim2,textAlign:"right"}}>Atualizado {fmt(p.ultMov||NOW)}</div>
+      {/* ═══ CHECKLIST PROGRESS BAR ═══ */}
+      {p.checklist&&p.checklist.length>0&&(function(){var total=p.checklist.length;var done=p.checklist.filter(function(c){return typeof c==="object"?c.done:false;}).length;var pct=Math.round(done/total*100);var cor=pct>=100?"#00ff88":pct>=50?"#00e5ff":"#ffb800";return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"4px 0"}},React.createElement("div",{style:{flex:1,height:4,borderRadius:999,background:"rgba(255,255,255,.06)",overflow:"hidden"}},React.createElement("div",{style:{height:"100%",width:pct+"%",background:cor,borderRadius:999,transition:"width .4s"}})),React.createElement("span",{style:{fontSize:9,color:cor,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,flexShrink:0}},done+"/"+total));})()}
     </div>
     <div style={{height:4,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?K.su:p.status==="Em Elaboração"?K.wa:p.status==="Arquivado"?K.dim:accent,opacity:.7}}/>
   </div>
-)};
+)});
 /* KANBAN with localStorage persistence */
 const KANBAN_KEY = "cojur-kanban-cols";
 const DEFAULT_KANBAN_COLS = ["Triagem","Análise","Minuta Pendente","Revisão","Aguardando Retorno Externo","Cumprido"];
@@ -2629,6 +2734,8 @@ const DashPg=({st,dp,sp,ss})=>{
   return(
     <div className="cj-pg">
       {React.createElement(function(){var s=useState(false);var showR=s[0],sShowR=s[1];return React.createElement(React.Fragment,null,React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8,flexWrap:"wrap"}},React.createElement("button",{onClick:function(){sp("timeline");},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📅 Timeline"),React.createElement("button",{onClick:function(){sShowR(true);},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📊 Relatório")),showR&&React.createElement(RelatorioModal,{st:st,onClose:function(){sShowR(false);}}));},null)}
+      {/* ═══ v10 — CONFLICT DETECTION ALERT ═══ */}
+      {React.createElement(ConflictAlert,{st:st,sp:sp})}
       {/* ═══ PROTOCOLAR / CORREÇÃO — top alert strip ═══ */}
       {(function(){var prot=all.filter(p=>isProtocolar(p));var corr=all.filter(p=>isCorrecao(p));if(!prot.length&&!corr.length)return null;return(
         <div style={{marginBottom:16,display:"grid",gridTemplateColumns:prot.length&&corr.length?"1fr 1fr":prot.length?"1fr":"1fr",gap:12}}>
@@ -2654,6 +2761,26 @@ const DashPg=({st,dp,sp,ss})=>{
       );})()}
 
       <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
+        {/* ═══ CARD TOTAL — destaque diferenciado ═══ */}
+        <div className="cj-hud-tl cj-hud-br cj-border-glow" role="button" tabIndex={0} onClick={()=>sp("priorities")} style={{background:"linear-gradient(135deg, rgba(6,12,34,.98), rgba(2,5,20,.99))",border:"2px solid rgba(0,229,255,.45)",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:6,position:"relative",overflow:"hidden",transition:"all .28s",cursor:"pointer",boxShadow:"0 0 28px rgba(0,229,255,.18), 0 0 60px rgba(184,77,255,.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(0,229,255,.15)",gridColumn:"span 1"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-5px)";e.currentTarget.style.boxShadow="0 0 40px rgba(0,229,255,.3), 0 0 80px rgba(184,77,255,.15), 0 22px 50px rgba(0,0,0,.55)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 0 28px rgba(0,229,255,.18), 0 0 60px rgba(184,77,255,.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(0,229,255,.15)";}}>
+          <div style={{position:"absolute",inset:"0 0 auto 0",height:2,background:"linear-gradient(90deg, transparent, #00e5ff, #b84dff, transparent)",opacity:.9,pointerEvents:"none"}}/>
+          <div style={{position:"absolute",inset:"auto 0 0 0",height:2,background:"linear-gradient(90deg, transparent, #b84dff, #00e5ff, transparent)",opacity:.5,pointerEvents:"none"}}/>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(135deg, rgba(0,229,255,.2), rgba(184,77,255,.15))",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(0,229,255,.3), 0 0 30px rgba(184,77,255,.15), inset 0 1px 0 rgba(255,255,255,.08)",border:"1px solid rgba(0,229,255,.35)"}}><Layers size={20} color="#00e5ff" style={{filter:"drop-shadow(0 0 8px rgba(0,229,255,.9))"}}/></div>
+              <span style={{fontSize:10,color:"rgba(148,163,184,.9)",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px"}}>Total Acervo</span>
+            </div>
+            <div className="cj-pulse" style={{width:10,height:10,borderRadius:"50%",background:"linear-gradient(135deg, #00e5ff, #b84dff)",boxShadow:"0 0 12px #00e5ff, 0 0 24px rgba(184,77,255,.5)"}}/>
+          </div>
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
+            <div style={{fontSize:40,fontWeight:900,background:"linear-gradient(135deg, #00e5ff, #b84dff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,filter:"drop-shadow(0 0 12px rgba(0,229,255,.4))"}}>{all.length}</div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+              <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.adm.length} adm</span>
+              <span style={{fontSize:10,color:K.pu,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.jud.length} jud</span>
+            </div>
+          </div>
+          <span style={{fontSize:10,color:"rgba(78,106,138,.85)",fontFamily:"'JetBrains Mono',monospace"}}>processos ativos comigo</span>
+        </div>
         <SC icon={Upload} label="Protocolar" value={all.filter(p=>isProtocolar(p)).length} color={K.su} sub="Aprovado pelo chefe" onClick={()=>sp("protocolar")}/>
         <SC icon={PenLine} label="Em Correção" value={all.filter(p=>isCorrecao(p)).length} color={K.wa} sub="Retornado p/ revisão" onClick={()=>sp("correcao")}/>
         <SC icon={Layers} label="Ativos" value={all.filter(p=>p.status==="Ativo").length} color={K.ac} onClick={()=>sp("priorities")} sparkData={(function(){var r=st.realizados||[];var d=[];for(var i=6;i>=0;i--){var day=addD(NOW,-i);var c=r.filter(function(x){return x.realizadoEm&&diffD(toD(x.realizadoEm),day)===0;}).length;d.push(c);}return d;})()}/>
@@ -2667,6 +2794,8 @@ const DashPg=({st,dp,sp,ss})=>{
         <SC icon={Calendar} label="Reuniões" value={st.reun.length} color={K.ac} sub={`Hoje: ${st.reun.filter(r=>diffD(toD(r.data),NOW)===0).length}`} onClick={()=>sp("agenda")}/>
         <SC icon={Plane} label="Viagens" value={st.viag.length} color={K.su} sub={st.viag.length?`Próxima: ${fmtS(toD(st.viag[0].dataIda))}`:"Nenhuma"} onClick={()=>sp("agenda")}/>
       </div>
+      {/* ═══ WEEKLY EVOLUTION CHART ═══ */}
+      {React.createElement(WeeklyEvolutionChart,{st:st})}
       {/* Heatmap de prazos — próximas 6 semanas */}
       <div style={{marginBottom:24}}>
         <PrazoHeatmap items={all}/>
@@ -2737,7 +2866,10 @@ const DashPg=({st,dp,sp,ss})=>{
 
 /* PROCESS LIST PAGE */
 
-const ProcList=({type,st,dp,ss,compact})=>{
+const ProcList=({type,st,dp,ss,compact,bulkSelected=[],setBulkSelected,savedFilters=[],setSavedFilters,setComparadorIds})=>{
+  const[selMode,sSelMode]=useState(false);
+  const toggleBulk=function(id){if(!setBulkSelected)return;setBulkSelected(function(prev){return prev.includes(id)?prev.filter(function(x){return x!==id;}):prev.concat(id);});};
+  const selectAll=function(ids){if(!setBulkSelected)return;setBulkSelected(ids);};
   const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null);
   const isA=type==="admin",isJ=!isA,raw=isA?st.adm:st.jud;
   const filtered=applyF(raw,fil),sorted=[...filtered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
@@ -2761,10 +2893,38 @@ const ProcList=({type,st,dp,ss,compact})=>{
         <FP f={fil} sf={sFil} isJ={isJ}/>
         <div style={{display:"flex",gap:4}}>{[["score","Score"],["urgency","Urgência"],["date","Data"]].map(([k,l])=><button key={k} onClick={()=>sSb(k)} style={{...btnGhost,padding:"5px 12px",fontSize:11,borderColor:sb===k?K.ac:K.brd,color:sb===k?K.ac:K.dim}}>{l}</button>)}</div>
         <div style={{display:"flex",gap:4}}>{[["cards",LayoutGrid,"Cards"],["kanban",Columns3,"Kanban"],["table",Table2,"Tabela"]].map(([k,I,l])=><button key={k} onClick={()=>sVw(k)} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:vw===k?K.ac:K.brd,color:vw===k?K.ac:K.dim,display:"flex",alignItems:"center",gap:4}}><I size={13}/>{l}</button>)}</div>
+        {/* ═══ BATCH SELECT ═══ */}
+        <button onClick={function(){sSelMode(!selMode);if(selMode&&setBulkSelected)setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:selMode?K.wa:K.brd,color:selMode?K.wa:K.dim,display:"flex",alignItems:"center",gap:4}}><ClipboardCheck size={13}/>{selMode?"Cancelar":"Selecionar"}</button>
+        {selMode&&<button onClick={function(){selectAll(sorted.map(function(p){return p.id;}));}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:K.ac,borderColor:K.ac+"33"}}>Todos ({sorted.length})</button>}
+        {/* ═══ COMPARAR (2-5 processos) ═══ */}
+        {selMode&&bulkSelected.length>=2&&bulkSelected.length<=5&&setComparadorIds&&<button onClick={function(){setComparadorIds(bulkSelected.slice(0,5));sSelMode(false);setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:K.pu,borderColor:K.pu+"33",display:"flex",alignItems:"center",gap:4}}>⚖️ Comparar ({bulkSelected.length})</button>}
+        {/* ═══ FILTROS SALVOS ═══ */}
+        {savedFilters.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{savedFilters.map(function(sf){return React.createElement("button",{key:sf.id,onClick:function(){sFil({...sf.filter,sq:""});},style:{...btnGhost,padding:"5px 10px",fontSize:11,color:"#a855f7",borderColor:"rgba(168,85,247,.3)",display:"flex",alignItems:"center",gap:4}},"⭐ ",sf.name,React.createElement("span",{onClick:function(e){e.stopPropagation();if(confirm("Excluir filtro '"+sf.name+"'?"))setSavedFilters(function(prev){var next=prev.filter(function(x){return x.id!==sf.id;});try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});},style:{marginLeft:4,opacity:.5,cursor:"pointer"}},"×"));})}</div>}
+        {/* ═══ SALVAR FILTRO ATUAL ═══ */}
+        {(fil.urg||fil.st||fil.ph||fil.peca||fil.tr||fil.dep==="Sim"||fil.reun==="Sim"||fil.sust==="Sim")&&setSavedFilters&&<button onClick={function(){var name=prompt("Nome do filtro:");if(!name)return;var newF={id:"f_"+Date.now(),name:name,filter:{...fil,sq:""}};setSavedFilters(function(prev){var next=[...prev,newF];try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:"#a855f7",borderColor:"rgba(168,85,247,.3)"}}>⭐ Salvar Filtro</button>}
       </div>
-      {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp} compact={compact}/>)}</div>}
+      {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><div key={p.id} style={{position:"relative"}}>{selMode&&<div onClick={function(e){e.stopPropagation();toggleBulk(p.id);}} style={{position:"absolute",top:10,left:10,zIndex:5,width:22,height:22,borderRadius:6,border:"2px solid "+(bulkSelected.includes(p.id)?K.ac:K.dim),background:bulkSelected.includes(p.id)?K.ac+"30":"rgba(0,0,0,.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>{bulkSelected.includes(p.id)&&<CheckCircle size={14} color={K.ac}/>}</div>}<PC item={p} onClick={selMode?function(){toggleBulk(p.id);}:ss} dp={dp} compact={compact}/></div>)}</div>}
       {vw==="kanban"&&<KanbanV items={sorted} dp={dp} ss={ss}/>}
-      {vw==="table"&&<Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{sorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      {vw==="table"&&(function(){
+        var tSortKeys={"Nº / SEI":"num","Assunto":"assunto","Prazo":"prazoFinal","Dias":"diasRestantes","Score":"score","Status":"status","Fase":"fase"};
+        var tSorted=[...sorted];
+        if(fil._tCol){
+          var dir=fil._tDir||"asc";
+          var key=fil._tCol;
+          tSorted.sort(function(a,b){
+            var va=a[key]||"",vb=b[key]||"";
+            if(typeof va==="number"&&typeof vb==="number") return dir==="asc"?va-vb:vb-va;
+            if(va instanceof Date&&vb instanceof Date) return dir==="asc"?va-vb:vb-va;
+            return dir==="asc"?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+          });
+        }
+        var toggleSort=function(col){
+          var key=tSortKeys[col];
+          if(!key) return;
+          if(fil._tCol===key) sFil({...fil,_tDir:fil._tDir==="asc"?"desc":"asc"});
+          else sFil({...fil,_tCol:key,_tDir:"asc"});
+        };
+        return <Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} className={(tSortKeys[h]?"cj-sortable":"")+(fil._tCol===tSortKeys[h]?" cj-sorted":"")} onClick={function(){toggleSort(h);}} style={{padding:"12px 14px",textAlign:"left",color:fil._tCol===tSortKeys[h]?K.ac:K.dim,fontWeight:fil._tCol===tSortKeys[h]?700:500,fontSize:11,textTransform:"uppercase",cursor:tSortKeys[h]?"pointer":"default"}}>{h}{fil._tCol===tSortKeys[h]?(fil._tDir==="asc"?" ↑":" ↓"):""}</th>)}</tr></thead><tbody>{tSorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
         <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
         <td title={p.assunto||""} style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
         <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div title={isA?(p.interessado||""):(p.tribunal||"")} style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div title={isA?(p.orgao||""):(p.parteContraria||"")} style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
@@ -2774,8 +2934,13 @@ const ProcList=({type,st,dp,ss,compact})=>{
         <td style={{padding:"10px 14px"}}><IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/></td>
         <td style={{padding:"10px 14px"}}><IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/></td>
         <td style={{padding:"10px 14px"}} onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:8,alignItems:"center"}}><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/><button onClick={()=>sSF(p)} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><PenLine size={14}/></button></div></td>
-      </tr>)}</tbody></table></div></Bx>}
-      {showForm!==null&&<FM key={showForm==="new"?"new":showForm.id} title={showForm==="new"?`Novo ${isA?"Processo":"Prazo"}`:`Editar: ${showForm.assunto||showForm.num||"Item"}`} fields={isA?F_ADM:F_JUD} initial={showForm==="new"?{prazoFinal:addD(NOW,30)}:showForm} onClose={()=>sSF(null)} onSave={doSave} onDelete={showForm!=="new"?doDelete:undefined}/>}
+      </tr>)}</tbody></table></div></Bx>;})()}
+      {showForm!==null&&<FM key={showForm==="new"?"new":showForm.id} title={showForm==="new"?`Novo ${isA?"Processo":"Prazo"}`:`Editar: ${showForm.assunto||showForm.num||"Item"}`} fields={isA?F_ADM:F_JUD} initial={showForm==="new"?{prazoFinal:addD(NOW,30)}:showForm} onClose={()=>sSF(null)} onSave={doSave} onDelete={showForm!=="new"?doDelete:undefined} suggestions={{
+        responsavel:[...new Set([...st.adm,...st.jud].map(function(p){return p.responsavel;}).filter(Boolean))],
+        orgao:[...new Set([...st.adm,...st.jud].map(function(p){return p.orgao;}).filter(Boolean))],
+        interessado:[...new Set(st.adm.map(function(p){return p.interessado;}).filter(Boolean))],
+        parteContraria:[...new Set(st.jud.map(function(p){return p.parteContraria;}).filter(Boolean))],
+      }}/>}
     </div>
   );
 };
@@ -3034,6 +3199,12 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
         {!isJ&&React.createElement(function(){var[showP,sShowP]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(){sShowP(true);},style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(184,77,255,.32)",background:"rgba(184,77,255,.08)",color:"#b84dff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(184,77,255,.16)",fontFamily:"inherit"}},"📋 Elaborar Parecer"),showP&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShowP(false);}}));},null)}
         {React.createElement(function(){var[showTpl,sShowTpl]=useState(false);return(<><button onClick={()=>sShowTpl(true)} style={{...btnGhost,padding:"8px 12px",color:"#b84dff",borderColor:"rgba(184,77,255,.3)"}}><Zap size={14}/>IA Estrutura</button>{showTpl&&<IATplModal proc={p} onClose={()=>sShowTpl(false)}/>}</>);})}
         <button onClick={()=>onEdit(p)} style={{...btnGhost,padding:"8px 12px"}}><PenLine size={14}/>Editar</button>
+        {/* ═══ DUPLICAR PROCESSO ═══ */}
+        {React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();dp({type:"DUP_P",id:p.id});oc();},style:{...btnGhost,padding:"8px 12px",color:"#22d3ee",borderColor:"rgba(34,211,238,.3)"}},React.createElement(Copy,{size:14}),"Duplicar");},null)}
+        {/* ═══ RESUMO EXECUTIVO IA ═══ */}
+        {React.createElement(function(){var[loading,sLoad]=useState(false);var[resumo,sResumo]=useState("");var[copied,sCopied]=useState(false);var gerar=function(){sLoad(true);sResumo("");var ctx="Processo: "+(p.num||"N/I")+" | SEI: "+(p.numeroSEI||"—")+" | Assunto: "+(p.assunto||"—")+" | Tipo: "+(p.tipoPeca||"—")+" | Tribunal: "+(p.tribunal||p.orgao||"—")+" | Parte contrária: "+(p.parteContraria||p.interessado||"—")+" | Prazo: "+fmt(p.prazoFinal)+" ("+p.diasRestantes+"du) | Status: "+p.status+" | Fase: "+p.fase+" | Próxima providência: "+(p.proxProv||"—")+" | Obs: "+(p.obs||"—");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:"Gere um RESUMO EXECUTIVO de 3 a 5 linhas deste processo para compartilhar por email com um colega advogado. Seja conciso e objetivo. Sem travessão. Inclua: número, assunto, próxima providência e prazo.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();sResumo(t||"Sem resultado.");sLoad(false);}).catch(function(){sResumo("Erro ao gerar.");sLoad(false);});};if(resumo)return React.createElement("div",{style:{position:"absolute",top:60,right:18,zIndex:10,width:380,padding:16,borderRadius:14,background:K.modal,border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.7)"}},React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Resumo Executivo"),React.createElement("div",{style:{fontSize:12,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:10}},resumo),React.createElement("div",{style:{display:"flex",gap:6}},React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(resumo);sCopied(true);setTimeout(function(){sCopied(false);},2000);}catch(e){}},style:{...btnPrim,flex:1,justifyContent:"center",padding:"8px",fontSize:11,color:copied?"#00ff88":"#00e5ff"}},copied?"✅ Copiado!":"📋 Copiar"),React.createElement("button",{onClick:function(){sResumo("");},style:{...btnGhost,padding:"8px 12px",fontSize:11}},"Fechar")));return React.createElement("button",{onClick:loading?null:gerar,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#ffb800",borderColor:"rgba(255,184,0,.3)"}},loading?"⏳":"📝","Resumo IA");},null)}
+        {/* ═══ IA SUGESTÃO DE PROVIDÊNCIA ═══ */}
+        {!p.proxProv&&React.createElement(function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#a855f7",borderColor:"rgba(168,85,247,.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");},null)}
         <button onClick={function(){exportProcessPDF(p);}} style={{...btnGhost,padding:"8px 12px",color:K.su,borderColor:K.su+"33"}}><FileText size={14}/>PDF</button>
         <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10}}><X size={20}/></button>
       </div>
@@ -3308,18 +3479,492 @@ const DonePg=({st,ss})=>{const itens=[...(st.realizados||[])].sort((a,b)=>toD(b.
 )};
 
 /* SETTINGS */
-const SettPg=({dp})=>{const[conf,sConf]=useState(false);return(
-  <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Configurações</h2><Bx>
+const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,setNotifStatus]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");return(
+  <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Configurações</h2>
+    {/* ═══ NOTIFICAÇÕES PUSH ═══ */}
+    <Bx style={{marginBottom:16}}>
+      <SH icon={Bell} title="Notificações Push"/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
+        <div><div style={{fontSize:13,color:K.txt}}>Alertas de prazo no navegador</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>Receba alertas mesmo com a aba em background</div></div>
+        <button onClick={function(){if(typeof Notification!=="undefined"){Notification.requestPermission().then(function(p){setNotifStatus(p);});}}} style={{...btnPrim,padding:"8px 16px",color:notifStatus==="granted"?"#00ff88":"#00e5ff",borderColor:notifStatus==="granted"?"rgba(0,255,136,.4)":"rgba(0,229,255,.4)"}}>
+          {notifStatus==="granted"?"✅ Ativadas":notifStatus==="denied"?"❌ Bloqueadas":"🔔 Ativar"}
+        </button>
+      </div>
+    </Bx>
+    {/* ═══ TEMPO REAL — RESUMO ═══ */}
+    <Bx style={{marginBottom:16}}>
+      <SH icon={Timer} title="Tempo Real Registrado"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        {(function(){var all=[...(st||{}).adm||[],...(st||{}).jud||[]];var totalMin=all.reduce(function(s,p){return s+(p.tempoReal||0);},0);var totalEst=all.reduce(function(s,p){var h=parseFloat(p.estTempo)||0;return s+h*60;},0);return[
+          {l:"Total registrado",v:Math.floor(totalMin/60)+"h"+String(totalMin%60).padStart(2,"0"),c:K.ac},
+          {l:"Total estimado",v:Math.floor(totalEst/60)+"h",c:K.wa},
+          {l:"Eficiência",v:totalEst>0?Math.round(totalMin/totalEst*100)+"%":"—",c:totalEst>0&&totalMin<=totalEst?K.su:K.cr}
+        ];})().map(function(m,i){return React.createElement("div",{key:i,style:{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd,textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:10,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:700}},m.l),
+          React.createElement("div",{style:{fontSize:22,fontWeight:800,color:m.c,fontFamily:"Orbitron,monospace"}},m.v)
+        );})}
+      </div>
+    </Bx>
+    {/* ═══ CUSTAS ATUALIZÁVEIS ═══ */}
+    <Bx style={{marginBottom:16}}>
+      <SH icon={DollarSign} title="Valores de Custas Judiciais"/>
+      <div style={{fontSize:12,color:K.dim,marginBottom:12,lineHeight:1.6}}>Valores baseados no Ato 51/TST e tabelas TRFs (2025/2026). Edite diretamente no código-fonte ou solicite atualização quando houver novo Ato.</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,maxHeight:200,overflowY:"auto"}}>
+        {Object.entries(CUSTAS_VALORES).slice(0,8).map(function(entry){return React.createElement("div",{key:entry[0],style:{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd}},
+          React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,fontFamily:"Orbitron,monospace"}},entry[0]),
+          React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2}},entry[1].valor.substring(0,50)+"...")
+        );})}
+      </div>
+    </Bx>
+    {/* ═══ BACKUP & RESET ═══ */}
+    <Bx>
+      <SH icon={Shield} title="Dados e Backup"/>
+      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+        <button onClick={function(){exportState(st);}} style={{...btnPrim,padding:"9px 16px"}}><Download size={14}/>Exportar JSON</button>
+        <button onClick={function(){exportCSV(st);}} style={{...btnGhost,padding:"9px 16px",color:K.su,borderColor:K.su+"33"}}><Download size={14}/>Exportar CSV</button>
+        {React.createElement(function(){var ref=useRef(null);return React.createElement(React.Fragment,null,
+          React.createElement("input",{ref:ref,type:"file",accept:".json",style:{display:"none"},onChange:function(e){importState(e.target.files[0],dp,function(r){if(r==="ok")alert("✅ Dados restaurados!");else alert("❌ Erro ao importar.");});}}),
+          React.createElement("button",{onClick:function(){ref.current&&ref.current.click();},style:{...btnGhost,padding:"9px 16px",color:K.wa,borderColor:K.wa+"33"}},React.createElement(Upload,{size:14}),"Importar JSON")
+        );},null)}
+      </div>
     <div style={{padding:"10px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       {!conf?(<><span style={{fontSize:13,color:K.txt}}>Resetar todos os dados</span><button style={btnDanger} onClick={()=>sConf(true)}><Trash2 size={14}/>Resetar</button></>):(
         <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v6</strong> — Painel operacional do dia, prazos em dias corridos, checklist por tipo de peça, campos SEI/link/responsável, filtros rápidos e alertas inteligentes.</div>
+    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v10</strong> — Command Palette (⌘K), atalhos discoverable (?), detecção de conflitos de agenda, auto-save de rascunhos de minuta, autocomplete inteligente nos formulários, filtros salvos, Insights IA agregados, comparador lado a lado. Todas as melhorias v8 e v9 preservadas.</div>
   </Bx></div>
 )};
 
+/* ═══ v10 — COMMAND PALETTE (Cmd+K) ═══ */
+function CommandPalette({st, dp, sPg, ss, onClose, setShowGmail, setShowDecisao, setShowQuickAdd, setShowShortcuts, exportState, exportCSV, handleExport}){
+  var[q,sQ]=useState("");var[idx,sIdx]=useState(0);var inputRef=useRef(null);
+  useEffect(function(){if(inputRef.current)inputRef.current.focus();},[]);
+  var nav=[
+    {label:"Dashboard",icon:"📊",action:function(){sPg("dashboard");onClose();},cat:"Navegar"},
+    {label:"Hoje",icon:"🎯",action:function(){sPg("today");onClose();},cat:"Navegar"},
+    {label:"Esta Semana",icon:"📅",action:function(){sPg("week");onClose();},cat:"Navegar"},
+    {label:"Prioridades",icon:"🔥",action:function(){sPg("priorities");onClose();},cat:"Navegar"},
+    {label:"IA Nexus",icon:"⚡",action:function(){sPg("ia");onClose();},cat:"Navegar"},
+    {label:"Processos Administrativos",icon:"📁",action:function(){sPg("admin");onClose();},cat:"Navegar"},
+    {label:"Prazos Judiciais",icon:"⚖️",action:function(){sPg("judicial");onClose();},cat:"Navegar"},
+    {label:"Em Execução",icon:"⚡",action:function(){sPg("execucao");onClose();},cat:"Navegar"},
+    {label:"Protocolar",icon:"📤",action:function(){sPg("protocolar");onClose();},cat:"Navegar"},
+    {label:"Em Correção",icon:"✏️",action:function(){sPg("correcao");onClose();},cat:"Navegar"},
+    {label:"Realizados",icon:"✅",action:function(){sPg("done");onClose();},cat:"Navegar"},
+    {label:"Agenda",icon:"📆",action:function(){sPg("agenda");onClose();},cat:"Navegar"},
+    {label:"Calendário",icon:"📅",action:function(){sPg("calendar");onClose();},cat:"Navegar"},
+    {label:"Timeline",icon:"📊",action:function(){sPg("timeline");onClose();},cat:"Navegar"},
+    {label:"Insights IA Agregados",icon:"🧠",action:function(){sPg("insights");onClose();},cat:"Navegar"},
+    {label:"Lembretes",icon:"⏰",action:function(){sPg("lembretes");onClose();},cat:"Navegar"},
+    {label:"Analytics",icon:"📈",action:function(){sPg("analytics");onClose();},cat:"Navegar"},
+    {label:"Auditoria",icon:"🕐",action:function(){sPg("auditlog");onClose();},cat:"Navegar"},
+    {label:"Configurações",icon:"⚙️",action:function(){sPg("settings");onClose();},cat:"Navegar"},
+  ];
+  var actions=[
+    {label:"Novo processo (quick add)",icon:"➕",action:function(){setShowQuickAdd(true);onClose();},cat:"Ação"},
+    {label:"Importar Email SEI",icon:"📧",action:function(){setShowGmail(true);onClose();},cat:"Ação"},
+    {label:"Resumir decisão judicial",icon:"⚖️",action:function(){setShowDecisao(true);onClose();},cat:"Ação"},
+    {label:"Exportar JSON",icon:"💾",action:function(){handleExport();onClose();},cat:"Ação"},
+    {label:"Exportar CSV",icon:"📊",action:function(){exportCSV(st);onClose();},cat:"Ação"},
+    {label:"Ver atalhos de teclado",icon:"⌨️",action:function(){setShowShortcuts(true);onClose();},cat:"Ação"},
+  ];
+  var all=[...st.adm,...st.jud];
+  var procItems=all.map(function(p){return{label:(p.num||"Sem nº")+" — "+(p.assunto||"—").substring(0,60),icon:p.tipo==="jud"?"⚖️":"📁",action:function(){ss(p);onClose();},cat:"Processo",proc:p,_num:p.num,_ass:p.assunto};});
+  var filtered=(function(){var qL=q.toLowerCase().trim();if(!qL)return[...nav,...actions,...procItems.slice(0,10)];var all2=[...nav,...actions,...procItems];return all2.filter(function(i){return i.label.toLowerCase().includes(qL)||(i._num&&i._num.includes(qL))||(i._ass&&i._ass.toLowerCase().includes(qL));}).slice(0,30);})();
+  var execute=function(i){if(filtered[i])filtered[i].action();};
+  var onKey=function(e){if(e.key==="ArrowDown"){e.preventDefault();sIdx(function(n){return Math.min(n+1,filtered.length-1);});}else if(e.key==="ArrowUp"){e.preventDefault();sIdx(function(n){return Math.max(n-1,0);});}else if(e.key==="Enter"){e.preventDefault();execute(idx);}};
+  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(14px)",zIndex:3000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"80px 16px"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.35)",borderRadius:20,width:"100%",maxWidth:640,padding:0,position:"relative",boxShadow:"0 0 60px rgba(0,229,255,.15),0 28px 70px rgba(0,0,0,.8)",overflow:"hidden"}},
+      React.createElement("div",{style:{padding:"16px 20px",borderBottom:"1px solid "+K.brd,display:"flex",alignItems:"center",gap:12}},
+        React.createElement("span",{style:{fontSize:18}},"⌘"),
+        React.createElement("input",{ref:inputRef,value:q,onChange:function(e){sQ(e.target.value);sIdx(0);},onKeyDown:onKey,placeholder:"Buscar processo, navegar, executar ação...",style:{flex:1,background:"transparent",border:"none",outline:"none",color:K.txt,fontSize:15,fontFamily:"inherit"}}),
+        React.createElement("span",{style:{fontSize:10,color:K.dim,border:"1px solid "+K.brd,borderRadius:4,padding:"2px 6px",fontFamily:"'JetBrains Mono',monospace"}},"esc")
+      ),
+      React.createElement("div",{style:{maxHeight:440,overflowY:"auto"}},
+        filtered.length===0?React.createElement("div",{style:{padding:40,textAlign:"center",color:K.dim}},"Nenhum resultado"):
+        (function(){var lastCat="";return filtered.map(function(it,i){var showCat=it.cat!==lastCat;lastCat=it.cat;return React.createElement(React.Fragment,{key:i},
+          showCat&&React.createElement("div",{style:{padding:"10px 20px 4px",fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",fontFamily:"Orbitron,sans-serif"}},it.cat),
+          React.createElement("div",{onMouseEnter:function(){sIdx(i);},onClick:function(){execute(i);},style:{padding:"10px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:idx===i?"rgba(0,229,255,.1)":"transparent",borderLeft:"3px solid "+(idx===i?"#00e5ff":"transparent"),transition:"all .1s"}},
+            React.createElement("span",{style:{fontSize:16}},it.icon),
+            React.createElement("span",{style:{fontSize:13,color:idx===i?"#00e5ff":K.txt,flex:1}},it.label),
+            idx===i&&React.createElement("span",{style:{fontSize:10,color:"#00e5ff",fontFamily:"'JetBrains Mono',monospace"}},"↵")
+          )
+        );});})()
+      ),
+      React.createElement("div",{style:{padding:"8px 16px",borderTop:"1px solid "+K.brd,fontSize:10,color:K.dim,display:"flex",gap:16,alignItems:"center"}},
+        React.createElement("span",null,"↑↓ navegar"),
+        React.createElement("span",null,"↵ selecionar"),
+        React.createElement("span",null,"esc fechar")
+      )
+    )
+  );
+}
+
+/* ═══ v10 — SHORTCUTS MODAL (?) ═══ */
+function ShortcutsModal({onClose}){
+  var shortcuts=[
+    {cat:"Global",items:[["Cmd/Ctrl + K","Abrir Command Palette"],["Cmd/Ctrl + N","Novo processo (quick add)"],["Cmd/Ctrl + Z","Desfazer última ação"],["?","Abrir este modal"],["/","Focar na busca"],["Esc","Fechar modal ativo"]]},
+    {cat:"Navegação",items:[["H","Ir para Hoje"],["P","Ir para Prioridades"],["I","Ir para IA Nexus"],["C","Ir para Calendário"],["T","Ir para Timeline"],["N","Alternar entre Administrativos/Judiciais"],["F","Modo foco (oculta sidebar)"]]},
+  ];
+  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:2500,display:"flex",justifyContent:"center",alignItems:"center",padding:"40px 20px"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:20,maxWidth:540,width:"100%",padding:28,position:"relative",boxShadow:"0 0 40px rgba(0,229,255,.1),0 24px 60px rgba(0,0,0,.7)"}},
+      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}},React.createElement(X,{size:20})),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
+        React.createElement("span",{style:{fontSize:24}},"⌨️"),
+        React.createElement("div",null,
+          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Atalhos de Teclado"),
+          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2}},"Domine o COJUR Nexus sem tirar a mão do teclado")
+        )
+      ),
+      shortcuts.map(function(sec,i){return React.createElement("div",{key:i,style:{marginBottom:i<shortcuts.length-1?18:0}},
+        React.createElement("div",{style:{fontSize:10,color:"#00e5ff",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",marginBottom:10,fontFamily:"Orbitron,sans-serif"}},sec.cat),
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          sec.items.map(function(sc,j){return React.createElement("div",{key:j,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderRadius:10,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd}},
+            React.createElement("span",{style:{fontSize:12,color:K.txt}},sc[1]),
+            React.createElement("kbd",{style:{fontSize:10,color:"#00e5ff",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.25)",borderRadius:5,padding:"3px 8px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}},sc[0])
+          );})
+        )
+      );})
+    )
+  );
+}
+
+/* ═══ v10 — CONFLICT DETECTION ═══ */
+var detectConflicts=function(st){
+  var conflicts=[];
+  var all=[...st.adm,...st.jud];
+  /* 1. Sustentação + prazo crítico no mesmo dia */
+  var sustProcs=all.filter(function(p){return p.dataSustentacao;});
+  sustProcs.forEach(function(s){
+    var sDate=toD(s.dataSustentacao);
+    all.forEach(function(p){
+      if(p.id===s.id)return;
+      if(!p.prazoFinal||p.diasRestantes>3)return;
+      var pDate=toD(p.prazoFinal);
+      if(toISO(sDate)===toISO(pDate)){
+        conflicts.push({type:"sust_prazo",severity:"crit",date:sDate,label:"Sustentação + Prazo crítico",procs:[s,p],msg:"Sustentação em "+(s.assunto||"processo").substring(0,40)+" e prazo crítico em "+(p.assunto||"processo").substring(0,40)});
+      }
+    });
+  });
+  /* 2. Reuniões sobrepostas no mesmo horário */
+  (st.reun||[]).forEach(function(r1,i){
+    (st.reun||[]).forEach(function(r2,j){
+      if(j<=i)return;
+      if(toISO(toD(r1.data))===toISO(toD(r2.data))&&r1.hora&&r2.hora){
+        var h1=parseInt(r1.hora.split(":")[0]);
+        var h2=parseInt(r2.hora.split(":")[0]);
+        if(Math.abs(h1-h2)<=1){
+          conflicts.push({type:"reun_reun",severity:"warn",date:toD(r1.data),label:"Reuniões sobrepostas",msg:r1.titulo+" ("+r1.hora+") e "+r2.titulo+" ("+r2.hora+")"});
+        }
+      }
+    });
+  });
+  /* 3. Viagem sobrepondo com prazo crítico */
+  (st.viag||[]).forEach(function(v){
+    if(!v.dataIda||!v.dataVolta)return;
+    var ini=toD(v.dataIda),fim=toD(v.dataVolta);
+    all.forEach(function(p){
+      if(!p.prazoFinal||p.diasRestantes<0)return;
+      var pDate=toD(p.prazoFinal);
+      if(pDate>=ini&&pDate<=fim){
+        conflicts.push({type:"viag_prazo",severity:"warn",date:pDate,label:"Viagem + Prazo",msg:"Viagem a "+v.destino+" sobrepõe prazo de "+(p.assunto||"").substring(0,40)});
+      }
+    });
+  });
+  /* 4. Reunião + sustentação mesmo dia */
+  (st.reun||[]).forEach(function(r){
+    sustProcs.forEach(function(s){
+      if(toISO(toD(r.data))===toISO(toD(s.dataSustentacao))){
+        conflicts.push({type:"reun_sust",severity:"warn",date:toD(r.data),label:"Reunião + Sustentação",msg:r.titulo+" e sustentação em "+(s.assunto||"").substring(0,40)});
+      }
+    });
+  });
+  return conflicts.sort(function(a,b){return a.date-b.date;});
+};
+
+/* ═══ v10 — CONFLICT ALERT CARD (dashboard) ═══ */
+function ConflictAlert({st,sp}){
+  var conflicts=useMemo(function(){return detectConflicts(st);},[st]);
+  if(!conflicts.length)return null;
+  var crit=conflicts.filter(function(c){return c.severity==="crit";});
+  var warn=conflicts.filter(function(c){return c.severity==="warn";});
+  return React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{marginBottom:16,padding:"14px 18px",borderRadius:16,background:crit.length?"linear-gradient(135deg,rgba(255,46,91,.12),rgba(255,46,91,.04))":"linear-gradient(135deg,rgba(255,184,0,.1),rgba(255,184,0,.03))",border:"1px solid "+(crit.length?"rgba(255,46,91,.5)":"rgba(255,184,0,.4)"),cursor:"pointer"},onClick:function(){sp("calendar");}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+      React.createElement("span",{style:{fontSize:20,animation:crit.length?"textBlink .9s ease-in-out infinite":"none"}},"⚠️"),
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:11,color:crit.length?"#ff2e5b":"#ffb800",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".8px",textTransform:"uppercase"}},"Conflitos de Agenda Detectados"),
+        React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2}},conflicts.length+" conflito"+(conflicts.length>1?"s":"")+" identificado"+(conflicts.length>1?"s":"")+" — clique para ver no calendário")
+      ),
+      React.createElement("div",{style:{marginLeft:"auto",fontSize:24,fontWeight:800,color:crit.length?"#ff2e5b":"#ffb800",fontFamily:"Orbitron,monospace"}},conflicts.length)
+    ),
+    React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+      conflicts.slice(0,3).map(function(c,i){return React.createElement("div",{key:i,style:{padding:"6px 10px",borderRadius:8,background:c.severity==="crit"?"rgba(255,46,91,.08)":"rgba(255,184,0,.06)",border:"1px solid "+(c.severity==="crit"?"rgba(255,46,91,.2)":"rgba(255,184,0,.2)"),fontSize:11,color:c.severity==="crit"?"#ff2e5b":"#ffb800",display:"flex",gap:8,alignItems:"center"}},
+        React.createElement("span",{style:{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:4,background:c.severity==="crit"?"rgba(255,46,91,.2)":"rgba(255,184,0,.15)",fontFamily:"Orbitron,monospace",flexShrink:0}},fmtS(c.date)),
+        React.createElement("span",{style:{flex:1}},c.msg)
+      );}),
+      conflicts.length>3&&React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2,textAlign:"right"}},"+"+(conflicts.length-3)+" mais")
+    )
+  );
+}
+
+/* ═══ v10 — DRAFT AUTOSAVE STORAGE ═══ */
+var DRAFTS_KEY="cojur_minuta_drafts";
+var loadDrafts=function(){try{var s=localStorage.getItem(DRAFTS_KEY);return s?JSON.parse(s):[];}catch(e){return [];}};
+var saveDraft=function(draft){try{var list=loadDrafts();var existing=list.findIndex(function(d){return d.id===draft.id;});if(existing>=0)list[existing]=draft;else list.unshift(draft);list=list.slice(0,50);localStorage.setItem(DRAFTS_KEY,JSON.stringify(list));}catch(e){}};
+var deleteDraft=function(id){try{var list=loadDrafts().filter(function(d){return d.id!==id;});localStorage.setItem(DRAFTS_KEY,JSON.stringify(list));}catch(e){}};
+
+/* ═══ v10 — AUTOCOMPLETE INPUT ═══ */
+function Autocomplete({value,onChange,suggestions,placeholder,style}){
+  var[show,sShow]=useState(false);var[hover,sHover]=useState(-1);var ref=useRef(null);
+  useEffect(function(){var h=function(e){if(ref.current&&!ref.current.contains(e.target))sShow(false);};document.addEventListener("mousedown",h);return function(){document.removeEventListener("mousedown",h);};},[]);
+  var q=(value||"").toLowerCase();
+  var filtered=q?suggestions.filter(function(s){return s&&s.toLowerCase().includes(q)&&s.toLowerCase()!==q;}).slice(0,6):[];
+  return React.createElement("div",{ref:ref,style:{position:"relative"}},
+    React.createElement("input",{type:"text",value:value||"",onChange:function(e){onChange(e.target.value);sShow(true);sHover(-1);},onFocus:function(){sShow(true);},placeholder:placeholder,style:style}),
+    show&&filtered.length>0&&React.createElement("div",{style:{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:K.modal,border:"1px solid "+K.brd,borderRadius:10,padding:4,zIndex:100,maxHeight:180,overflowY:"auto",boxShadow:"0 12px 32px rgba(0,0,0,.5)"}},
+      filtered.map(function(s,i){return React.createElement("div",{key:i,onMouseEnter:function(){sHover(i);},onClick:function(){onChange(s);sShow(false);},style:{padding:"7px 10px",fontSize:12,color:K.txt,cursor:"pointer",background:hover===i?K.acG:"transparent",borderRadius:7,display:"flex",alignItems:"center",gap:6}},
+        React.createElement("span",{style:{fontSize:10,color:K.dim}},"↵"),s
+      );})
+    )
+  );
+}
+
+/* ═══ v10 — COMPARADOR (side-by-side) ═══ */
+function ComparadorModal({ids,st,onClose,onRemove}){
+  var procs=ids.map(function(id){return [...st.adm,...st.jud].find(function(p){return p.id===id;});}).filter(Boolean);
+  if(!procs.length)return null;
+  var rows=[
+    ["Nº",function(p){return p.num||"—";}],
+    ["SEI",function(p){return p.numeroSEI||"—";}],
+    ["Tipo",function(p){return p.tipo==="jud"?"Judicial":"Administrativo";}],
+    ["Assunto",function(p){return p.assunto||"—";}],
+    ["Tipo de Peça",function(p){return p.tipoPeca||"—";}],
+    ["Tribunal/Órgão",function(p){return p.tribunal||p.orgao||"—";}],
+    ["Parte contrária",function(p){return p.parteContraria||p.interessado||"—";}],
+    ["Status",function(p){return p.status;}],
+    ["Fase",function(p){return p.fase;}],
+    ["Prazo",function(p){return fmt(p.prazoFinal);}],
+    ["Dias restantes",function(p){return p.diasRestantes+"du";}],
+    ["Score",function(p){return p.score;}],
+    ["Impacto",function(p){return (p.impacto||3)+"/5";}],
+    ["Complexidade",function(p){return (p.complexidade||3)+"/5";}],
+    ["Próxima providência",function(p){return p.proxProv||"—";}],
+    ["Tempo estimado",function(p){return p.estTempo||"—";}],
+    ["Responsável",function(p){return p.responsavel||"—";}],
+  ];
+  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(10px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 16px",overflowY:"auto"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,maxWidth:1100,width:"100%",padding:28,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}},
+      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}},React.createElement(X,{size:20})),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
+        React.createElement("span",{style:{fontSize:24}},"⚖️"),
+        React.createElement("div",null,
+          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Comparador de Processos"),
+          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2}},procs.length+" processo"+(procs.length>1?"s":"")+" em comparação")
+        )
+      ),
+      React.createElement("div",{style:{overflowX:"auto"}},
+        React.createElement("table",{style:{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:12}},
+          React.createElement("thead",null,
+            React.createElement("tr",null,
+              React.createElement("th",{style:{padding:"10px 12px",textAlign:"left",color:K.dim,fontSize:10,textTransform:"uppercase",fontWeight:700,borderBottom:"1px solid "+K.brd,width:160}},"Campo"),
+              procs.map(function(p){return React.createElement("th",{key:p.id,style:{padding:"10px 12px",textAlign:"left",color:K.ac,fontSize:11,fontWeight:700,borderBottom:"1px solid "+K.brd,minWidth:200,fontFamily:"'JetBrains Mono',monospace"}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,justifyContent:"space-between"}},
+                  React.createElement("span",null,p.num||"Sem nº"),
+                  React.createElement("button",{onClick:function(){onRemove(p.id);},style:{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:2}},React.createElement(X,{size:12}))
+                )
+              );})
+            )
+          ),
+          React.createElement("tbody",null,
+            rows.map(function(r,i){return React.createElement("tr",{key:i,style:{borderBottom:"1px solid "+K.brd}},
+              React.createElement("td",{style:{padding:"10px 12px",color:K.dim,fontSize:11,fontWeight:700,background:"rgba(255,255,255,.02)"}},r[0]),
+              procs.map(function(p){return React.createElement("td",{key:p.id,style:{padding:"10px 12px",color:K.txt,fontSize:12,lineHeight:1.4,verticalAlign:"top"}},r[1](p));})
+            );})
+          )
+        )
+      )
+    )
+  );
+}
+
+/* ═══ v10 — INSIGHTS IA AGREGADOS (página nova) ═══ */
+function InsightsPg({st}){
+  var[loading,setLoad]=useState(false);var[insights,setInsights]=useState("");var[error,setError]=useState("");
+  var gerar=function(){
+    setLoad(true);setError("");setInsights("");
+    var all=[...st.adm,...st.jud];
+    var realizados=st.realizados||[];
+    var stats={
+      totalAtivos:all.length,
+      totalConcluidos:realizados.length,
+      porTipoPeca:{},
+      porTribunal:{},
+      porStatus:{},
+      diasMedios:0,
+      criticos:all.filter(function(p){return p.diasRestantes<=10;}).length,
+      semMov:all.filter(function(p){return (p.semMov||0)>=7;}).length,
+      semProxProv:all.filter(function(p){return !p.proxProv;}).length
+    };
+    all.forEach(function(p){
+      stats.porTipoPeca[p.tipoPeca]=(stats.porTipoPeca[p.tipoPeca]||0)+1;
+      stats.porTribunal[p.tribunal||p.orgao||"—"]=(stats.porTribunal[p.tribunal||p.orgao||"—"]||0)+1;
+      stats.porStatus[p.status]=(stats.porStatus[p.status]||0)+1;
+    });
+    var dados=JSON.stringify(stats,null,2);
+    var prompt="Voce e advogado senior da COJUR/CFM. Analise os dados agregados do acervo abaixo e retorne 5 INSIGHTS ACIONAVEIS em portugues. Cada insight deve ser: (1) baseado em dados concretos, (2) acionavel (sugerir o que fazer), (3) conciso (maximo 3 linhas). Use numeracao e bullet points. Sem travessao. Foque em: padroes de distribuicao, gargalos, recomendacoes de priorizacao, oportunidades de otimizacao.\n\nDados do acervo:\n"+dados;
+    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+    .then(function(d){if(d.error){setError(d.error.message||"Erro");setLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setInsights(t||"Sem resultado.");setLoad(false);})
+    .catch(function(e){setError("Erro: "+(e.message||""));setLoad(false);});
+  };
+  return React.createElement("div",{className:"cj-pg"},
+    React.createElement("div",{className:"cj-up",style:{display:"flex",alignItems:"center",gap:14,marginBottom:24}},
+      React.createElement("div",{style:{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(184,77,255,.22),rgba(0,229,255,.08))",border:"1px solid rgba(184,77,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(184,77,255,.25)"}},
+        React.createElement("span",{style:{fontSize:22}},"🧠")
+      ),
+      React.createElement("div",null,
+        React.createElement("h2",{style:{margin:0,fontSize:22,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}},"Insights IA Agregados"),
+        React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},"Análise do acervo completo por Claude Sonnet")
+      )
+    ),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}},
+      [{l:"Ativos",v:st.adm.length+st.jud.length,c:K.ac},{l:"Realizados",v:(st.realizados||[]).length,c:K.su},{l:"Administrativos",v:st.adm.length,c:K.ac},{l:"Judiciais",v:st.jud.length,c:K.pu}].map(function(m,i){return React.createElement(Bx,{key:i,style:{padding:14}},
+        React.createElement("div",{style:{fontSize:10,color:K.dim,marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}},m.l),
+        React.createElement("div",{style:{fontSize:26,fontWeight:800,color:m.c,fontFamily:"Orbitron,monospace"}},m.v)
+      );})
+    ),
+    !insights&&!loading&&React.createElement(Bx,{style:{textAlign:"center",padding:40}},
+      React.createElement("div",{style:{fontSize:42,marginBottom:16}},"🧠"),
+      React.createElement("div",{style:{fontSize:15,fontWeight:700,color:K.txt,marginBottom:8}},"Gerar análise IA do acervo"),
+      React.createElement("div",{style:{fontSize:12,color:K.dim,marginBottom:20,maxWidth:420,margin:"0 auto 20px"}},"A IA analisará todos os processos e retornará 5 insights acionáveis: gargalos, padrões, recomendações de priorização."),
+      React.createElement("button",{onClick:gerar,style:{...btnPrim,padding:"13px 26px",fontSize:14}},"⚡ Analisar acervo")
+    ),
+    loading&&React.createElement(Bx,{style:{textAlign:"center",padding:40}},
+      React.createElement("div",{className:"cj-pulse",style:{fontSize:38,marginBottom:14}},"🧠"),
+      React.createElement("div",{style:{fontSize:13,color:"#b84dff",fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}},"Analisando acervo..."),
+      React.createElement(SkeletonBlock,{lines:6,h:20})
+    ),
+    error&&React.createElement(Bx,{style:{padding:20,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)"}},
+      React.createElement("div",{style:{fontSize:12,color:"#ff2e5b"}},error)
+    ),
+    insights&&React.createElement(Bx,null,
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+        React.createElement("div",{style:{fontSize:11,color:"#b84dff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}},"Insights gerados"),
+        React.createElement("button",{onClick:gerar,style:{...btnGhost,padding:"6px 14px",fontSize:11}},"Regenerar")
+      ),
+      React.createElement("div",{style:{fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"inherit"}},insights)
+    )
+  );
+}
+
 /* ═══ MAIN ═══ */
+
+/* ═══ BROWSER NOTIFICATIONS — prazos críticos ═══ */
+var requestNotifPermission = function() {
+  if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+};
+var sendBrowserNotif = function(title, body) {
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try { new Notification(title, { body: body, icon: "⚖️", tag: "cojur-nexus" }); } catch(e) {}
+  }
+};
+
+/* ═══ POMODORO TIMER COMPONENT ═══ */
+function PomodoroTimer({proc, dp}) {
+  var [running, setRunning] = useState(false);
+  var [seconds, setSeconds] = useState(25 * 60);
+  var [mode, setMode] = useState("focus"); // focus | break
+  var [totalMin, setTotalMin] = useState(0);
+  var intervalRef = useRef(null);
+
+  useEffect(function() {
+    if (running) {
+      intervalRef.current = setInterval(function() {
+        setSeconds(function(s) {
+          if (s <= 1) {
+            clearInterval(intervalRef.current);
+            setRunning(false);
+            if (mode === "focus") {
+              var mins = 25;
+              setTotalMin(function(t) { return t + mins; });
+              if (proc && dp) dp({ type: "ADD_TEMPO", id: proc.id, minutos: mins });
+              sendBrowserNotif("Pomodoro concluído!", proc ? proc.assunto : "Sessão finalizada");
+              setMode("break");
+              return 5 * 60;
+            } else {
+              sendBrowserNotif("Pausa encerrada!", "Hora de voltar ao foco");
+              setMode("focus");
+              return 25 * 60;
+            }
+          }
+          return s - 1;
+        });
+      }, 1000);
+    }
+    return function() { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [running, mode]);
+
+  var min = Math.floor(seconds / 60);
+  var sec = seconds % 60;
+  var pct = mode === "focus" ? ((25 * 60 - seconds) / (25 * 60)) * 100 : ((5 * 60 - seconds) / (5 * 60)) * 100;
+  var cor = mode === "focus" ? "#00e5ff" : "#00ff88";
+
+  return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 14, background: "rgba(" + (mode === "focus" ? "0,229,255" : "0,255,136") + ",.06)", border: "1px solid rgba(" + (mode === "focus" ? "0,229,255" : "0,255,136") + ",.25)" } },
+    React.createElement("div", { style: { position: "relative", width: 48, height: 48 } },
+      React.createElement("svg", { width: 48, height: 48, viewBox: "0 0 48 48" },
+        React.createElement("circle", { cx: 24, cy: 24, r: 20, fill: "none", stroke: "rgba(255,255,255,.08)", strokeWidth: 3 }),
+        React.createElement("circle", { cx: 24, cy: 24, r: 20, fill: "none", stroke: cor, strokeWidth: 3, strokeLinecap: "round", strokeDasharray: 2 * Math.PI * 20, strokeDashoffset: 2 * Math.PI * 20 * (1 - pct / 100), transform: "rotate(-90 24 24)", style: { transition: "stroke-dashoffset 1s" } })
+      ),
+      React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: cor, fontFamily: "Orbitron,monospace" } }, String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0"))
+    ),
+    React.createElement("div", { style: { flex: 1 } },
+      React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: cor, textTransform: "uppercase", letterSpacing: ".5px", fontFamily: "Orbitron,sans-serif" } }, mode === "focus" ? "Foco" : "Pausa"),
+      totalMin > 0 && React.createElement("div", { style: { fontSize: 10, color: K.dim, marginTop: 2 } }, totalMin + " min registrados")
+    ),
+    React.createElement("div", { style: { display: "flex", gap: 6 } },
+      React.createElement("button", { onClick: function() { setRunning(!running); if (!running) requestNotifPermission(); }, style: { padding: "6px 14px", borderRadius: 10, border: "1px solid " + cor + "44", background: running ? "rgba(255,46,91,.15)" : cor + "20", color: running ? "#ff2e5b" : cor, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, running ? "⏸ Pausar" : "▶ Iniciar"),
+      React.createElement("button", { onClick: function() { setRunning(false); setSeconds(mode === "focus" ? 25 * 60 : 5 * 60); }, style: { padding: "6px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,.1)", background: "transparent", color: K.dim, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "↺")
+    )
+  );
+}
+
+/* ═══ WEEKLY EVOLUTION CHART ═══ */
+function WeeklyEvolutionChart({st}) {
+  var data = [];
+  for (var i = 7; i >= 0; i--) {
+    var weekStart = addD(NOW, -i * 7);
+    var weekEnd = addD(weekStart, 6);
+    var label = fmtS(weekStart);
+    var created = [...st.adm, ...st.jud].filter(function(p) {
+      if (!p.hist || !p.hist.length) return false;
+      var firstDate = p.hist[0].d || p.hist[0].data;
+      if (!firstDate) return false;
+      var d = toD(firstDate);
+      return d >= weekStart && d <= weekEnd;
+    }).length;
+    var concluded = (st.realizados || []).filter(function(p) {
+      if (!p.realizadoEm) return false;
+      var d = toD(p.realizadoEm);
+      return d >= weekStart && d <= weekEnd;
+    }).length;
+    data.push({ sem: label, criados: created, concluidos: concluded });
+  }
+  return React.createElement(Bx, { style: { marginBottom: 20 } },
+    React.createElement(SH, { icon: TrendingUp, title: "Evolução Semanal (8 semanas)" }),
+    React.createElement(ResponsiveContainer, { width: "100%", height: 180 },
+      React.createElement(BarChart, { data: data, barSize: 16 },
+        React.createElement(XAxis, { dataKey: "sem", tick: { fill: K.dim2, fontSize: 9 }, axisLine: false, tickLine: false }),
+        React.createElement(YAxis, { tick: { fill: K.dim2, fontSize: 10 }, axisLine: false, tickLine: false, allowDecimals: false }),
+        React.createElement(Tooltip, { contentStyle: { background: K.modal, border: "1px solid " + K.brd, borderRadius: 8, color: K.txt, fontSize: 12 } }),
+        React.createElement(Bar, { dataKey: "criados", fill: K.ac, name: "Criados", radius: [4, 4, 0, 0] }),
+        React.createElement(Bar, { dataKey: "concluidos", fill: K.su, name: "Concluídos", radius: [4, 4, 0, 0] })
+      )
+    )
+  );
+}
 
 
 /* ═══ LEMBRETES ═══ */
@@ -3766,7 +4411,7 @@ const MuralPg=({st,dp})=>{
   );
 };
 
-const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"auditlog",icon:History,label:"Auditoria"},{id:"settings",icon:Settings,label:"Configurações"}];
+const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"insights",icon:BarChart2,label:"Insights IA"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"auditlog",icon:History,label:"Auditoria"},{id:"settings",icon:Settings,label:"Configurações"}];
 
 
 /* === EMAIL ALERT MODAL === */
@@ -3899,6 +4544,11 @@ export default function App() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [bulkSelected, setBulkSelected] = useState([]);
+  /* ═══ v10 — NOVAS FEATURES ═══ */
+  const [showPalette, setShowPalette] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [comparadorIds, setComparadorIds] = useState([]);
+  const [savedFilters, setSavedFilters] = useState(function(){try{var s=localStorage.getItem("cojur_filters");return s?JSON.parse(s):[];}catch(e){return [];}});
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -3939,6 +4589,14 @@ export default function App() {
     if (u) sSel(u);
   }, [st]);
 
+  /* ═══ NOW REFRESH — atualiza NOW a cada 5 min para evitar stale ═══ */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      NOW = getNOW();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = function(e) {
@@ -3949,6 +4607,12 @@ export default function App() {
         setUndoStack(function(prev){if(!prev.length){showToast("err","Nada para desfazer");return prev;}var last=prev[prev.length-1];dp0({type:'LOAD',state:last.snapshot});showToast("ok","Ação desfeita (Ctrl+Z)");return prev.slice(0,-1);});
         return;
       }
+      /* ═══ Cmd+K / Ctrl+K — COMMAND PALETTE ═══ */
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowPalette(true);
+        return;
+      }
       /* Cmd+N — quick-add */
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
@@ -3956,9 +4620,15 @@ export default function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey) return;
+      /* ═══ ? — SHORTCUTS MODAL ═══ */
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
       switch(e.key) {
         case '/': e.preventDefault(); document.querySelector('input[placeholder*="Buscar"]') && document.querySelector('input[placeholder*="Buscar"]').focus(); break;
-        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); setShowQuickAdd(false); break;
+        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); setShowQuickAdd(false); setShowPalette(false); setShowShortcuts(false); break;
         case 'p': case 'P': sPg('priorities'); break;
         case 'i': case 'I': sPg('ia'); break;
         case 'h': case 'H': sPg('today'); break;
@@ -3973,14 +4643,20 @@ export default function App() {
     return function(){ window.removeEventListener('keydown', handler); };
   }, [pg]);
 
-  const all = useMemo(() => [...st.adm, ...st.jud], [st]);
-  const cn = all.filter(p => p.diasRestantes <= 10).length;
-  const prazoUrgente = all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2&&!["Concluído","Arquivado","Suspenso"].includes(p.status);});
+  const all = useMemo(() => [...st.adm, ...st.jud], [st.adm, st.jud]);
+  const cn = useMemo(() => all.filter(p => p.diasRestantes <= 10).length, [all]);
+  const prazoUrgente = useMemo(() => all.filter(function(p){return p.diasRestantes>=0&&p.diasRestantes<=2&&!["Concluído","Arquivado","Suspenso"].includes(p.status);}), [all]);
+  /* ═══ DEBOUNCED SEARCH — evita recalcular a cada keystroke ═══ */
+  const [debouncedSq, setDebouncedSq] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSq(sq), 200);
+    return () => clearTimeout(timer);
+  }, [sq]);
   const sr = useMemo(() => {
-    if (!sq.trim()) return [];
-    const q = sq;
+    if (!debouncedSq.trim()) return [];
+    const q = debouncedSq;
     return all.filter(p => fuzzyMatch(p.num||"",q) || fuzzyMatch(p.numeroSEI||"",q) || fuzzyMatch(p.assunto||"",q) || fuzzyMatch(p.orgao||"",q) || fuzzyMatch(p.interessado||"",q) || fuzzyMatch(p.parteContraria||"",q) || (p.tags||[]).some(t=>fuzzyMatch(t,q))||fuzzyMatch(p.tipoPeca||"",q)||fuzzyMatch(p.tribunal||"",q)||fuzzyMatch(p.responsavel||"",q)).slice(0,12);
-  }, [sq, all]);
+  }, [debouncedSq, all]);
 
   const handleEdit = p => { sEF(p); sSel(null); };
   const handleEditSave = form => { dp({ type: "UPD", id: editForm.id, isAdm: editForm.tipo === "adm", ch: form }); sEF(null); };
@@ -3989,6 +4665,14 @@ export default function App() {
   // Sound alert for critical deadlines
   useEffect(function(){
     if(prazoUrgente&&prazoUrgente.length>0){
+      /* ═══ BROWSER PUSH NOTIFICATIONS ═══ */
+      requestNotifPermission();
+      prazoUrgente.forEach(function(p){
+        if(p.diasRestantes<=1) sendBrowserNotif("⚠️ PRAZO CRÍTICO — "+p.diasRestantes+"du",p.assunto+" ("+p.num+")");
+      });
+      /* Sustentações em 48h */
+      var sustAlerta=[...st.adm,...st.jud].filter(isSustAlerta);
+      sustAlerta.forEach(function(p){sendBrowserNotif("🎤 SUSTENTAÇÃO ORAL PRÓXIMA",p.assunto);});
       try{
         var ctx=new(window.AudioContext||window.webkitAudioContext)();
         var osc=ctx.createOscillator();
@@ -4012,13 +4696,14 @@ export default function App() {
   },[]);
 
   const rP = () => {
-    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode };
+    const pp = { st, dp, ss: sSel, sp: sPg, compact: compactMode, bulkSelected, setBulkSelected, savedFilters, setSavedFilters, setComparadorIds };
     switch (pg) {
       case "dashboard": return <DashPg {...pp} />;
       case "today": return <TodayPg {...pp} />;
       case "week": return <WeekPg {...pp} />;
       case "priorities": return <PrioPg {...pp} />;
       case "ia": return <IAPainel {...pp} />;
+      case "insights": return <InsightsPg {...pp} />;
       case "admin": return <ProcList type="admin" {...pp} />;
       case "judicial": return <ProcList type="judicial" {...pp} />;
       case "execucao": return <ExecucaoPg {...pp} />;
@@ -4091,13 +4776,15 @@ export default function App() {
           <div style={{display:"flex",alignItems:"center",gap:12,marginRight:4}}>
             <CFMMark size={34}/>
             <div style={{display:"flex",flexDirection:"column"}}>
-              <span style={{fontSize:14,fontWeight:800,background:"linear-gradient(90deg, #e2e8f0, #00d4ff, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px"}}>COJUR NEXUS</span>
+              <span style={{fontSize:14,fontWeight:800,background:"linear-gradient(90deg, #e2e8f0, #00d4ff, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px"}}>COJUR NEXUS v10</span>
               <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
-            <input style={{ ...inpSt, paddingLeft: 40, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
+            <input style={{ ...inpSt, paddingLeft: 40, paddingRight: 80, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
+            {/* ═══ CMD+K INDICATOR ═══ */}
+            <button onClick={function(){setShowPalette(true);}} title="Command Palette (Cmd+K / Ctrl+K)" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",padding:"4px 10px",borderRadius:8,border:"1px solid "+K.brd,background:"rgba(0,229,255,.06)",color:K.ac,fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4,letterSpacing:".5px"}}>⌘K</button>
             {so && sq && (
               <div className="cj-sc" style={{ position: "absolute", top: 44, left: 0, right: 0, background: K.modal, border: `1px solid ${K.brd}`, borderRadius: 12, padding: 8, zIndex: 100, maxHeight: 400, overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,.5)" }}>
                 {sr.length > 0 ? (<>
@@ -4192,13 +4879,22 @@ export default function App() {
       {djeProc&&<DjeAutoModal proc={djeProc} dp={dp} onClose={function(){setDjeProc(null);}}/> }
       {showIANovo&&<IANovoProcessoModal dp={dp} onClose={function(){setShowIANovo(false);}}/> }
       {showQuickAdd&&<QuickAddModal dp={dp} st={st} onClose={function(){setShowQuickAdd(false);}}/>}
+      {/* ═══ v10 — NEW MODALS ═══ */}
+      {showPalette&&<CommandPalette st={st} dp={dp} sPg={sPg} ss={sSel} onClose={function(){setShowPalette(false);}} setShowGmail={setShowGmail} setShowDecisao={setShowDecisao} setShowQuickAdd={setShowQuickAdd} setShowShortcuts={setShowShortcuts} exportState={exportState} exportCSV={exportCSV} handleExport={handleExport}/>}
+      {showShortcuts&&<ShortcutsModal onClose={function(){setShowShortcuts(false);}}/>}
+      {comparadorIds.length>=2&&<ComparadorModal ids={comparadorIds} st={st} onClose={function(){setComparadorIds([]);}} onRemove={function(id){setComparadorIds(function(prev){return prev.filter(function(x){return x!==id;});});}}/>}
       {confirmAction&&<ConfirmDialog title={confirmAction.title} msg={confirmAction.msg} danger={confirmAction.danger} onConfirm={function(){confirmAction.fn();setConfirmAction(null);}} onCancel={function(){setConfirmAction(null);}}/>}
       <BulkActionBar selected={bulkSelected} onClear={function(){setBulkSelected([]);}} dp={dp} items={[...st.adm,...st.jud]}/>
       {checklistProc&&<ChecklistModal proc={checklistProc} onClose={function(){setChecklistProc(null);}} onConfirm={function(){dp({type:"COMPLETE_P",id:checklistProc.id});dp({type:"UPD",id:checklistProc.id,isAdm:checklistProc.tipo==="adm",ch:{status:"Concluído"}});setChecklistProc(null);}}/>}
       {showDecisao&&<DecisaoModal onClose={function(){setShowDecisao(false);}}/>}
       {showRevisao&&<RevisaoModal onClose={function(){setShowRevisao(false);}}/>}
       {sel && <DetMod item={sel} onClose={() => sSel(null)} dp={dp} onEdit={handleEdit} setDjeProc={setDjeProc} st={st} ss={sSel} />}
-      {editForm && <FM key={editForm.id} title={`Editar: ${editForm.assunto || editForm.num || "Item"}`} fields={editForm.tipo === "adm" ? F_ADM : F_JUD} initial={editForm} onClose={() => sEF(null)} onSave={handleEditSave} onDelete={handleEditDel} />}
+      {editForm && <FM key={editForm.id} title={`Editar: ${editForm.assunto || editForm.num || "Item"}`} fields={editForm.tipo === "adm" ? F_ADM : F_JUD} initial={editForm} onClose={() => sEF(null)} onSave={handleEditSave} onDelete={handleEditDel} suggestions={{
+        responsavel:[...new Set([...st.adm,...st.jud].map(function(p){return p.responsavel;}).filter(Boolean))],
+        orgao:[...new Set([...st.adm,...st.jud].map(function(p){return p.orgao;}).filter(Boolean))],
+        interessado:[...new Set(st.adm.map(function(p){return p.interessado;}).filter(Boolean))],
+        parteContraria:[...new Set(st.jud.map(function(p){return p.parteContraria;}).filter(Boolean))],
+      }} />}
       {!focusMode&&<div style={{position:"fixed",bottom:14,left:col?80:230,zIndex:100,display:"flex",gap:8,flexWrap:"wrap"}}>
         {[["H","Hoje"],["P","Prioridades"],["I","IA Nexus"],["C","Calendário"],["T","Timeline"],["F","Foco"],["⌘Z","Desfazer"],["⌘N","Novo"],["/","Buscar"],["Esc","Fechar"]].map(function(k){return(
           <div key={k[0]} style={{display:"flex",alignItems:"center",gap:4,fontSize:9,color:K.dim2,background:"rgba(0,0,0,.4)",borderRadius:6,padding:"2px 6px",border:"1px solid rgba(255,255,255,.05)"}}>
@@ -4241,15 +4937,16 @@ function IATplModal({proc,onClose}){
     fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2048,messages:[{role:"user",content:prompt}]})
     })
-    .then(function(r){return r.json();})
+    .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);return r.json();})
     .then(function(d){
+      if(d.error){sErr("Erro da API: "+(d.error.message||"desconhecido"));sLoad(false);return;}
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();
       sResult(txt||"Nenhuma resposta gerada.");
       sLoad(false);
     })
-    .catch(function(e){sErr("Erro ao conectar com a IA.");sLoad(false);});
+    .catch(function(e){sErr("Erro ao conectar com a IA: "+(e.message||""));sLoad(false);});
   };
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(10px)",zIndex:1200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
@@ -4302,7 +4999,9 @@ const ExecucaoPg=({st,dp,ss})=>{
         {items.length>0&&<div className="cj-pulse" style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(0,229,255,.1)",border:"1px solid rgba(0,229,255,.4)",color:"#00e5ff",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
       </div>
       {!items.length&&<EmptyState icon="rocket" color={K.ac} title="Nenhum processo em execução" sub="Altere o status de um processo para 'Em Execução'"/>}
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {/* ═══ POMODORO TIMER ═══ */}
+      {items.length>0&&React.createElement(PomodoroTimer,{proc:items[0],dp:dp})}
+      <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:14}}>
         {items.map(function(p){var cor=getPecaCor(p.tipoPeca);return(
           <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.22)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
             onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(0,229,255,.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(0,229,255,.22)";}}>
