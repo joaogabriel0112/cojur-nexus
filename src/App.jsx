@@ -339,6 +339,25 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 @keyframes textBlink{0%,100%{opacity:1}50%{opacity:.35}}
 .cj-sust-pulse{animation:neonBlink .9s ease-in-out infinite!important}
 
+/* ═══ MESH BLOB ANIMATIONS ═══ */
+@keyframes cjBlobA{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(10vw,5vh) scale(1.15)}66%{transform:translate(-5vw,10vh) scale(.92)}}
+@keyframes cjBlobB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12vw,-8vh) scale(1.1)}}
+@keyframes cjBlobC{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(8vw,-6vh) scale(1.18)}80%{transform:translate(-4vw,4vh) scale(.95)}}
+@keyframes cjBlobD{0%,100%{transform:translate(0,0) scale(1)}60%{transform:translate(-6vw,-10vh) scale(1.12)}}
+.cj-blob-a{animation:cjBlobA 28s ease-in-out infinite}
+.cj-blob-b{animation:cjBlobB 32s ease-in-out infinite}
+.cj-blob-c{animation:cjBlobC 36s ease-in-out infinite}
+.cj-blob-d{animation:cjBlobD 30s ease-in-out infinite}
+
+/* ═══ CONFETTI ═══ */
+@keyframes cjConfettiFall{
+  0%{transform:translate(0,0) rotate(0deg);opacity:1}
+  100%{transform:translate(var(--cj-x,0),100vh) rotate(720deg);opacity:0}
+}
+
+/* ═══ PREVIEW FADE IN ═══ */
+@keyframes cjPreviewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
 /* ═══ SORTABLE TABLE HEADERS ═══ */
 .cj-table thead th.cj-sortable{cursor:pointer;user-select:none;transition:color .15s}
 .cj-table thead th.cj-sortable:hover{color:#00e5ff}
@@ -931,6 +950,12 @@ function reducerCore(st,a){
       const foundJud = st.jud.find(p=>p.id===a.id);
       const proc = foundAdm || foundJud;
       if(!proc) return st;
+      /* fire confetti (color depends on urgency) */
+      try {
+        const dr = proc.diasRestantes;
+        const color = (dr <= 2) ? "#ff6680" : (dr <= 7 ? "#ffb800" : "#5fb260");
+        if (typeof triggerConfetti === "function") triggerConfetti(color);
+      } catch(e) {}
       const realizadoEm = curDate();
       const concluido = {
         ...proc,
@@ -1076,7 +1101,7 @@ const SC=React.memo(({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
       <div className="cj-dot cj-pulse" style={{background:col,boxShadow:"0 0 10px "+col+", 0 0 20px "+col+"88"}}/>
     </div>
     <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
-      <div style={{fontSize:33,fontWeight:800,color:col,fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,textShadow:"0 0 18px "+col+"70, 0 0 40px "+col+"30",animation:"textGlow 2.5s ease-in-out infinite"}}>{v}</div>
+      <div style={{fontSize:33,fontWeight:800,color:col,fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,textShadow:"0 0 18px "+col+"70, 0 0 40px "+col+"30",animation:"textGlow 2.5s ease-in-out infinite"}}>{typeof v === "number" ? <AnimatedCounter value={v}/> : v}</div>
       {sparkData&&sparkData.length>1&&<Sparkline data={sparkData} color={col} w={64} h={22}/>}
     </div>
     {sub&&<span style={{fontSize:10,color:K.dim2,fontFamily:"'JetBrains Mono',monospace"}}>{sub}</span>}
@@ -2370,8 +2395,763 @@ const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,norefe
 
 /* PROCESS CARD */
 /* ProcessCard — memoizado para evitar re-renders desnecessários */
-const PC=React.memo(({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);return(
-  <div onClick={e=>{e.stopPropagation();oc?.(p)}} className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"all .25s",overflow:"hidden",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor=accent+"55"}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=accent+"22"}}>
+
+/* ═══════════════════════════════════════════════════════════════
+   COJUR PREMIUM SUITE — 6 visual improvements
+   1. MeshBg · 2. useTilt · 3. HoverPreview · 4. QuickActions
+   5. AnimatedCounter + Confetti · 6. RelacoesPg (force graph)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. MeshBg: animated colorful blobs in background ── */
+const MeshBg = React.memo(() => {
+  return (
+    <div aria-hidden="true" style={{
+      position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
+      overflow:"hidden", filter:"blur(80px)", opacity:.55,
+    }}>
+      <div className="cj-blob cj-blob-a" style={{
+        position:"absolute", left:"-10%", top:"10%",
+        width:"45vw", height:"45vw", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(0,212,255,.55), rgba(0,212,255,0) 70%)",
+      }}/>
+      <div className="cj-blob cj-blob-b" style={{
+        position:"absolute", right:"-10%", top:"30%",
+        width:"50vw", height:"50vw", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(184,77,255,.45), rgba(184,77,255,0) 70%)",
+      }}/>
+      <div className="cj-blob cj-blob-c" style={{
+        position:"absolute", left:"30%", bottom:"-20%",
+        width:"55vw", height:"55vw", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(255,102,128,.35), rgba(255,102,128,0) 70%)",
+      }}/>
+      <div className="cj-blob cj-blob-d" style={{
+        position:"absolute", right:"15%", bottom:"5%",
+        width:"38vw", height:"38vw", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(95,178,96,.30), rgba(95,178,96,0) 70%)",
+      }}/>
+    </div>
+  );
+});
+
+/* ── 2. useTilt: 3D mouse-tracked tilt for any element ── */
+const useTilt = (intensity = 8) => {
+  const ref = useRef(null);
+  const onMouseMove = (e) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    const rx = (py - 0.5) * -intensity;
+    const ry = (px - 0.5) *  intensity;
+    el.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+  };
+  const onMouseLeave = () => {
+    const el = ref.current;
+    if (el) el.style.transform = "perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0)";
+  };
+  return { ref, onMouseMove, onMouseLeave };
+};
+
+/* ── 3. HoverPreview: compact tech panel — quick glance only ── */
+const HoverPreview = ({ proc, anchor }) => {
+  if (!proc || !anchor) return null;
+  const accent = uC(proc.diasRestantes);
+  const dr = proc.diasRestantes;
+  const urgLabel = dr <= 0 ? "VENCE HOJE"
+    : dr <= 2 ? "CRÍTICO"
+    : dr <= 7 ? "URGENTE"
+    : dr <= 15 ? "ATENÇÃO" : "NORMAL";
+
+  /* ═══ STRICT POSITIONING — panel never overflows viewport ═══ */
+  const r = anchor.getBoundingClientRect();
+  const PANEL_W = 280;
+  const PANEL_H_EST = 280;
+  const SAFE = 24;  /* generous margin from viewport edge */
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  /* preferred: right of card */
+  let leftPos = r.right + 12;
+  /* if won't fit on right with safe margin, place on left */
+  if (leftPos + PANEL_W + SAFE > vw) {
+    leftPos = r.left - PANEL_W - 12;
+  }
+  /* hard clamp regardless of choice (defensive) */
+  leftPos = Math.max(SAFE, Math.min(vw - PANEL_W - SAFE, leftPos));
+  /* vertical: align with card top, clamp to viewport */
+  let topPos = Math.max(SAFE, Math.min(vh - PANEL_H_EST - SAFE, r.top));
+
+  /* ═══ COMPUTED VALUES ═══ */
+  let prazoPct = 0;
+  let prazoFmt = "—";
+  try {
+    if (proc.prazoFinal) {
+      const d = proc.prazoFinal instanceof Date ? proc.prazoFinal : new Date(proc.prazoFinal+"T12:00:00");
+      if (!isNaN(d.getTime())) prazoFmt = d.toLocaleDateString("pt-BR");
+      const total = 30;
+      const consumed = Math.max(0, total - Math.max(0, dr));
+      prazoPct = Math.min(100, Math.max(0, (consumed / total) * 100));
+      if (dr < 0) prazoPct = 100;
+    }
+  } catch(e) {}
+
+  const scoreVal = Math.round(proc.score || proc.iaS || 0);
+  const histCount = (proc.hist || []).length;
+  const subject = (proc.assunto || "Sem assunto").slice(0, 90);
+  const subjectCut = (proc.assunto || "").length > 90;
+  const proxProv = proc.proxProv ? proc.proxProv.slice(0, 70) : null;
+  const proxProvCut = proc.proxProv && proc.proxProv.length > 70;
+
+  const style = {
+    position: "fixed",
+    top: topPos,
+    left: leftPos,
+    width: PANEL_W,
+    padding: 0,
+    borderRadius: 12,
+    background: "linear-gradient(180deg, rgba(8,12,24,.97), rgba(4,7,16,.99))",
+    border: `1px solid ${accent}66`,
+    boxShadow: `0 12px 36px rgba(0,0,0,.78), 0 0 22px ${accent}33, inset 0 1px 0 rgba(255,255,255,.04)`,
+    backdropFilter: "blur(14px)",
+    pointerEvents: "none",
+    zIndex: 9999,
+    fontFamily: "inherit",
+    overflow: "hidden",
+    animation: "cjPreviewIn .18s ease-out",
+  };
+
+  return (
+    <div style={style}>
+      {/* ═══ TECH HUD CORNER BRACKETS (4 corners) ═══ */}
+      <div aria-hidden="true" style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0}}>
+        {/* TL */}<div style={{position:"absolute",top:6,left:6,width:10,height:10,borderTop:`1px solid ${accent}`,borderLeft:`1px solid ${accent}`,opacity:.6}}/>
+        {/* TR */}<div style={{position:"absolute",top:6,right:6,width:10,height:10,borderTop:`1px solid ${accent}`,borderRight:`1px solid ${accent}`,opacity:.6}}/>
+        {/* BL */}<div style={{position:"absolute",bottom:6,left:6,width:10,height:10,borderBottom:`1px solid ${accent}`,borderLeft:`1px solid ${accent}`,opacity:.6}}/>
+        {/* BR */}<div style={{position:"absolute",bottom:6,right:6,width:10,height:10,borderBottom:`1px solid ${accent}`,borderRight:`1px solid ${accent}`,opacity:.6}}/>
+      </div>
+
+      {/* ═══ ACCENT TOP BAR with scan animation ═══ */}
+      <div style={{height:2,background:`linear-gradient(90deg, transparent, ${accent}, transparent)`,position:"relative",zIndex:1}}/>
+
+      {/* ═══ HERO: countdown ring + urgency ═══ */}
+      <div style={{padding:"14px 14px 10px",display:"flex",alignItems:"center",gap:12,position:"relative",zIndex:1}}>
+        {/* big countdown ring */}
+        <div style={{
+          width:54, height:54, borderRadius:"50%",
+          background:`conic-gradient(${accent} ${prazoPct}%, rgba(127,174,204,.10) 0%)`,
+          padding:2, flexShrink:0,
+          boxShadow:`0 0 14px ${accent}44`,
+        }}>
+          <div style={{
+            width:"100%",height:"100%",borderRadius:"50%",
+            background:"linear-gradient(135deg, #050a18, #0a0e22)",
+            display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",
+            border:`1px solid ${accent}33`,
+          }}>
+            <span style={{
+              fontSize: dr<0 ? 18 : (Math.abs(dr) >= 100 ? 14 : 17),
+              fontWeight:900,color:accent,
+              fontFamily:"Orbitron,sans-serif",lineHeight:1,
+              textShadow:`0 0 8px ${accent}88`,
+            }}>{dr<0?"!":dr}</span>
+            <span style={{fontSize:7,color:accent,opacity:.75,fontFamily:"'JetBrains Mono',monospace",marginTop:2,letterSpacing:".05em"}}>{dr<0?"ATRASO":"DIAS ÚT."}</span>
+          </div>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          {/* urgency label as tech badge */}
+          <div style={{
+            display:"inline-block",
+            padding:"3px 9px",borderRadius:4,
+            background:accent+"22",
+            border:`1px solid ${accent}77`,
+            color:accent,
+            fontSize:9,fontWeight:900,
+            letterSpacing:".12em",
+            fontFamily:"Orbitron,sans-serif",
+            textShadow:`0 0 6px ${accent}55`,
+            marginBottom:6,
+            boxShadow:`inset 0 0 8px ${accent}22`,
+          }}>{urgLabel}</div>
+          {/* number */}
+          <div style={{
+            fontSize:11,color:"#7dd3fc",
+            fontFamily:"'JetBrains Mono',monospace",fontWeight:700,
+            whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+            letterSpacing:".02em",
+            textShadow:"0 0 8px rgba(125,211,252,.35)",
+          }}>{proc.num||"sem nº"}</div>
+          {/* type */}
+          <div style={{
+            fontSize:8,color:"rgba(190,215,235,.55)",marginTop:2,
+            letterSpacing:".08em",fontFamily:"'JetBrains Mono',monospace",
+          }}>
+            {proc.tipo==="jud" ? "▶ JUDICIAL" : "▶ ADMINISTRATIVO"}
+            {proc.tipoPeca ? ` · ${proc.tipoPeca}` : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ separator ═══ */}
+      <div style={{height:1,background:`linear-gradient(90deg, transparent, ${accent}33 30%, ${accent}33 70%, transparent)`,margin:"0 12px"}}/>
+
+      {/* ═══ SUBJECT — most important text ═══ */}
+      <div style={{
+        padding:"10px 14px",
+        fontSize:12,fontWeight:600,color:"#e2e8f0",
+        lineHeight:1.45,
+        position:"relative",zIndex:1,
+      }}>
+        {subject}{subjectCut?"…":""}
+      </div>
+
+      {/* ═══ NEXT ACTION — visible only if exists ═══ */}
+      {proxProv && (
+        <div style={{padding:"0 12px 10px",position:"relative",zIndex:1}}>
+          <div style={{
+            padding:"8px 10px",
+            background:`linear-gradient(135deg, ${accent}10, transparent)`,
+            border:`1px solid ${accent}28`,
+            borderLeft:`2px solid ${accent}`,
+            borderRadius:6,
+          }}>
+            <div style={{
+              fontSize:8,color:accent,
+              letterSpacing:".12em",fontWeight:800,
+              fontFamily:"Orbitron,sans-serif",
+              marginBottom:3,opacity:.9,
+              textShadow:`0 0 4px ${accent}55`,
+            }}>▶ AÇÃO</div>
+            <div style={{
+              fontSize:11,color:"#dde6f3",
+              lineHeight:1.4,fontWeight:600,
+            }}>{proxProv}{proxProvCut?"…":""}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ TECH FOOTER: data line + meta chips ═══ */}
+      <div style={{
+        padding:"8px 12px 9px",
+        background:"rgba(0,0,0,.28)",
+        borderTop:"1px solid rgba(127,174,204,.08)",
+        position:"relative",zIndex:1,
+      }}>
+        {/* prazo timeline */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <span style={{fontSize:8,color:"rgba(190,215,235,.40)",letterSpacing:".10em",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>PRAZO</span>
+          <span style={{fontSize:9,color:accent,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textShadow:`0 0 4px ${accent}33`}}>
+            {prazoFmt}
+          </span>
+        </div>
+        <div style={{height:3,borderRadius:2,background:"rgba(127,174,204,.08)",overflow:"hidden",position:"relative",marginBottom:8}}>
+          <div style={{
+            height:"100%",
+            width: `${prazoPct}%`,
+            background: `linear-gradient(90deg, ${accent}66, ${accent})`,
+            borderRadius:2,
+            boxShadow: `0 0 6px ${accent}aa`,
+            transition:"width .3s ease",
+          }}/>
+        </div>
+        {/* meta chips row — compact */}
+        <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+          {(proc.tribunal || proc.orgao) && (
+            <span style={{
+              padding:"2px 7px",borderRadius:3,
+              background:"rgba(127,184,224,.10)",
+              border:"1px solid rgba(127,184,224,.18)",
+              color:"#bbd5ec",fontSize:9,fontWeight:700,
+              fontFamily:"'JetBrains Mono',monospace",
+            }}>{(proc.tribunal||proc.orgao||"").slice(0,12)}</span>
+          )}
+          {scoreVal > 0 && (
+            <span style={{
+              padding:"2px 7px",borderRadius:3,
+              background: scoreVal >= 75 ? "rgba(255,102,128,.12)" : scoreVal >= 50 ? "rgba(255,184,0,.12)" : "rgba(95,178,96,.12)",
+              border:`1px solid ${scoreVal >= 75 ? "rgba(255,102,128,.28)" : scoreVal >= 50 ? "rgba(255,184,0,.28)" : "rgba(95,178,96,.28)"}`,
+              color: scoreVal >= 75 ? "#ff6680" : scoreVal >= 50 ? "#ffb800" : "#5fb260",
+              fontSize:9,fontWeight:800,
+              fontFamily:"'JetBrains Mono',monospace",
+            }}>◈ {scoreVal}</span>
+          )}
+          {histCount > 0 && (
+            <span style={{
+              padding:"2px 7px",borderRadius:3,
+              background:"rgba(0,229,255,.10)",
+              border:"1px solid rgba(0,229,255,.20)",
+              color:"#00e5ff",fontSize:9,fontWeight:700,
+              fontFamily:"'JetBrains Mono',monospace",
+            }}>◇ {histCount}</span>
+          )}
+          {proc.depTerc && (
+            <span style={{
+              padding:"2px 7px",borderRadius:3,
+              background:"rgba(255,184,0,.12)",
+              border:"1px solid rgba(255,184,0,.28)",
+              color:"#ffb800",fontSize:9,fontWeight:700,
+              fontFamily:"'JetBrains Mono',monospace",
+            }}>3os</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── 4. QuickActionsToolbar: slide-in mini bar on card hover ── */
+const QuickActionsToolbar = ({ proc, dp, onEdit, visible, accent }) => {
+  if (!proc) return null;
+  const items = [
+    { icon: "✓", label: "Concluir", color: "#5fb260", onClick: e => { e.stopPropagation(); dp({type:"COMPLETE_P",id:proc.id}); }},
+    { icon: "✎", label: "Editar",   color: "#7faecc", onClick: e => { e.stopPropagation(); onEdit && onEdit(proc); }},
+    { icon: "⧉", label: "Duplicar", color: "#22d3ee", onClick: e => { e.stopPropagation(); dp({type:"DUP_P",id:proc.id}); }},
+  ];
+  return (
+    <div style={{
+      position:"absolute",
+      top:"50%", right:8,
+      transform: visible ? "translateY(-50%) translateX(0)" : "translateY(-50%) translateX(20px)",
+      opacity: visible ? 1 : 0,
+      pointerEvents: visible ? "auto" : "none",
+      display:"flex", flexDirection:"column", gap:5,
+      transition:"transform .22s ease, opacity .22s ease",
+      zIndex:5,
+    }}>
+      {items.map((it, i) => (
+        <button key={it.label} onClick={it.onClick} title={it.label} style={{
+          width:30, height:30, borderRadius:9,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          background: `${it.color}18`,
+          border: `1px solid ${it.color}55`,
+          color: it.color,
+          cursor: "pointer",
+          fontSize:14, fontWeight:900,
+          fontFamily:"Orbitron, sans-serif",
+          boxShadow: `0 0 8px ${it.color}33`,
+          transitionDelay: `${i * 30}ms`,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = `${it.color}30`; e.currentTarget.style.transform = "scale(1.12)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = `${it.color}18`; e.currentTarget.style.transform = "scale(1)"; }}
+        >{it.icon}</button>
+      ))}
+    </div>
+  );
+};
+
+/* ── 5a. AnimatedCounter: smooth number transitions ── */
+const AnimatedCounter = ({ value, duration = 600, style }) => {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const startRef = useRef(0);
+  useEffect(() => {
+    if (value === fromRef.current) return;
+    const from = fromRef.current;
+    const to = value;
+    startRef.current = performance.now();
+    const tick = () => {
+      const t = (performance.now() - startRef.current) / duration;
+      if (t >= 1) {
+        setDisplay(to);
+        fromRef.current = to;
+        return;
+      }
+      /* ease-out cubic */
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, duration]);
+  return <span style={style}>{display}</span>;
+};
+
+/* ── 5b. Confetti: celebration burst on critical complete ── */
+let __confettiId = 0;
+const __confettiListeners = new Set();
+const triggerConfetti = (color) => {
+  __confettiId++;
+  __confettiListeners.forEach(fn => fn(__confettiId, color));
+};
+const ConfettiHost = () => {
+  const [bursts, setBursts] = useState([]);
+  useEffect(() => {
+    const fn = (id, color) => {
+      setBursts(prev => [...prev, { id, color, t: Date.now() }]);
+      setTimeout(() => setBursts(prev => prev.filter(b => b.id !== id)), 2400);
+    };
+    __confettiListeners.add(fn);
+    return () => __confettiListeners.delete(fn);
+  }, []);
+  return (
+    <div aria-hidden="true" style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:9999,overflow:"hidden"}}>
+      {bursts.map(b => <ConfettiBurst key={b.id} color={b.color}/>)}
+    </div>
+  );
+};
+const ConfettiBurst = ({ color }) => {
+  const pieces = useMemo(() => {
+    const cs = ["#00e5ff","#5fb260","#ffb800","#b84dff","#ff6680","#fff"];
+    return Array.from({length: 60}, (_, i) => ({
+      i,
+      left: 30 + Math.random() * 40,    /* % */
+      angle: (Math.random() - 0.5) * 1.4,
+      vy: 10 + Math.random() * 14,
+      delay: Math.random() * 200,
+      color: color || cs[Math.floor(Math.random() * cs.length)],
+      sz: 5 + Math.random() * 7,
+      rot: Math.random() * 360,
+      shape: Math.random() > 0.5 ? "rect" : "circle",
+    }));
+  }, []);
+  return (
+    <>
+      {pieces.map(p => (
+        <div key={p.i} style={{
+          position:"absolute",
+          left: p.left + "%",
+          top: "30%",
+          width: p.sz, height: p.sz,
+          background: p.color,
+          borderRadius: p.shape === "circle" ? "50%" : "1px",
+          opacity: 0.95,
+          transform: `rotate(${p.rot}deg)`,
+          animation: `cjConfettiFall 1.6s cubic-bezier(.4,.7,.4,1) ${p.delay}ms forwards`,
+          ["--cj-x"]: (p.angle * 200) + "px",
+        }}/>
+      ))}
+    </>
+  );
+};
+
+/* ── 6. RelacoesPg: force-directed graph of process relationships ── */
+const RelacoesPg = ({ st, ss, sp }) => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [hovered, setHovered] = useState(null);
+  const mouseRef = useRef({ x: -9999, y: -9999, dragging: null });
+  const all = useMemo(() => [...st.adm, ...st.jud], [st.adm, st.jud]);
+
+  /* compute nodes + edges */
+  const { nodes, edges } = useMemo(() => {
+    const ns = all
+      .filter(p => !["Concluído","Arquivado"].includes(p.status))
+      .slice(0, 80)
+      .map((p, i) => ({
+        id: p.id, proc: p,
+        x: 0, y: 0, vx: 0, vy: 0,
+        r: 6 + Math.min(8, (p.iaS||50)/12),
+      }));
+    const es = [];
+    /* connect by shared interessado/parteContraria */
+    const partyMap = {};
+    ns.forEach(n => {
+      const k = (n.proc.interessado || n.proc.parteContraria || "").toLowerCase().trim();
+      if (!k || k === "—") return;
+      partyMap[k] = partyMap[k] || [];
+      partyMap[k].push(n.id);
+    });
+    Object.values(partyMap).forEach(ids => {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i+1; j < ids.length; j++) {
+          es.push({ a: ids[i], b: ids[j], type: "party" });
+        }
+      }
+    });
+    /* connect by shared tipoPeca */
+    const tpMap = {};
+    ns.forEach(n => {
+      const k = (n.proc.tipoPeca || "").toLowerCase().trim();
+      if (!k) return;
+      tpMap[k] = tpMap[k] || [];
+      tpMap[k].push(n.id);
+    });
+    Object.values(tpMap).forEach(ids => {
+      if (ids.length > 8) return;  /* skip huge clusters */
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i+1; j < ids.length; j++) {
+          if (!es.some(e => (e.a===ids[i]&&e.b===ids[j])||(e.a===ids[j]&&e.b===ids[i]))) {
+            es.push({ a: ids[i], b: ids[j], type: "tipoPeca" });
+          }
+        }
+      }
+    });
+    /* connect by shared tribunal/orgao */
+    const trMap = {};
+    ns.forEach(n => {
+      const k = (n.proc.tribunal || n.proc.orgao || "").toLowerCase().trim();
+      if (!k) return;
+      trMap[k] = trMap[k] || [];
+      trMap[k].push(n.id);
+    });
+    Object.values(trMap).forEach(ids => {
+      if (ids.length > 10) return;
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i+1; j < ids.length; j++) {
+          if (!es.some(e => (e.a===ids[i]&&e.b===ids[j])||(e.a===ids[j]&&e.b===ids[i]))) {
+            es.push({ a: ids[i], b: ids[j], type: "tribunal" });
+          }
+        }
+      }
+    });
+    return { nodes: ns, edges: es };
+  }, [all]);
+
+  /* layout + animation */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0;
+    const resize = () => {
+      W = container.clientWidth;
+      H = container.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + "px";
+      canvas.style.height = H + "px";
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+
+    /* init positions in a circle */
+    const centerX = W / 2, centerY = H / 2;
+    nodes.forEach((n, i) => {
+      const ang = (i / nodes.length) * Math.PI * 2;
+      n.x = centerX + Math.cos(ang) * 200;
+      n.y = centerY + Math.sin(ang) * 200;
+    });
+
+    /* node lookup */
+    const nodeById = {};
+    nodes.forEach(n => { nodeById[n.id] = n; });
+
+    let raf;
+    const step = () => {
+      raf = requestAnimationFrame(step);
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const cx = cw / 2, cy = ch / 2;
+
+      /* repulsion between all nodes */
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i+1; j < nodes.length; j++) {
+          const b = nodes[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d2 = dx*dx + dy*dy + 0.01;
+          const d = Math.sqrt(d2);
+          if (d > 240) continue;
+          const f = 480 / d2;
+          const fx = (dx/d) * f;
+          const fy = (dy/d) * f;
+          a.vx -= fx; a.vy -= fy;
+          b.vx += fx; b.vy += fy;
+        }
+      }
+      /* edge attraction */
+      edges.forEach(e => {
+        const a = nodeById[e.a], b = nodeById[e.b];
+        if (!a || !b) return;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.sqrt(dx*dx + dy*dy) + 0.01;
+        const target = e.type === "party" ? 70 : 110;
+        const f = (d - target) * 0.012;
+        const fx = (dx/d) * f, fy = (dy/d) * f;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      });
+      /* center gravity */
+      nodes.forEach(n => {
+        n.vx += (cx - n.x) * 0.0015;
+        n.vy += (cy - n.y) * 0.0015;
+        n.vx *= 0.85;  /* damping */
+        n.vy *= 0.85;
+        if (mouseRef.current.dragging !== n) {
+          n.x += n.vx;
+          n.y += n.vy;
+        } else {
+          n.x = mouseRef.current.x;
+          n.y = mouseRef.current.y;
+          n.vx = 0; n.vy = 0;
+        }
+      });
+
+      /* render */
+      ctx.fillStyle = "#040912";
+      ctx.fillRect(0, 0, cw, ch);
+      /* radial bg glow */
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(cw, ch)*0.6);
+      bg.addColorStop(0, "rgba(20, 60, 110, 0.18)");
+      bg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, cw, ch);
+
+      /* edges */
+      const edgeColors = {
+        party: "rgba(255, 102, 128, 0.45)",
+        tipoPeca: "rgba(127, 184, 224, 0.30)",
+        tribunal: "rgba(184, 77, 255, 0.30)",
+      };
+      edges.forEach(e => {
+        const a = nodeById[e.a], b = nodeById[e.b];
+        if (!a || !b) return;
+        ctx.strokeStyle = edgeColors[e.type] || "rgba(127, 184, 224, 0.25)";
+        ctx.lineWidth = e.type === "party" ? 1.2 : 0.7;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      });
+
+      /* nodes */
+      const hovId = hoveredRefLocal.current;
+      nodes.forEach(n => {
+        const isHov = hovId === n.id;
+        const accent = uC(n.proc.diasRestantes);
+        /* outer glow */
+        const glowR = n.r * (isHov ? 4 : 2.4);
+        const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, glowR);
+        g.addColorStop(0, accent + (isHov ? "cc" : "55"));
+        g.addColorStop(0.6, accent + "22");
+        g.addColorStop(1, accent + "00");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2); ctx.fill();
+        /* core */
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r * (isHov ? 1.3 : 1), 0, Math.PI * 2); ctx.fill();
+        /* highlight */
+        ctx.fillStyle = "rgba(255,255,255,.85)";
+        ctx.beginPath(); ctx.arc(n.x - n.r*0.3, n.y - n.r*0.3, n.r*0.35, 0, Math.PI * 2); ctx.fill();
+        /* label for hovered */
+        if (isHov) {
+          ctx.font = "bold 11px 'JetBrains Mono', monospace";
+          const text = (n.proc.num || "").slice(-9) || "?";
+          const tw = ctx.measureText(text).width + 12;
+          ctx.fillStyle = "rgba(8,12,22,.92)";
+          ctx.fillRect(n.x - tw/2, n.y - n.r - 22, tw, 16);
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 0.6;
+          ctx.strokeRect(n.x - tw/2, n.y - n.r - 22, tw, 16);
+          ctx.fillStyle = accent;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(text, n.x, n.y - n.r - 14);
+        }
+      });
+    };
+    step();
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, [nodes, edges]);
+
+  /* mouse interactions */
+  const hoveredRefLocal = useRef(null);
+  useEffect(() => { hoveredRefLocal.current = hovered; }, [hovered]);
+
+  const onMove = (e) => {
+    const r = canvasRef.current.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    mouseRef.current.x = mx; mouseRef.current.y = my;
+    let bestD = 16, bestId = null;
+    nodes.forEach(n => {
+      const d = Math.hypot(mx - n.x, my - n.y);
+      if (d < bestD) { bestD = d; bestId = n.id; }
+    });
+    setHovered(bestId);
+  };
+  const onDown = (e) => {
+    if (hovered) {
+      const node = nodes.find(n => n.id === hovered);
+      if (node) mouseRef.current.dragging = node;
+    }
+  };
+  const onUp = (e) => {
+    if (mouseRef.current.dragging && mouseRef.current.draggedDist < 5) {
+      ss(mouseRef.current.dragging.proc);
+    }
+    mouseRef.current.dragging = null;
+  };
+  const onLeave = () => {
+    setHovered(null);
+    mouseRef.current.dragging = null;
+  };
+
+  const stats = useMemo(() => {
+    const partyCount = edges.filter(e => e.type === "party").length;
+    const tpCount = edges.filter(e => e.type === "tipoPeca").length;
+    const trCount = edges.filter(e => e.type === "tribunal").length;
+    return { partyCount, tpCount, trCount, total: edges.length };
+  }, [edges]);
+
+  return (
+    <div style={{padding:0,height:"100%",display:"flex",flexDirection:"column",overflow:"hidden",background:"#040a14",position:"relative"}}>
+      <div style={{padding:"14px 22px",display:"flex",alignItems:"center",gap:14,flexShrink:0,borderBottom:"1px solid rgba(127,174,204,.08)",background:"rgba(8,13,22,.7)",backdropFilter:"blur(8px)",zIndex:5}}>
+        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, rgba(0,229,255,.18), rgba(184,77,255,.12))",border:"1px solid rgba(0,229,255,.3)",boxShadow:"0 0 14px rgba(0,229,255,.22)"}}>
+          <Layers size={18} color="#00e5ff"/>
+        </div>
+        <div>
+          <h2 style={{margin:0,fontSize:15,fontWeight:700,color:"#bbd5ec",fontFamily:"Orbitron,sans-serif",letterSpacing:".15em"}}>RELAÇÕES</h2>
+          <div style={{fontSize:10,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:2}}>{nodes.length} processos · {edges.length} conexões · arraste para reorganizar</div>
+        </div>
+        <div style={{flex:1}}/>
+        <div style={{display:"flex",gap:14,alignItems:"center",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#ff6680",boxShadow:"0 0 6px #ff6680"}}/><span style={{color:"rgba(255,102,128,.85)"}}>parte ({stats.partyCount})</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#7faecc"}}/><span style={{color:"rgba(127,174,204,.7)"}}>peça ({stats.tpCount})</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#b84dff"}}/><span style={{color:"rgba(184,77,255,.75)"}}>órgão ({stats.trCount})</span></div>
+        </div>
+      </div>
+      <div ref={containerRef} style={{flex:1,position:"relative"}}>
+        <canvas ref={canvasRef}
+          onMouseMove={onMove}
+          onMouseDown={onDown}
+          onMouseUp={onUp}
+          onMouseLeave={onLeave}
+          style={{display:"block",cursor: hovered ? (mouseRef.current.dragging ? "grabbing" : "pointer") : "default"}}
+        />
+      </div>
+    </div>
+  );
+};
+
+
+const PC=React.memo(({item:p,onClick:oc,dp,compact,onEdit})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);
+  const tilt = useTilt(6);
+  const [hovering, setHovering] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const previewTimer = useRef(null);
+  const cardRef = useRef(null);
+  /* combine refs */
+  const setRef = (el) => { tilt.ref.current = el; cardRef.current = el; };
+  const handleMouseEnter = () => {
+    setHovering(true);
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => setShowPreview(true), 700);
+  };
+  const handleMouseLeave = (e) => {
+    setHovering(false);
+    setShowPreview(false);
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    tilt.onMouseLeave();
+    if (e && e.currentTarget) {
+      e.currentTarget.style.transform = "perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0)";
+      e.currentTarget.style.borderColor = accent + "22";
+    }
+  };
+  const handleMouseMove = (e) => {
+    tilt.onMouseMove(e);
+  };
+  return(
+  <>
+  {showPreview && <HoverPreview proc={p} anchor={cardRef.current}/>}
+  <div ref={setRef} onClick={e=>{e.stopPropagation();oc?.(p)}}
+    onMouseEnter={handleMouseEnter}
+    onMouseLeave={handleMouseLeave}
+    onMouseMove={handleMouseMove}
+    className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"transform .22s ease, border-color .25s, box-shadow .25s",overflow:"hidden",position:"relative",transformStyle:"preserve-3d",willChange:"transform",boxShadow: hovering ? `0 14px 40px rgba(0,0,0,.55), 0 0 26px ${accent}22` : "0 4px 16px rgba(0,0,0,.35)"}}>
+    <QuickActionsToolbar proc={p} dp={dp} onEdit={onEdit} visible={hovering} accent={accent}/>
     <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,borderRadius:"0 0 0 20px",background:`linear-gradient(180deg,${accent},${accent}44 60%,transparent)`}}/>
     {isSustAlerta(p)&&(function(){
       var nivel=getSustNivel(p);var cd=getSustCountdown(p);var dl=getSustDeadlineStr(p);
@@ -2392,8 +3172,8 @@ const PC=React.memo(({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";
       </div>);
     })()}
     <div style={{padding:compact?"8px 12px 6px":"14px 16px 10px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))"}}>
-      <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
-        <div style={{display:"flex",gap:10,minWidth:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}>
+        <div style={{display:"flex",gap:10,minWidth:0,flex:1}}>
           <div style={{width:42,height:42,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",background:p.tipo==="jud"?K.puG:K.acG,border:`1px solid ${p.tipo==="jud"?K.pu:K.ac}22`,flexShrink:0}}>
             {p.tipo==="jud"?<Scale size={18} color={K.pu}/>:<FolderOpen size={18} color={K.ac}/>}
           </div>
@@ -2412,12 +3192,14 @@ const PC=React.memo(({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";
             {p.numeroSEI&&<div onClick={function(e){e.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText(p.numeroSEI).then(function(){showCopyToast("SEI "+p.numeroSEI);});}} title={"Clique para copiar SEI: "+p.numeroSEI} style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"#7dd3fc",marginTop:3,cursor:"pointer",padding:"2px 6px",borderRadius:5,background:"rgba(125,211,252,.1)",border:"1px solid rgba(125,211,252,.15)",display:"inline-flex",alignItems:"center",gap:4,userSelect:"none"}}>🗂 SEI {p.numeroSEI}</div>}
           </div>
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-            <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
-            {p.prazoFinal&&<div style={{fontSize:9,color:uC(p.diasRestantes),opacity:.7,fontFamily:"monospace",textAlign:"center"}}>{(function(){try{var d=p.prazoFinal instanceof Date?p.prazoFinal:new Date(p.prazoFinal+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}catch(e){return "";}})()}</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flexShrink:0}}>
+              <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
+              {p.prazoFinal&&<div style={{fontSize:9,color:uC(p.diasRestantes),opacity:.7,fontFamily:"monospace",textAlign:"center",whiteSpace:"nowrap"}}>{(function(){try{var d=p.prazoFinal instanceof Date?p.prazoFinal:new Date(p.prazoFinal+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}catch(e){return "";}})()}</div>}
+            </div>
+            <SB s={p.score}/>
           </div>
-          <SB s={p.score}/>
           <DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
         </div>
       </div>
@@ -2490,6 +3272,7 @@ const PC=React.memo(({item:p,onClick:oc,dp,compact})=>{const isA=p.tipo==="adm";
     </div>
     <div style={{height:4,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?K.su:p.status==="Em Elaboração"?K.wa:p.status==="Arquivado"?K.dim:accent,opacity:.7}}/>
   </div>
+  </>
 )});
 /* KANBAN with localStorage persistence */
 const KANBAN_KEY = "cojur-kanban-cols";
@@ -2806,6 +3589,1022 @@ var checkAndNotifyDeadlines=function(all){
 /* ═══ PAGES ═══ */
 /* ═══════════════════════════════════════ */
 
+
+/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   TOKAMAK OVERVIEW v1 — Reator de fusão nuclear
+   Confinamento magnético toroidal · Canvas2D 60fps
+   CRÍTICOS no núcleo (plasma quente) · NORMAIS no anel externo
+   Partículas espiralam em órbita · campo toroidal · sparks de plasma
+   ═══════════════════════════════════════════════════════════════ */
+const TokamakOverview = ({ st, dp, sp, ss }) => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [hovered, setHovered] = useState(null);
+  const [hoveredCat, setHoveredCat] = useState(-1);
+  const mouseRef = useRef({ x: -1, y: -1 });
+
+  const all = useMemo(() => [...st.adm, ...st.jud], [st.adm, st.jud]);
+
+  const categories = useMemo(() => {
+    const ativos = all.filter(p => !["Concluído","Arquivado","Suspenso"].includes(p.status));
+    return [
+      {
+        id: 'criticos', name: 'CRÍTICOS', label: 'até 2 du',
+        ringR: 0.10,  /* core */
+        color: [255, 80, 95],
+        glow: [255, 160, 140],
+        nav: 'priorities',
+        isCore: true,
+        processes: ativos.filter(p => p.diasRestantes >= 0 && p.diasRestantes <= 2),
+      },
+      {
+        id: 'urgentes', name: 'URGENTES', label: '3 a 7 du',
+        ringR: 0.20,
+        color: [255, 200, 80],
+        glow: [255, 230, 140],
+        nav: 'today',
+        processes: ativos.filter(p => p.diasRestantes > 2 && p.diasRestantes <= 7),
+      },
+      {
+        id: 'atencao', name: 'ATENÇÃO', label: '8 a 15 du',
+        ringR: 0.30,
+        color: [255, 145, 70],
+        glow: [255, 195, 130],
+        nav: 'week',
+        processes: ativos.filter(p => p.diasRestantes > 7 && p.diasRestantes <= 15),
+      },
+      {
+        id: 'normais', name: 'NORMAIS', label: 'acima de 15 du',
+        ringR: 0.40,
+        color: [110, 180, 255],
+        glow: [160, 215, 255],
+        nav: 'judicial',
+        processes: ativos.filter(p => p.diasRestantes > 15),
+      },
+    ];
+  }, [all]);
+
+  const categoriesRef = useRef(categories);
+  useEffect(() => { categoriesRef.current = categories; }, [categories]);
+  const hoveredCatRef = useRef(-1);
+  useEffect(() => { hoveredCatRef.current = hoveredCat; }, [hoveredCat]);
+  const hoveredRef = useRef(null);
+  useEffect(() => { hoveredRef.current = hovered; }, [hovered]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0, cx = 0, cy = 0, baseR = 0;
+
+    function resize() {
+      W = container.clientWidth;
+      H = container.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      cx = W / 2;
+      cy = H / 2;
+      baseR = Math.min(W, H) * 0.95;
+    }
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+
+    const PERSP = 0.42;  /* perspective squash for top-down view */
+    const cats = categoriesRef.current;
+
+    /* ═══ build particles per ring — ALL processes, no limit ═══ */
+    const particles = [];
+    cats.forEach((cat, ci) => {
+      if (cat.isCore) return;
+      const list = cat.processes;
+      const N = list.length;
+      list.forEach((proc, pi) => {
+        particles.push({
+          ci, pi, proc,
+          theta: (pi / Math.max(N, 1)) * Math.PI * 2 + Math.random() * 0.15,
+          speed: 0.0035 + Math.random() * 0.0025,
+          rOff: (Math.random() - 0.5) * 0.012,
+          glowPhase: Math.random() * Math.PI * 2,
+        });
+      });
+    });
+
+    /* core particles (CRÍTICOS) — ALL critical processes */
+    const coreParticles = [];
+    const criticos = cats[0];
+    const coreN = criticos.processes.length;
+    criticos.processes.forEach((proc, pi) => {
+      coreParticles.push({
+        proc, pi,
+        theta: (pi / Math.max(coreN, 1)) * Math.PI * 2,
+        radius: 0.025 + Math.random() * 0.07,
+        speed: 0.013 + Math.random() * 0.015,
+        glowPhase: Math.random() * Math.PI * 2,
+        bobPhase: Math.random() * Math.PI * 2,
+      });
+    });
+
+    /* toroidal field coils */
+    const coils = [];
+    for (let i = 0; i < 14; i++) {
+      coils.push({
+        theta: (i / 14) * Math.PI * 2,
+        phase: i * 0.5,
+      });
+    }
+
+    /* plasma sparks zooming on rings */
+    const sparks = [];
+    function spawnSpark() {
+      sparks.push({
+        ci: 1 + Math.floor(Math.random() * 3),
+        theta: Math.random() * Math.PI * 2,
+        speed: 0.025 + Math.random() * 0.020,
+        life: 1,
+      });
+    }
+
+    /* particle hit positions (recomputed each frame) */
+    const particlePositions = [];
+
+    let frame = 0;
+    let raf;
+
+    function animate() {
+      raf = requestAnimationFrame(animate);
+      frame++;
+      const t = frame * 0.016;
+      const hci = hoveredCatRef.current;
+
+      /* ═══ background ═══ */
+      ctx.fillStyle = '#020308';
+      ctx.fillRect(0, 0, W, H);
+
+      /* ═══ HEX GRID BACKGROUND — futuristic floor pattern ═══ */
+      ctx.save();
+      const hexSz = 22;
+      const hexW = hexSz * Math.sqrt(3);
+      const hexH = hexSz * 1.5;
+      const cols = Math.ceil(W / hexW) + 2;
+      const rows = Math.ceil(H / hexH) + 2;
+      ctx.lineWidth = 0.5;
+      for (let r = -1; r < rows; r++) {
+        for (let c = -1; c < cols; c++) {
+          const xOff = (r % 2 === 0) ? 0 : hexW / 2;
+          const hxC = c * hexW + xOff;
+          const hyC = r * hexH;
+          /* fade by distance from center */
+          const dx = hxC - cx, dy = hyC - cy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const fade = Math.max(0, 1 - dist / (Math.max(W, H) * 0.45));
+          if (fade < 0.05) continue;
+          ctx.strokeStyle = `rgba(80, 200, 255, ${0.10 * fade})`;
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) {
+            const ang = (k / 6) * Math.PI * 2 + Math.PI / 6;
+            const phx = hxC + Math.cos(ang) * hexSz;
+            const phy = hyC + Math.sin(ang) * hexSz;
+            if (k === 0) ctx.moveTo(phx, phy); else ctx.lineTo(phx, phy);
+          }
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      /* ambient confinement glow */
+      const haloR = baseR * 0.55;
+      const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, haloR);
+      halo.addColorStop(0, 'rgba(140, 50, 80, 0.18)');
+      halo.addColorStop(0.4, 'rgba(80, 30, 90, 0.10)');
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, haloR, haloR * (PERSP + 0.45), 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* ═══ RADAR SWEEP BEAM — rotating scanner ═══ */
+      ctx.save();
+      const sweepAng = (t * 0.5) % (Math.PI * 2);
+      const sweepLen = baseR * 0.48;
+      const sweepGrad = ctx.createConicGradient
+        ? ctx.createConicGradient(sweepAng, cx, cy)
+        : null;
+      if (sweepGrad) {
+        sweepGrad.addColorStop(0, 'rgba(80, 200, 255, 0.22)');
+        sweepGrad.addColorStop(0.04, 'rgba(80, 200, 255, 0.10)');
+        sweepGrad.addColorStop(0.12, 'rgba(80, 200, 255, 0)');
+        sweepGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = sweepGrad;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, sweepLen, sweepLen * (PERSP + 0.18), 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        /* fallback for browsers without conic gradient */
+        ctx.strokeStyle = 'rgba(80, 200, 255, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sweepAng) * sweepLen, cy + Math.sin(sweepAng) * sweepLen * (PERSP + 0.18));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* ═══ chamber outer boundary (octagon) ═══ */
+      const chamberR = baseR * 0.48;
+      ctx.strokeStyle = 'rgba(127, 174, 204, 0.20)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let s = 0; s <= 8; s++) {
+        const ang = (s / 8) * Math.PI * 2 + Math.PI / 8;
+        const px = cx + Math.cos(ang) * chamberR;
+        const py = cy + Math.sin(ang) * chamberR * (PERSP + 0.18);
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      /* ═══ ANIMATED PULSE traveling around chamber border ═══ */
+      const pulseAng = (t * 0.6) % (Math.PI * 2);
+      const pulseTrail = 0.25;  /* arc length */
+      ctx.save();
+      ctx.strokeStyle = 'rgba(80, 220, 255, 0.85)';
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = 'rgba(80, 220, 255, 0.7)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      const segs = 14;
+      for (let s = 0; s <= segs; s++) {
+        const tt = s / segs;
+        const ang = pulseAng + tt * pulseTrail;
+        const px = cx + Math.cos(ang) * chamberR;
+        const py = cy + Math.sin(ang) * chamberR * (PERSP + 0.18);
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      /* ═══ TACTICAL TICK MARKS — radial markers every 15° ═══ */
+      ctx.strokeStyle = 'rgba(127, 184, 224, 0.30)';
+      ctx.lineWidth = 0.6;
+      for (let k = 0; k < 24; k++) {
+        const ang = (k / 24) * Math.PI * 2;
+        const isMajor = k % 6 === 0;  /* major tick every 90° */
+        const tickLen = isMajor ? 7 : 3;
+        const tickR1 = chamberR + 2;
+        const tickR2 = chamberR + 2 + tickLen;
+        const x1 = cx + Math.cos(ang) * tickR1;
+        const y1 = cy + Math.sin(ang) * tickR1 * (PERSP + 0.18);
+        const x2 = cx + Math.cos(ang) * tickR2;
+        const y2 = cy + Math.sin(ang) * tickR2 * (PERSP + 0.18);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      /* corner anchors */
+      for (let s = 0; s < 8; s++) {
+        const ang = (s / 8) * Math.PI * 2 + Math.PI / 8;
+        const px = cx + Math.cos(ang) * chamberR;
+        const py = cy + Math.sin(ang) * chamberR * (PERSP + 0.18);
+        ctx.fillStyle = 'rgba(127, 184, 224, 0.7)';
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, Math.PI * 2);
+        ctx.fill();
+        /* outer glow ring */
+        ctx.fillStyle = 'rgba(80, 220, 255, 0.15)';
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      /* ═══ toroidal field coils (radial spokes) ═══ */
+      coils.forEach(coil => {
+        const ang = coil.theta + Math.sin(t * 0.3 + coil.phase) * 0.015;
+        const outerR = chamberR;
+        const innerR = baseR * 0.06;
+        const ox = cx + Math.cos(ang) * outerR;
+        const oy = cy + Math.sin(ang) * outerR * (PERSP + 0.18);
+        const ix = cx + Math.cos(ang) * innerR;
+        const iy = cy + Math.sin(ang) * innerR * (PERSP + 0.18);
+        const intensity = 0.13 + 0.10 * Math.sin(t * 0.7 + coil.phase * 2);
+        ctx.strokeStyle = `rgba(127, 184, 224, ${intensity})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(ix, iy);
+        ctx.stroke();
+      });
+
+      /* ═══ ring orbits ═══ */
+      cats.forEach((cat, ci) => {
+        if (cat.isCore) return;
+        const r = cat.ringR * baseR;
+        const isHov = ci === hci;
+        const alpha = isHov ? 0.45 : 0.20;
+        ctx.strokeStyle = `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},${alpha})`;
+        ctx.lineWidth = isHov ? 1.4 : 0.7;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * PERSP, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        if (isHov) {
+          ctx.strokeStyle = `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.12)`;
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * PERSP, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+
+      /* ═══ update particles ═══ */
+      particles.forEach(p => { p.theta += p.speed; });
+      coreParticles.forEach(p => { p.theta += p.speed; });
+
+      /* ═══ update sparks ═══ */
+      if (frame % 18 === 0) spawnSpark();
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const sp = sparks[i];
+        sp.theta += sp.speed;
+        sp.life -= 0.008;
+        if (sp.life <= 0) sparks.splice(i, 1);
+      }
+
+      /* count particles per ring for density-based sizing */
+      const ringCounts = [0, 0, 0, 0, 0];
+      particles.forEach(p => { ringCounts[p.ci]++; });
+
+      /* identify the actively hovered particle for dramatic highlighting */
+      const hovInfo = hoveredRef.current;
+      const activeProc = (hovInfo && hovInfo.type === 'particle') ? hovInfo.proc : null;
+      const hasActive = !!activeProc;
+
+      /* ═══ z-sort particles for proper depth rendering ═══ */
+      const drawList = particles.map(p => {
+        const cat = cats[p.ci];
+        const r = (cat.ringR + p.rOff) * baseR;
+        const px = cx + Math.cos(p.theta) * r;
+        const py = cy + Math.sin(p.theta) * r * PERSP;
+        const z = Math.sin(p.theta);
+        return { p, cat, px, py, z, r };
+      }).sort((a, b) => a.z - b.z);
+
+      particlePositions.length = 0;
+
+      /* ═══ draw particles back-to-front with 3D shading ═══ */
+      drawList.forEach(({p, cat, px, py, z, r}) => {
+        const isHovCat = p.ci === hci;
+        const isActive = activeProc && p.proc === activeProc;
+        /* stronger depth range for more 3D feel */
+        const depthScale = 0.55 + (z + 1) * 0.30;   /* 0.55 (back) → 1.15 (front) */
+        const depthAlpha = 0.45 + (z + 1) * 0.275;  /* 0.45 (back) → 1.00 (front) */
+
+        /* density-based scaling: shrink particles when ring is crowded */
+        const ringN = ringCounts[p.ci];
+        const ringR = cat.ringR * baseR;
+        const ringCircum = 2 * Math.PI * ringR;
+        const idealSpacing = ringCircum / Math.max(ringN, 1);
+        const densityScale = Math.min(1, idealSpacing / 14);
+        const baseSz = 2.5 + 1.3 * densityScale;
+        const trailLen = densityScale > 0.7 ? 6 : (densityScale > 0.4 ? 4 : 2);
+
+        /* DIMMING: when an active particle exists elsewhere, fade the others */
+        const dimFactor = (hasActive && !isActive) ? 0.45 : 1.0;
+        /* ACTIVE BOOST: hovered particle gets dramatic size+brightness multiplier */
+        const activeMul = isActive ? 2.2 : 1.0;
+        /* category-hover gives milder boost */
+        const catBoost = isHovCat && !isActive ? 1.25 : 1.0;
+
+        /* trail behind */
+        for (let ti = trailLen; ti > 0; ti--) {
+          const tt = p.theta - p.speed * ti * 1.8;
+          const tx = cx + Math.cos(tt) * r;
+          const ty = cy + Math.sin(tt) * r * PERSP;
+          const tAlpha = ((trailLen - ti) / trailLen) * 0.35 * depthAlpha * dimFactor;
+          ctx.fillStyle = `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},${tAlpha})`;
+          ctx.beginPath();
+          ctx.arc(tx, ty, 1.4 * depthScale * densityScale * activeMul, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        /* outer glow with category boost */
+        const glowSz = baseSz * depthScale * catBoost * activeMul;
+        const glowAlpha = (0.55 + (isHovCat ? 0.20 : 0)) * depthAlpha * dimFactor + 0.10 * Math.sin(t * 1.5 + p.glowPhase);
+
+        /* ═══ ACTIVE PARTICLE: dramatic special effects ═══ */
+        if (isActive) {
+          /* 1. expanding pulse ring (sonar) */
+          const pulseT = (t * 0.9) % 1;
+          for (let pulseI = 0; pulseI < 2; pulseI++) {
+            const pt = (pulseT + pulseI * 0.5) % 1;
+            const pulseR = glowSz * (1 + pt * 5);
+            ctx.strokeStyle = `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},${(1 - pt) * 0.55})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(px, py, pulseR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          /* 2. TARGETING RETICLE — tech-style corner brackets + ID label */
+          ctx.save();
+          const retSz = glowSz * 4.5;
+          const retGap = glowSz * 1.3;
+          const bracketLen = glowSz * 1.2;
+          ctx.strokeStyle = `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.92)`;
+          ctx.lineWidth = 1.4;
+          ctx.lineCap = 'round';
+          ctx.shadowColor = `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.6)`;
+          ctx.shadowBlur = 6;
+          /* 4 corner brackets (┌ ┐ └ ┘) */
+          const corners = [
+            [-retSz, -retSz, 1, 1],
+            [ retSz, -retSz,-1, 1],
+            [-retSz,  retSz, 1,-1],
+            [ retSz,  retSz,-1,-1],
+          ];
+          corners.forEach(([dx, dy, sx, sy]) => {
+            ctx.beginPath();
+            ctx.moveTo(px + dx, py + dy + sy * bracketLen);
+            ctx.lineTo(px + dx, py + dy);
+            ctx.lineTo(px + dx + sx * bracketLen, py + dy);
+            ctx.stroke();
+          });
+          /* horizontal + vertical lines with gap (crosshair with breathing space) */
+          ctx.lineWidth = 1;
+          ctx.shadowBlur = 4;
+          ctx.beginPath();
+          ctx.moveTo(px - retSz, py);  ctx.lineTo(px - retGap, py);
+          ctx.moveTo(px + retGap, py); ctx.lineTo(px + retSz, py);
+          ctx.moveTo(px, py - retSz);  ctx.lineTo(px, py - retGap);
+          ctx.moveTo(px, py + retGap); ctx.lineTo(px, py + retSz);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          /* small ID label "TARGET" with process number */
+          const labelText = `TGT • ${(p.proc.num || '').slice(-7) || '?????'}`;
+          ctx.font = 'bold 9px "JetBrains Mono", monospace';
+          const lblW = ctx.measureText(labelText).width + 10;
+          const lblY = py - retSz - 14;
+          ctx.fillStyle = `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.85)`;
+          ctx.fillRect(px - lblW/2, lblY, lblW, 14);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelText, px, lblY + 7);
+          ctx.restore();
+
+          /* 3. connection beam to chamber center */
+          const beamGrad = ctx.createLinearGradient(cx, cy, px, py);
+          beamGrad.addColorStop(0, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.0)`);
+          beamGrad.addColorStop(0.5, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.15)`);
+          beamGrad.addColorStop(1, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.65)`);
+          ctx.strokeStyle = beamGrad;
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 6]);
+          ctx.lineDashOffset = -t * 30;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        /* outer glow halo (multi-layered for active) */
+        const haloLayers = isActive ? 3 : 1;
+        for (let h = 0; h < haloLayers; h++) {
+          const layerSz = glowSz * (4 + h * 1.2);
+          const layerA = glowAlpha * (1 - h * 0.30);
+          const lg = ctx.createRadialGradient(px, py, 0, px, py, layerSz);
+          lg.addColorStop(0, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},${layerA})`);
+          lg.addColorStop(0.5, `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},${layerA * 0.4})`);
+          lg.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = lg;
+          ctx.beginPath();
+          ctx.arc(px, py, layerSz, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        /* 3D SHADING: cast shadow below (depth perception) */
+        if (depthAlpha > 0.6) {
+          ctx.fillStyle = `rgba(0, 10, 30, ${0.35 * dimFactor})`;
+          ctx.beginPath();
+          ctx.ellipse(px + glowSz * 0.25, py + glowSz * 0.45, glowSz * 0.7, glowSz * 0.25, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        /* dot core with 3D shading (gradient from upper-left) */
+        const coreSz = glowSz * 0.55;
+        const coreGrad = ctx.createRadialGradient(
+          px - coreSz * 0.3, py - coreSz * 0.3, 0,
+          px, py, coreSz
+        );
+        coreGrad.addColorStop(0, `rgba(255, 255, 255, ${depthAlpha * dimFactor})`);
+        coreGrad.addColorStop(0.4, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},${depthAlpha * dimFactor})`);
+        coreGrad.addColorStop(1, `rgba(${Math.max(0, cat.color[0] - 40)},${Math.max(0, cat.color[1] - 40)},${Math.max(0, cat.color[2] - 40)},${depthAlpha * 0.85 * dimFactor})`);
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, coreSz, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* 3D HIGHLIGHT: small bright highlight on upper-left (specular) */
+        ctx.fillStyle = `rgba(255, 255, 255, ${depthAlpha * 0.95 * dimFactor})`;
+        ctx.beginPath();
+        ctx.arc(px - coreSz * 0.35, py - coreSz * 0.35, coreSz * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* white-hot center (extra bright for active) */
+        ctx.fillStyle = `rgba(255, 255, 255, ${depthAlpha * (isActive ? 1.0 : 0.85) * dimFactor})`;
+        ctx.beginPath();
+        ctx.arc(px, py, glowSz * (isActive ? 0.32 : 0.25), 0, Math.PI * 2);
+        ctx.fill();
+
+        /* ACTIVE: orbiting sparks around the active particle */
+        if (isActive) {
+          const sparkN = 6;
+          const sparkOrbR = glowSz * 1.8;
+          for (let s = 0; s < sparkN; s++) {
+            const ang = (s / sparkN) * Math.PI * 2 + t * 2;
+            const spx = px + Math.cos(ang) * sparkOrbR;
+            const spy = py + Math.sin(ang) * sparkOrbR;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.85 + 0.15 * Math.sin(t * 5 + s)})`;
+            ctx.beginPath();
+            ctx.arc(spx, spy, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            /* small glow */
+            const sg = ctx.createRadialGradient(spx, spy, 0, spx, spy, 6);
+            sg.addColorStop(0, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},0.7)`);
+            sg.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = sg;
+            ctx.beginPath();
+            ctx.arc(spx, spy, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        particlePositions.push({ x: px, y: py, hitR: Math.max(glowSz * 1.8, 10), p });
+      });
+
+      /* ═══ plasma sparks racing on rings ═══ */
+      sparks.forEach(sp => {
+        const cat = cats[sp.ci];
+        const r = cat.ringR * baseR;
+        const px = cx + Math.cos(sp.theta) * r;
+        const py = cy + Math.sin(sp.theta) * r * PERSP;
+        const a = sp.life * 0.85;
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, 8);
+        grad.addColorStop(0, `rgba(255, 255, 240, ${a})`);
+        grad.addColorStop(0.5, `rgba(${cat.glow[0]},${cat.glow[1]},${cat.glow[2]},${a * 0.6})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(px, py, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      /* ═══ CORE PLASMA (CRÍTICOS) ═══ */
+      const coreR = cats[0].ringR * baseR;
+      /* outer pulsing confinement */
+      const corePulse = 1 + 0.06 * Math.sin(t * 1.8);
+      const cglowR = coreR * 1.4 * corePulse;
+      const cgrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cglowR);
+      cgrad.addColorStop(0, 'rgba(255, 200, 180, 0.70)');
+      cgrad.addColorStop(0.25, 'rgba(255, 110, 100, 0.45)');
+      cgrad.addColorStop(0.6, 'rgba(255, 70, 90, 0.20)');
+      cgrad.addColorStop(1, 'rgba(255, 30, 60, 0)');
+      ctx.fillStyle = cgrad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, cglowR, cglowR * (PERSP + 0.30), 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* core particles swirling — with active highlight + 3D shading */
+      coreParticles.forEach(cp => {
+        const cpR = cp.radius * baseR;
+        const cpx = cx + Math.cos(cp.theta) * cpR;
+        const cpy = cy + Math.sin(cp.theta) * cpR * (PERSP + 0.10);
+        const bob = Math.sin(t * 2 + cp.bobPhase) * 1.5;
+        const cpyB = cpy + bob;
+        const intensity = 0.7 + 0.25 * Math.sin(t * 3 + cp.glowPhase);
+        const isHovCore = hci === 0;
+        const isActive = activeProc && cp.proc === activeProc;
+        const dimFactor = (hasActive && !isActive) ? 0.45 : 1.0;
+        const activeMul = isActive ? 2.0 : 1.0;
+        const sz = (isHovCore ? 14 : 11) * activeMul;
+
+        /* ACTIVE: pulse ring + flare */
+        if (isActive) {
+          const pulseT = (t * 0.9) % 1;
+          for (let pulseI = 0; pulseI < 2; pulseI++) {
+            const pt = (pulseT + pulseI * 0.5) % 1;
+            const pulseR = sz * (1 + pt * 4);
+            ctx.strokeStyle = `rgba(255, 200, 180, ${(1 - pt) * 0.65})`;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(cpx, cpyB, pulseR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          /* lens flare cross */
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const flareLen = sz * 5;
+          const flareGrad = ctx.createLinearGradient(cpx - flareLen, cpyB, cpx + flareLen, cpyB);
+          flareGrad.addColorStop(0, 'rgba(0,0,0,0)');
+          flareGrad.addColorStop(0.5, 'rgba(255, 255, 240, 0.85)');
+          flareGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.strokeStyle = flareGrad;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(cpx - flareLen, cpyB);
+          ctx.lineTo(cpx + flareLen, cpyB);
+          ctx.stroke();
+          const flareV = ctx.createLinearGradient(cpx, cpyB - flareLen, cpx, cpyB + flareLen);
+          flareV.addColorStop(0, 'rgba(0,0,0,0)');
+          flareV.addColorStop(0.5, 'rgba(255, 255, 240, 0.75)');
+          flareV.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.strokeStyle = flareV;
+          ctx.beginPath();
+          ctx.moveTo(cpx, cpyB - flareLen);
+          ctx.lineTo(cpx, cpyB + flareLen);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        /* outer halo */
+        const grad = ctx.createRadialGradient(cpx, cpyB, 0, cpx, cpyB, sz);
+        grad.addColorStop(0, `rgba(255, 240, 220, ${intensity * dimFactor})`);
+        grad.addColorStop(0.4, `rgba(255, 110, 90, ${intensity * 0.65 * dimFactor})`);
+        grad.addColorStop(1, 'rgba(255, 40, 60, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cpx, cpyB, sz, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* second halo layer for active */
+        if (isActive) {
+          const g2 = ctx.createRadialGradient(cpx, cpyB, 0, cpx, cpyB, sz * 1.6);
+          g2.addColorStop(0, `rgba(255, 180, 150, 0.55)`);
+          g2.addColorStop(0.5, `rgba(255, 90, 80, 0.20)`);
+          g2.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = g2;
+          ctx.beginPath();
+          ctx.arc(cpx, cpyB, sz * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        /* 3D core: gradient from upper-left highlight → bottom shadow */
+        const coreSz = sz * 0.32;
+        const coreG = ctx.createRadialGradient(
+          cpx - coreSz * 0.4, cpyB - coreSz * 0.4, 0,
+          cpx, cpyB, coreSz
+        );
+        coreG.addColorStop(0, `rgba(255, 255, 255, ${intensity * dimFactor})`);
+        coreG.addColorStop(0.5, `rgba(255, 220, 200, ${intensity * dimFactor})`);
+        coreG.addColorStop(1, `rgba(220, 80, 90, ${intensity * 0.85 * dimFactor})`);
+        ctx.fillStyle = coreG;
+        ctx.beginPath();
+        ctx.arc(cpx, cpyB, coreSz, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* white-hot center */
+        ctx.fillStyle = `rgba(255, 255, 255, ${intensity * (isActive ? 1.0 : 0.95) * dimFactor})`;
+        ctx.beginPath();
+        ctx.arc(cpx, cpyB, isActive ? 3.5 : 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* ACTIVE: orbiting sparks */
+        if (isActive) {
+          for (let s = 0; s < 6; s++) {
+            const ang = (s / 6) * Math.PI * 2 + t * 2.5;
+            const sox = cpx + Math.cos(ang) * sz * 1.4;
+            const soy = cpyB + Math.sin(ang) * sz * 1.4;
+            ctx.fillStyle = `rgba(255, 255, 240, ${0.85 + 0.15 * Math.sin(t * 5 + s)})`;
+            ctx.beginPath();
+            ctx.arc(sox, soy, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        particlePositions.push({ x: cpx, y: cpyB, hitR: Math.max(sz * 0.85, 9), p: { ci: 0, proc: cp.proc } });
+      });
+
+      /* core ring boundary (subtle) */
+      ctx.strokeStyle = `rgba(255, 90, 100, ${hci === 0 ? 0.6 : 0.30})`;
+      ctx.lineWidth = hci === 0 ? 1.4 : 0.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, coreR, coreR * PERSP, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      /* ═══ HOVER DETECTION ═══ */
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+      let foundHover = null;
+      let foundCatHover = -1;
+
+      if (mx >= 0) {
+        for (let i = particlePositions.length - 1; i >= 0; i--) {
+          const pp = particlePositions[i];
+          const dx = mx - pp.x;
+          const dy = my - pp.y;
+          if (dx * dx + dy * dy < pp.hitR * pp.hitR) {
+            foundHover = { type: 'particle', proc: pp.p.proc, ci: pp.p.ci };
+            foundCatHover = pp.p.ci;
+            break;
+          }
+        }
+        if (!foundHover) {
+          const dx = mx - cx;
+          const dy = (my - cy) / PERSP;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          for (let i = 0; i < cats.length; i++) {
+            const cat = cats[i];
+            const r = cat.ringR * baseR;
+            if (cat.isCore) {
+              if (dist < r * 1.3) {
+                foundHover = { type: 'ring', cat, ci: i };
+                foundCatHover = i;
+                break;
+              }
+            } else {
+              if (Math.abs(dist - r) < r * 0.12) {
+                foundHover = { type: 'ring', cat, ci: i };
+                foundCatHover = i;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      /* update hover state if changed */
+      const prev = hoveredRef.current;
+      const same = (!prev && !foundHover) ||
+        (prev && foundHover &&
+         prev.type === foundHover.type &&
+         prev.ci === foundHover.ci &&
+         (prev.type !== 'particle' || prev.proc === foundHover.proc));
+      if (!same) {
+        setHovered(foundHover);
+        hoveredRef.current = foundHover;
+      }
+      if (foundCatHover !== hoveredCatRef.current) {
+        setHoveredCat(foundCatHover);
+        hoveredCatRef.current = foundCatHover;
+      }
+
+      /* ═══ POST-PROCESS LAYERS — sci-fi tech overlays ═══ */
+
+      /* OSCILLOSCOPE WAVE at top — "reactor frequency" */
+      ctx.save();
+      const oscY = 26;
+      const oscH = 10;
+      ctx.strokeStyle = 'rgba(80, 220, 255, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.shadowColor = 'rgba(80, 220, 255, 0.5)';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      const samples = Math.max(60, Math.floor(W / 6));
+      for (let i = 0; i <= samples; i++) {
+        const x = (i / samples) * W;
+        const y = oscY +
+          Math.sin(i * 0.4 + t * 4) * oscH * 0.4 +
+          Math.sin(i * 0.13 + t * 2.3) * oscH * 0.6 +
+          (Math.random() - 0.5) * 1.2;  /* noise */
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      /* SCANLINES — moving horizontal stripes */
+      ctx.save();
+      ctx.globalAlpha = 0.04;
+      const scanOff = (t * 18) % 4;
+      ctx.strokeStyle = 'rgba(140, 220, 255, 1)';
+      ctx.lineWidth = 0.5;
+      for (let y = -4 + scanOff; y < H; y += 4) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* CORNER BRACKETS on canvas (tech frame) */
+      ctx.save();
+      ctx.strokeStyle = 'rgba(80, 220, 255, 0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.shadowColor = 'rgba(80, 220, 255, 0.5)';
+      ctx.shadowBlur = 4;
+      const bL = 16;
+      const off = 8;
+      /* TL */
+      ctx.beginPath();
+      ctx.moveTo(off, off + bL); ctx.lineTo(off, off); ctx.lineTo(off + bL, off);
+      ctx.stroke();
+      /* TR */
+      ctx.beginPath();
+      ctx.moveTo(W - off - bL, off); ctx.lineTo(W - off, off); ctx.lineTo(W - off, off + bL);
+      ctx.stroke();
+      /* BL */
+      ctx.beginPath();
+      ctx.moveTo(off, H - off - bL); ctx.lineTo(off, H - off); ctx.lineTo(off + bL, H - off);
+      ctx.stroke();
+      /* BR */
+      ctx.beginPath();
+      ctx.moveTo(W - off - bL, H - off); ctx.lineTo(W - off, H - off); ctx.lineTo(W - off, H - off - bL);
+      ctx.stroke();
+      ctx.restore();
+
+      /* CYAN EDGE VIGNETTE — subtle holographic frame */
+      ctx.save();
+      const vig = ctx.createRadialGradient(cx, cy, Math.min(W, H) * 0.42, cx, cy, Math.max(W, H) * 0.7);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(0.7, 'rgba(0, 50, 90, 0.18)');
+      vig.addColorStop(1, 'rgba(0, 30, 60, 0.40)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    animate();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [categories]);
+
+  /* ═══ event handlers ═══ */
+  const handleMouseMove = (e) => {
+    const rect = containerRef.current.getBoundingClientRect();
+    mouseRef.current.x = e.clientX - rect.left;
+    mouseRef.current.y = e.clientY - rect.top;
+  };
+  const handleMouseLeave = () => {
+    mouseRef.current.x = -1;
+    mouseRef.current.y = -1;
+    setHovered(null);
+    setHoveredCat(-1);
+  };
+  const handleClick = () => {
+    const h = hoveredRef.current;
+    if (!h) return;
+    if (h.type === 'particle' && h.proc) ss(h.proc);
+    else if (h.type === 'ring' && h.cat) sp(h.cat.nav);
+  };
+
+  return (
+    <div ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      style={{
+        position: "relative",
+        borderRadius: 20,
+        overflow: "hidden",
+        background: "radial-gradient(ellipse at 50% 50%, #0a0612 0%, #050310 50%, #02010a 100%)",
+        border: "1px solid rgba(127,184,216,.18)",
+        boxShadow: "0 24px 60px rgba(0,0,0,.65), inset 0 1px 0 rgba(127,184,216,.08)",
+        marginBottom: 20,
+        height: 380,
+        cursor: hovered ? 'pointer' : 'default',
+      }}>
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, display: 'block' }} />
+
+      {/* corner brackets */}
+      {[{t:10,l:10},{t:10,r:10},{b:10,l:10},{b:10,r:10}].map((pos, i) => (
+        <div key={i} style={{position:"absolute",width:24,height:24,pointerEvents:"none",zIndex:2,...(pos.t!==undefined?{top:pos.t}:{bottom:pos.b}),...(pos.l!==undefined?{left:pos.l}:{right:pos.r})}}>
+          <div style={{position:"absolute",top:0,height:1.5,width:20,background:"linear-gradient(90deg, #7faecc, transparent)",boxShadow:"0 0 8px #7faecc",...(pos.l!==undefined?{left:0}:{right:0})}}/>
+          <div style={{position:"absolute",top:0,width:1.5,height:20,background:"linear-gradient(180deg, #7faecc, transparent)",boxShadow:"0 0 8px #7faecc",...(pos.l!==undefined?{left:0}:{right:0})}}/>
+        </div>
+      ))}
+
+      {/* title */}
+      <div style={{position:"absolute",top:14,left:18,pointerEvents:"none",zIndex:3}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontSize:20,color:"#ff8060",filter:"drop-shadow(0 0 10px rgba(255,128,96,.8))"}}>⚛</div>
+          <div>
+            <div style={{fontSize:13,fontWeight:900,color:"#bbd5ec",fontFamily:"Orbitron,sans-serif",letterSpacing:".25em",textShadow:"0 0 12px rgba(127,184,216,.6)"}}>TOKAMAK COJUR</div>
+            <div style={{fontSize:9,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:1}}>{all.length} processos · confinamento magnético · clique no anel ou partícula</div>
+          </div>
+        </div>
+      </div>
+
+      {/* category legends panel */}
+      <div style={{position:"absolute",right:14,top:14,zIndex:3,fontFamily:"Orbitron,sans-serif",pointerEvents:"auto"}}>
+        {categories.map((cat, ci) => {
+          const isHov = ci === hoveredCat;
+          return (
+            <div key={cat.id}
+              onClick={(e) => { e.stopPropagation(); sp(cat.nav); }}
+              onMouseEnter={() => setHoveredCat(ci)}
+              onMouseLeave={() => setHoveredCat(-1)}
+              style={{
+                display:"flex",alignItems:"center",gap:10,
+                padding:"5px 10px",
+                marginBottom:4,
+                borderRadius:6,
+                cursor:"pointer",
+                minWidth:160,
+                background: isHov ? `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.18)` : 'rgba(8,4,12,0.55)',
+                border: `1px solid rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},${isHov?0.65:0.25})`,
+                backdropFilter:"blur(6px)",
+                boxShadow: isHov ? `0 0 14px rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.35)` : 'none',
+                transition:"all .2s",
+              }}>
+              <div style={{
+                width:9, height:9, borderRadius:"50%",
+                background:`rgb(${cat.color[0]},${cat.color[1]},${cat.color[2]})`,
+                boxShadow:`0 0 10px rgb(${cat.color[0]},${cat.color[1]},${cat.color[2]})`,
+              }}/>
+              <div style={{flex:1}}>
+                <div style={{
+                  fontSize:9,
+                  color:`rgb(${cat.color[0]},${cat.color[1]},${cat.color[2]})`,
+                  fontWeight:800,
+                  letterSpacing:".15em",
+                  lineHeight:1.1,
+                }}>{cat.name}</div>
+                <div style={{
+                  fontSize:8,
+                  color:`rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.55)`,
+                  letterSpacing:".05em",
+                  marginTop:1,
+                }}>{cat.label}</div>
+              </div>
+              <div style={{
+                fontSize:14,
+                color:`rgb(${cat.color[0]},${cat.color[1]},${cat.color[2]})`,
+                fontWeight:900,
+                fontFamily:"Orbitron,monospace",
+                textShadow:`0 0 8px rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.6)`,
+              }}>{cat.processes.length}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* HUD bottom-left telemetry */}
+      <div style={{position:"absolute",bottom:14,left:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",lineHeight:1.5}}>
+        <div>FLUX MAGNÉTICO: 1.42 T</div>
+        <div>TEMP CORE: 9.8e6 K</div>
+        <div>CONFINEMENT: STABLE</div>
+      </div>
+
+      {/* HUD bottom-right */}
+      <div style={{position:"absolute",bottom:14,right:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",textAlign:"right",lineHeight:1.5}}>
+        <div>PARTÍCULAS: {all.length}</div>
+        <div>NÚCLEO: {categories[0].processes.length} CRIT</div>
+        <div>STATUS: <span style={{color:"#5fb260"}}>● ATIVO</span></div>
+      </div>
+
+      {/* hover detail card */}
+      {hovered && hovered.type === 'particle' && hovered.proc && categories[hovered.ci] && (
+        <div style={{
+          position:"absolute",
+          top:"50%", left:"50%",
+          transform:"translate(-50%, 130px)",
+          padding:"10px 16px",
+          borderRadius:8,
+          background:"rgba(8,4,12,.94)",
+          border:`1px solid rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.55)`,
+          boxShadow:`0 6px 18px rgba(0,0,0,.55), 0 0 24px rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.28)`,
+          backdropFilter:"blur(10px)",
+          pointerEvents:"none",
+          fontFamily:"'JetBrains Mono',monospace",
+          maxWidth:520,
+          zIndex:4,
+          animation:"tokFadeIn .2s ease-out",
+        }}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <div style={{fontSize:9,color:`rgb(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]})`,fontWeight:800,letterSpacing:".1em",fontFamily:"Orbitron,sans-serif"}}>
+              ◈ {(hovered.proc.num||"").slice(-9)}
+            </div>
+            <div style={{fontSize:9,color:`rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.65)`}}>· {hovered.proc.diasRestantes>=0?hovered.proc.diasRestantes+'du':'—'}</div>
+          </div>
+          <div style={{fontSize:11,color:"rgba(220,235,250,.92)",fontWeight:600,maxWidth:480,lineHeight:1.4}}>
+            {(hovered.proc.assunto||"").slice(0, 100)}{(hovered.proc.assunto||"").length>100?"…":""}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes tokFadeIn {
+          from { opacity: 0; transform: translate(-50%, 138px); }
+          to { opacity: 1; transform: translate(-50%, 130px); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+
+
+
+
+
 const DashPg=({st,dp,sp,ss})=>{
   const all=[...st.adm,...st.jud],crit=all.filter(p=>p.diasRestantes<=10);
   const urgData=[{name:"Crítico",value:crit.length,color:K.cr},{name:"Intermediário",value:all.filter(p=>p.diasRestantes>10&&p.diasRestantes<30).length,color:K.wa},{name:"Normal",value:all.filter(p=>p.diasRestantes>=30).length,color:K.su}];
@@ -2826,6 +4625,7 @@ const DashPg=({st,dp,sp,ss})=>{
   st.sust.filter(s=>diffD(toD(s.data),NOW)>=0&&diffD(toD(s.data),NOW)<=7).forEach(s=>{if(!s.obs||!(s.checklist||[]).length)alerts.push({icon:Gavel,color:K.pu,title:"Sustentação incompleta",desc:`${s.tribunal}: ${s.tema}`})});
   return(
     <div className="cj-pg">
+      <TokamakOverview st={st} dp={dp} sp={sp} ss={ss}/>
       {React.createElement(function(){var s=useState(false);var showR=s[0],sShowR=s[1];return React.createElement(React.Fragment,null,React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8,flexWrap:"wrap"}},React.createElement("button",{onClick:function(){sp("timeline");},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📅 Timeline"),React.createElement("button",{onClick:function(){sShowR(true);},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📊 Relatório")),showR&&React.createElement(RelatorioModal,{st:st,onClose:function(){sShowR(false);}}));},null)}
       {/* ═══ v10 — CONFLICT DETECTION ALERT ═══ */}
       {React.createElement(ConflictAlert,{st:st,sp:sp})}
@@ -3286,7 +5086,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
   <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(2,6,23,.78)",backdropFilter:"blur(10px)",zIndex:1000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"34px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)oc()}}>
     <div className="cj-sc cj-soft" style={{background:"linear-gradient(180deg,rgba(13,18,35,.98),rgba(8,12,24,.98))",border:`1px solid ${accent}28`,borderRadius:28,width:"100%",maxWidth:1080,padding:0,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:"0 0 auto 0",height:1,background:`linear-gradient(90deg,transparent,${accent},transparent)`}}/>
-      <div style={{position:"absolute",top:18,right:18,display:"flex",gap:8,zIndex:2}}>
+      <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${K.brd}55`,background:"rgba(2,6,16,.45)",display:"flex",justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <DoneBtn onClick={()=>{dp({type:"COMPLETE_P",id:p.id});oc();}}/>
         {p.linkSEI&&<button onClick={function(){window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(0,229,255,.3)",background:"rgba(0,229,255,.08)",color:"#00e5ff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 14px rgba(0,229,255,.18)",textShadow:"0 0 6px rgba(0,229,255,.6)",fontFamily:"inherit"}}>🗂️ Processo SEI</button>}
         {!isJ&&React.createElement(function(){var[showP,sShowP]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(){sShowP(true);},style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(184,77,255,.32)",background:"rgba(184,77,255,.08)",color:"#b84dff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(184,77,255,.16)",fontFamily:"inherit"}},"📋 Elaborar Parecer"),showP&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShowP(false);}}));},null)}
@@ -3299,7 +5099,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
         {/* ═══ IA SUGESTÃO DE PROVIDÊNCIA ═══ */}
         {!p.proxProv&&React.createElement(function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#a855f7",borderColor:"rgba(168,85,247,.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");},null)}
         <button onClick={function(){exportProcessPDF(p);}} style={{...btnGhost,padding:"8px 12px",color:K.su,borderColor:K.su+"33"}}><FileText size={14}/>PDF</button>
-        <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10}}><X size={20}/></button>
+        <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10,marginLeft:4}}><X size={20}/></button>
       </div>
 
       <div style={{padding:"28px 28px 20px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0))"}}>
@@ -3314,7 +5114,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
               {p.tipoPeca&&<Bd>{p.tipoPeca}</Bd>}
             </div>
             <div style={{fontSize:16,fontWeight:800,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{p.num||"Sem nº principal"}</div>
-            <h2 style={{margin:0,fontSize:26,fontWeight:800,color:K.txt,lineHeight:1.28,maxWidth:"82%"}}>{p.assunto||"Sem assunto"}</h2>
+            <h2 style={{margin:0,fontSize:26,fontWeight:800,color:K.txt,lineHeight:1.28}}>{p.assunto||"Sem assunto"}</h2>
           </div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
@@ -4504,7 +6304,21 @@ const MuralPg=({st,dp})=>{
   );
 };
 
-const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"insights",icon:BarChart2,label:"Insights IA"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"auditlog",icon:History,label:"Auditoria"},{id:"settings",icon:Settings,label:"Configurações"}];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"today",icon:Target,label:"Hoje"},{id:"week",icon:CalendarDays,label:"Esta Semana"},{id:"priorities",icon:Flame,label:"Prioridades"},{id:"ia",icon:Zap,label:"IA Nexus"},{id:"insights",icon:BarChart2,label:"Insights IA"},{id:"admin",icon:FolderOpen,label:"Administrativos"},{id:"judicial",icon:Scale,label:"Judiciais"},{id:"execucao",icon:Zap,label:"Em Execução"},{id:"acompanhamento",icon:Eye,label:"Em Acompanhamento"},{id:"protocolar",icon:Upload,label:"Protocolar"},{id:"correcao",icon:PenLine,label:"Em Correção"},{id:"done",icon:CheckCircle,label:"Realizados"},{id:"agenda",icon:Calendar,label:"Agenda"},{id:"calendar",icon:CalendarDays,label:"Calendário"},{id:"timeline",icon:Activity,label:"Timeline Prazos"},{id:"waiting",icon:Users,label:"Aguardando"},{id:"inbox",icon:Inbox,label:"Caixa de Entrada"},{id:"lembretes",icon:Bell,label:"Lembretes"},{id:"mural",icon:StickyNote,label:"Mural"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"auditlog",icon:History,label:"Auditoria"},{id:"relacoes",icon:Layers,label:"Relações"},{id:"settings",icon:Settings,label:"Configurações"}];
 
 
 /* === EMAIL ALERT MODAL === */
@@ -4871,6 +6685,7 @@ export default function App() {
       case "mural": return <MuralPg {...pp} />;
       case "analytics": return <AnalPg {...pp} />;
       case "auditlog": return <AuditLogPg {...pp} />;
+      case "relacoes": return <RelacoesPg {...pp} />;
       case "settings": return <SettPg {...pp} />;
       default: return <DashPg {...pp} />;
     }
@@ -4878,6 +6693,10 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: K.bg, fontFamily: "'Outfit','Segoe UI',system-ui,sans-serif", color: K.txt, overflow: "hidden", position:"relative", isolation:"isolate" }}>
+      {/* ═══ ANIMATED MESH GRADIENT BACKGROUND ═══ */}
+      <MeshBg/>
+      {/* ═══ CONFETTI HOST (renders on triggerConfetti) ═══ */}
+      <ConfettiHost/>
       {/* Ambient glow — 4 radial orbs like the finance app */}
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"radial-gradient(ellipse at 15% 0%, rgba(0,255,136,.08), transparent 45%), radial-gradient(ellipse at 85% 5%, rgba(184,77,255,.07), transparent 40%), radial-gradient(ellipse at 50% 95%, rgba(0,229,255,.06), transparent 45%), radial-gradient(ellipse at 0% 50%, rgba(0,170,255,.04), transparent 35%)"}} />
       {/* Neon grid */}
@@ -4923,7 +6742,7 @@ export default function App() {
 
       {/* MAIN */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ height: 68, borderBottom: "1px solid rgba(0,212,255,.12)", display: "flex", alignItems: "center", padding: "0 24px", gap: 16, flexShrink: 0, background: "linear-gradient(180deg, rgba(2,5,16,.97), rgba(2,5,14,.88))", backdropFilter: "blur(24px)", boxShadow:"0 1px 0 rgba(0,212,255,.15), 0 4px 28px rgba(0,0,0,.5)", position:"relative", zIndex:1 }}>
+        <div style={{ minHeight: 68, borderBottom: "1px solid rgba(0,212,255,.12)", display: "flex", alignItems: "center", padding: "10px 22px", gap: 16, flexShrink: 0, background: "linear-gradient(180deg, rgba(2,5,16,.97), rgba(2,5,14,.88))", backdropFilter: "blur(24px)", boxShadow:"0 1px 0 rgba(0,212,255,.15), 0 4px 28px rgba(0,0,0,.5)", position:"relative", zIndex:1, flexWrap:"wrap" }}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginRight:4}}>
             <CFMMark size={34}/>
             <div style={{display:"flex",flexDirection:"column"}}>
@@ -4968,20 +6787,26 @@ export default function App() {
               </div>
             )}
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap:"wrap", justifyContent:"flex-end" }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap", justifyContent:"flex-end" }}>
             <Bd color={K.ac}><Clock size={10}/>{NOW.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</Bd>
-            <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>JSON</button>
-            <button style={{ ...btnGhost, padding: "8px 12px", color: K.su, borderColor: "rgba(5,150,105,.25)" }} onClick={handleExportCSV}><Download size={14}/>CSV/Excel</button>
-            <button style={{ ...btnGhost, padding: "8px 12px", color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar JSON</button>
-            <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.18)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>⚖️</button>
-            <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:17}}>✏️</button>
-            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📧</button>
-            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:17}}>🎯</button>
-            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>📬</button>
-            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:17}}>🤖</button>
-            <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:15}}>☰</button>
-            <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
-              {darkMode?<Sun size={17} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={17} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>JSON</button>
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.su, borderColor: "rgba(5,150,105,.25)" }} onClick={handleExportCSV}><Download size={14}/>CSV</button>
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar</button>
+            {/* divider */}
+            <div style={{width:1,height:22,background:"rgba(127,184,216,.15)",margin:"0 2px"}}/>
+            {/* IA cluster */}
+            <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.18)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:15}}>⚖️</button>
+            <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:15}}>✏️</button>
+            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📧</button>
+            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📬</button>
+            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>🤖</button>
+            {/* divider */}
+            <div style={{width:1,height:22,background:"rgba(127,184,216,.15)",margin:"0 2px"}}/>
+            {/* view cluster */}
+            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:15}}>🎯</button>
+            <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:14}}>☰</button>
+            <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
+              {darkMode?<Sun size={15} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={15} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
             </button>
             {React.createElement(function(){
               var sOpen=useState(false);var notifOpen=sOpen[0],setNotifOpen=sOpen[1];
@@ -4994,8 +6819,8 @@ export default function App() {
               (st.lembretes||[]).filter(function(l){return !l.done&&l.data&&l.data<=NOW.toISOString().slice(0,10);}).forEach(function(l){alerts.push({type:"wa",icon:"⏰",title:"Lembrete vencido",desc:l.texto});});
               all.filter(function(p){return !p.proxProv&&p.status==="Ativo";}).forEach(function(p){alerts.push({type:"dim",icon:"⚠️",title:"Sem próxima providência",desc:p.num||p.assunto,proc:p});});
               return React.createElement("div",{ref:ref,style:{position:"relative"}},
-                React.createElement("div",{onClick:function(){setNotifOpen(!notifOpen);},style:{cursor:"pointer",width:40,height:40,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:notifOpen?"rgba(0,229,255,.15)":"rgba(0,229,255,.06)",boxShadow:"0 0 12px rgba(0,229,255,.18)",transition:"all .2s"}},
-                  React.createElement(Bell,{size:18,color:"#00e5ff",style:{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}}),
+                React.createElement("div",{onClick:function(){setNotifOpen(!notifOpen);},style:{cursor:"pointer",width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:notifOpen?"rgba(0,229,255,.15)":"rgba(0,229,255,.06)",boxShadow:"0 0 12px rgba(0,229,255,.18)",transition:"all .2s"}},
+                  React.createElement(Bell,{size:16,color:"#00e5ff",style:{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}}),
                   cn>0&&React.createElement("div",{className:"cj-pulse",style:{position:"absolute",top:-4,right:-2,minWidth:16,height:16,padding:"0 4px",borderRadius:999,background:K.cr,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff"}},cn)
                 ),
                 notifOpen&&React.createElement("div",{className:"cj-sc",style:{position:"absolute",top:48,right:0,width:360,maxHeight:440,overflowY:"auto",background:K.modal,border:"1px solid "+K.brd,borderRadius:16,padding:8,zIndex:200,boxShadow:"0 20px 60px rgba(0,0,0,.7)"}},
