@@ -26,6 +26,16 @@ function safeGetLocalStorage() {
   }
 }
 
+function getStoragePrototype() {
+  try {
+    if (typeof window === "undefined" || !window.Storage) return null;
+    return window.Storage.prototype;
+  } catch (error) {
+    console.error("Storage API indisponível:", error);
+    return null;
+  }
+}
+
 export function readLocalStorageSnapshot() {
   const storage = safeGetLocalStorage();
   const snapshot = {};
@@ -146,28 +156,29 @@ function scheduleSave() {
 
 export function installCloudLocalStorageSync() {
   const storage = safeGetLocalStorage();
+  const storagePrototype = getStoragePrototype();
 
-  if (!storage || !isSupabaseConfigured || !supabase) return;
+  if (!storage || !storagePrototype || !isSupabaseConfigured || !supabase) return;
 
   if (originalSetItem || originalRemoveItem || originalClear) return;
 
-  originalSetItem = storage.setItem.bind(storage);
-  originalRemoveItem = storage.removeItem.bind(storage);
-  originalClear = storage.clear.bind(storage);
+  originalSetItem = storagePrototype.setItem;
+  originalRemoveItem = storagePrototype.removeItem;
+  originalClear = storagePrototype.clear;
 
-  storage.setItem = function cojurCloudSetItem(key, value) {
-    originalSetItem(key, value);
-    if (shouldSyncKey(key)) scheduleSave();
+  storagePrototype.setItem = function cojurCloudSetItem(key, value) {
+    originalSetItem.call(this, key, value);
+    if (this === window.localStorage && shouldSyncKey(key)) scheduleSave();
   };
 
-  storage.removeItem = function cojurCloudRemoveItem(key) {
-    originalRemoveItem(key);
-    if (shouldSyncKey(key)) scheduleSave();
+  storagePrototype.removeItem = function cojurCloudRemoveItem(key) {
+    originalRemoveItem.call(this, key);
+    if (this === window.localStorage && shouldSyncKey(key)) scheduleSave();
   };
 
-  storage.clear = function cojurCloudClear() {
-    originalClear();
-    scheduleSave();
+  storagePrototype.clear = function cojurCloudClear() {
+    originalClear.call(this);
+    if (this === window.localStorage) scheduleSave();
   };
 
   window.addEventListener("beforeunload", () => {
