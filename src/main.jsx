@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import SupabaseLoginGate from './components/SupabaseLoginGate.jsx'
+import { installCloudLocalStorageSync, loadCloudLocalStorage } from './lib/cloudLocalStorageSync.js'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -34,8 +36,15 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+async function prepareCloudSync() {
+  await loadCloudLocalStorage()
+  installCloudLocalStorageSync()
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   React.createElement(ErrorBoundary, null,
-    React.createElement(App, null)
+    React.createElement(SupabaseLoginGate, { onReady: prepareCloudSync },
+      React.createElement(App, null)
+    )
   )
 )
