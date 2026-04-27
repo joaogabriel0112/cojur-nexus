@@ -48,13 +48,42 @@ const buttonStyle = {
   marginTop: 4,
 };
 
+function LoadingCard({ children }) {
+  return (
+    <div style={shellStyle}>
+      <div style={cardStyle}>{children}</div>
+    </div>
+  );
+}
+
 export default function SupabaseLoginGate({ children, onReady }) {
   const [loading, setLoading] = useState(true);
+  const [cloudReady, setCloudReady] = useState(false);
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  async function prepareCloudState(sessionUser) {
+    if (!sessionUser) {
+      setCloudReady(false);
+      return;
+    }
+
+    setCloudReady(false);
+
+    try {
+      if (onReady) {
+        await onReady();
+      }
+      setCloudReady(true);
+    } catch (readyError) {
+      console.error("Erro ao preparar sincronização do COJUR Nexus:", readyError);
+      setError("Não foi possível carregar os dados do Supabase. Verifique a tabela cojur_state e as policies de RLS.");
+      setCloudReady(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -62,6 +91,7 @@ export default function SupabaseLoginGate({ children, onReady }) {
     async function init() {
       if (!isSupabaseConfigured || !supabase) {
         setLoading(false);
+        setCloudReady(true);
         return;
       }
 
@@ -73,8 +103,8 @@ export default function SupabaseLoginGate({ children, onReady }) {
       setUser(sessionUser);
       setLoading(false);
 
-      if (sessionUser && onReady) {
-        await onReady();
+      if (sessionUser) {
+        await prepareCloudState(sessionUser);
       }
     }
 
@@ -88,8 +118,10 @@ export default function SupabaseLoginGate({ children, onReady }) {
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
 
-      if (sessionUser && onReady) {
-        await onReady();
+      if (sessionUser) {
+        await prepareCloudState(sessionUser);
+      } else {
+        setCloudReady(false);
       }
     });
 
@@ -120,11 +152,7 @@ export default function SupabaseLoginGate({ children, onReady }) {
   }
 
   if (loading) {
-    return (
-      <div style={shellStyle}>
-        <div style={cardStyle}>Carregando COJUR Nexus...</div>
-      </div>
-    );
+    return <LoadingCard>Carregando COJUR Nexus...</LoadingCard>;
   }
 
   if (!isSupabaseConfigured || !supabase) {
@@ -191,6 +219,10 @@ export default function SupabaseLoginGate({ children, onReady }) {
         </form>
       </div>
     );
+  }
+
+  if (!cloudReady) {
+    return <LoadingCard>Sincronizando dados do Supabase...</LoadingCard>;
   }
 
   return children;
