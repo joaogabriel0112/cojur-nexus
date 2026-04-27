@@ -56,6 +56,32 @@ function LoadingCard({ children }) {
   );
 }
 
+function MissingConfigBanner() {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 12,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 999999,
+        maxWidth: "min(920px, calc(100vw - 24px))",
+        padding: "10px 14px",
+        borderRadius: 14,
+        border: "1px solid rgba(251,191,36,.42)",
+        background: "rgba(24, 16, 2, .92)",
+        color: "#fde68a",
+        fontSize: 13,
+        fontWeight: 700,
+        boxShadow: "0 18px 50px rgba(0,0,0,.42)",
+        backdropFilter: "blur(12px)",
+      }}
+    >
+      Supabase não configurado: adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY na Vercel para sincronizar entre navegadores.
+    </div>
+  );
+}
+
 export default function SupabaseLoginGate({ children, onReady }) {
   const [loading, setLoading] = useState(true);
   const [cloudReady, setCloudReady] = useState(false);
@@ -157,15 +183,10 @@ export default function SupabaseLoginGate({ children, onReady }) {
 
   if (!isSupabaseConfigured || !supabase) {
     return (
-      <div style={shellStyle}>
-        <div style={cardStyle}>
-          <h1 style={{ margin: 0, fontSize: 24 }}>Supabase não configurado</h1>
-          <p style={{ lineHeight: 1.6, color: "#cbd5e1" }}>
-            Configure na Vercel as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para habilitar a sincronização entre navegadores.
-          </p>
-          {children}
-        </div>
-      </div>
+      <>
+        <MissingConfigBanner />
+        {children}
+      </>
     );
   }
 
