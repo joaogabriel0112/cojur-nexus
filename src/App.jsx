@@ -758,11 +758,14 @@ var supaFetchState = function() {
     method: "GET",
     headers: supabaseHeaders()
   }).then(function(r){
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(!r.ok) return r.text().then(function(t){throw new Error("HTTP "+r.status+": "+t.substring(0,200));});
     return r.json();
   }).then(function(rows){
     if(!rows||!rows.length) return null;
-    return { value: rows[0].data, updated_at: rows[0].updated_at };
+    /* Suporta tanto coluna `text` (string) quanto `jsonb` (objeto/string) */
+    var raw = rows[0].data;
+    var value = typeof raw === "string" ? raw : JSON.stringify(raw);
+    return { value: value, updated_at: rows[0].updated_at };
   });
 };
 var supaUpsertState = function(data) {
@@ -801,6 +804,7 @@ const storage = {
         return { value: cloudResult.value };
       }
     } catch(e) {
+      console.error("[COJUR sync] fetch falhou:", e && e.message ? e.message : e);
       setSyncStatus(SYNC_STATUS.offline);
     }
     /* 2. Fallback para localStorage (modo offline) */
@@ -820,6 +824,7 @@ const storage = {
       setSyncStatus(SYNC_STATUS.synced);
       return true;
     } catch(e) {
+      console.error("[COJUR sync] upsert falhou:", e && e.message ? e.message : e);
       setSyncStatus(SYNC_STATUS.offline);
       return false;
     }
@@ -5425,7 +5430,7 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
         <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v11</strong> — <span style={{color:"#00ff88"}}>Sync cloud Supabase</span> (persistência cross-browser, cross-device) + cache localStorage offline-first + badge de sync no header. Todas melhorias v8, v9 e v10 preservadas.</div>
+    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v12</strong> · <span style={{color:"#00ff88"}}>Sync cloud Supabase</span> (persistência cross-browser, cross-device) + cache localStorage offline-first + badge de sync no header + toast de aviso quando o sync falha. Todas melhorias v8, v9, v10 e v11 preservadas.</div>
   </Bx></div>
 )};
 
@@ -6455,7 +6460,9 @@ export default function App() {
   }, [darkMode]);
 
   // Load persisted state on mount
-  const [loaded, setLoaded] = useState(true);
+  // IMPORTANTE: começa em `false` para impedir que o effect de save sobrescreva
+  // a nuvem com os dados mock iniciais antes do fetch remoto completar.
+  const [loaded, setLoaded] = useState(false);
   const [showAutoBackup, setShowAutoBackup] = useState(false);
   useEffect(function(){
     var today=new Date();
@@ -6499,7 +6506,12 @@ export default function App() {
           const restored = rehydrate(result.value);
           dp({ type: "LOAD", state: restored });
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("[COJUR sync] load inicial falhou:", e && e.message ? e.message : e);
+      } finally {
+        /* Liberar saves só DEPOIS da tentativa de load — evita sobrescrever nuvem com mock */
+        if (!cancelled) setLoaded(true);
+      }
     })();
     return function(){ cancelled = true; };
   }, []);
@@ -6532,15 +6544,33 @@ export default function App() {
 
   // Save state to persistent storage with debounce
   const saveTimer = useRef(null);
+  /* v12: cooldown de 60s para o toast de erro de sync, evita spam quando a rede oscila */
+  const lastSyncErrToast = useRef(0);
+  const lastSyncOkToast = useRef(0);
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async function(){
+      var ok = false;
       try {
-        await storage.set(STORE_KEY, serialize(st));
+        ok = await storage.set(STORE_KEY, serialize(st));
         try { localStorage.setItem(STORE_KEY+":ts", String(Date.now())); } catch(e){}
       } catch (e) {
-        // Storage unavailable
+        ok = false;
+      }
+      var now = Date.now();
+      if (ok === false) {
+        if (now - lastSyncErrToast.current > 60000) {
+          lastSyncErrToast.current = now;
+          showToast("err", "Sync com a nuvem falhou. Trabalhando offline (cache local).");
+        }
+      } else {
+        /* Se acabou de voltar de um estado de erro, avisa que reconectou. Cooldown de 60s. */
+        if (lastSyncErrToast.current > 0 && (now - lastSyncOkToast.current > 60000)) {
+          lastSyncOkToast.current = now;
+          lastSyncErrToast.current = 0;
+          showToast("ok", "Sync restabelecido. Dados na nuvem.");
+        }
       }
     }, 400);
     return function(){ if(saveTimer.current) clearTimeout(saveTimer.current); };
