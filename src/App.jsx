@@ -1,5 +1,29 @@
-import React, { useState, useMemo, useEffect, useReducer, useRef } from "react";
+import React, { useState, useMemo, useEffect, useReducer, useRef, useCallback } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+/* ═══ v14: helpers de log e fetch com timeout ═══ */
+var __isDev = (function(){
+  try {
+    var h = (typeof window!=="undefined" && window.location ? window.location.hostname : "");
+    return h === "localhost" || h === "127.0.0.1" || (h && h.indexOf(".local") !== -1);
+  } catch(e){ return false; }
+})();
+var logErr = function(prefix, e){
+  if (__isDev && typeof console !== "undefined") {
+    try { console.error(prefix, e && e.message ? e.message : e); } catch(_){}
+  }
+};
+var fetchT = function(url, opts, timeoutMs){
+  timeoutMs = timeoutMs || 30000;
+  return new Promise(function(resolve, reject){
+    var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var to = setTimeout(function(){ if (ctrl) ctrl.abort(); else reject(new Error("timeout")); }, timeoutMs);
+    var o = Object.assign({}, opts || {});
+    if (ctrl && !o.signal) o.signal = ctrl.signal;
+    fetch(url, o).then(function(r){ clearTimeout(to); resolve(r); }, function(e){ clearTimeout(to); reject(e); });
+  });
+};
+
 import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, ChevronRight, ChevronLeft, Plus, Filter, Inbox, Settings, BarChart3, Zap, Shield, Target, Activity, Layers, MapPin, Plane, Gavel, X, ChevronDown, CalendarDays, Scale, FolderOpen, LayoutDashboard, Timer, Tag, Flame, Edit3, Trash2, Columns3, LayoutGrid, Table2, GripVertical, Save, PenLine, Download, StickyNote, DollarSign, Eye, Link, Pencil, BarChart2, Copy, FileText, ClipboardCheck, History } from "lucide-react";
 
 /* ═══ CUSTAS — CPC + CLT completo ═══ */
@@ -491,17 +515,22 @@ const btnDanger={...getBtnGhost(),borderColor:K.cr,color:K.cr};
 const refreshStyles=()=>{Object.assign(inpSt,getInpSt());Object.assign(lblSt,getLblSt());Object.assign(btnPrim,getBtnPrim());Object.assign(btnGhost,getBtnGhost());Object.assign(btnDanger,{...getBtnGhost(),borderColor:K.cr,color:K.cr});};
 
 /* ═══ DATE ═══ */
-const curDate=(base)=>{const d=base?new Date(base):new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0,0)};
+const curDate=(base)=>{const d=base?new Date(base):new Date();if(isNaN(d.getTime()))return new Date(NaN);return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0,0)};
 /* NOW é recalculado dinamicamente para evitar stale após horas com app aberto */
 const getNOW=()=>curDate();
 var NOW=getNOW();
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
-const diffD=(a,b)=>Math.ceil((a-b)/86400000);
+const diffD=(a,b)=>(!a||!b)?999:Math.ceil((a-b)/86400000);
 const isBiz=d=>{const w=curDate(d).getDay();return w!==0&&w!==6};
-const bizDiff=(a,b)=>diffD(curDate(a),curDate(b));
+const bizDiff=(a,b)=>(!a||!b)?999:diffD(curDate(a),curDate(b));
 const fmt=d=>(d instanceof Date?d.toLocaleDateString("pt-BR"):"");
 const fmtS=d=>(d instanceof Date?d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}):"");
-const toD=v=>(v instanceof Date?v:v?new Date(v):new Date());
+const toD=v=>{
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+};
 const toISO=d=>{try{return d instanceof Date?d.toISOString().slice(0,10):(d||"")}catch(e){return ""}};
 
 const STS=["Ativo","Em Execução","Em Acompanhamento","Pronto p/ Protocolo","Em Correção","Aguardando Resposta","Aguardando Decisão","Concluído","Suspenso","Arquivado"];
@@ -601,7 +630,7 @@ const buildChecklist=(tipo,p)=>{
 
 /* ═══ SCORE ═══ */
 const calcScore=p=>{let s=0,dr=p.diasRestantes||0;if(isProtocolar(p)||isCorrecao(p))return 100;if(dr<=3)s+=40;else if(dr<=5)s+=34;else if(dr<=10)s+=26;else if(dr<=20)s+=16;else if(dr<30)s+=8;s+=(p.impacto||3)*5+(p.complexidade||3)*3;if(p.reuniao)s+=10;if(p.sustentacao)s+=15;if((p.semMov||0)>10)s+=10;if(p.depTerc)s+=8;if(!p.proxProv)s+=8;if(!p.responsavel)s+=6;return Math.min(100,s)};
-const recalc=p=>{const pf=toD(p.prazoFinal);const dr=bizDiff(pf,NOW);const tipoPeca=inferTipoPeca(p);return{...p,prazoFinal:pf,diasRestantes:dr,tipoPeca,checklist:(p.checklist&&p.checklist.length?p.checklist:buildChecklist(tipoPeca,p)),score:calcScore({...p,diasRestantes:dr,tipoPeca})}};
+const recalc=p=>{const pf=toD(p.prazoFinal);const dr=pf?bizDiff(pf,NOW):999;const tipoPeca=inferTipoPeca(p);return{...p,prazoFinal:pf,diasRestantes:dr,tipoPeca,checklist:(p.checklist&&p.checklist.length?p.checklist:buildChecklist(tipoPeca,p)),score:calcScore({...p,diasRestantes:dr,tipoPeca})}};
 
 /* ═══ DATA ═══ */
 let _nid=100;const nid=()=>"N"+(++_nid);
@@ -731,7 +760,9 @@ const reviveDates = obj => {
   return out;
 };
 const rehydrate = raw => {
-  const parsed = reviveDates(JSON.parse(raw));
+  var parsed;
+  try { parsed = reviveDates(JSON.parse(raw)); } catch(e) { logErr("[rehydrate] JSON parse falhou:", e); return null; }
+  if (!parsed || typeof parsed !== "object") { logErr("[rehydrate] shape invalido", typeof parsed); return null; }
   return {
     adm: (parsed.adm || []).map(p=>recalc({...mkA({}),...p,id:p.id||nid(),tipo:"adm"})),
     jud: (parsed.jud || []).map(p=>recalc({...mkJ({}),...p,id:p.id||nid(),tipo:"jud"})), lembretes: (parsed.lembretes||[]),
@@ -804,7 +835,7 @@ const storage = {
         return { value: cloudResult.value };
       }
     } catch(e) {
-      console.error("[COJUR sync] fetch falhou:", e && e.message ? e.message : e);
+      logErr("[COJUR sync] fetch falhou:", e);
       setSyncStatus(SYNC_STATUS.offline);
     }
     /* 2. Fallback para localStorage (modo offline) */
@@ -824,7 +855,7 @@ const storage = {
       setSyncStatus(SYNC_STATUS.synced);
       return true;
     } catch(e) {
-      console.error("[COJUR sync] upsert falhou:", e && e.message ? e.message : e);
+      logErr("[COJUR sync] upsert falhou:", e);
       setSyncStatus(SYNC_STATUS.offline);
       return false;
     }
@@ -834,6 +865,7 @@ const storage = {
     try { await supaDeleteState(); setSyncStatus(SYNC_STATUS.synced); return true; } catch(e){ return false; }
   }
 };
+
 const exportState = function(st) {
   try {
     var json = serialize(st);
@@ -996,13 +1028,13 @@ function reducerCore(st,a){
     case "DEL_NOTA":return{...st,notas:(st.notas||[]).filter(n=>n.id!==a.id)};
     case "UPD_NOTA":return{...st,notas:(st.notas||[]).map(n=>n.id===a.id?{...n,...a.ch}:n)};
     case "ADD_MOV": {
-      var listM=(a.isAdm?[...st.adm]:[...st.jud]);
-      var idxM=listM.findIndex(function(p){return p.id===a.id;});
-      if(idxM<0)return st;
-      var p2=Object.assign({},listM[idxM]);
-      p2.hist=[...(p2.hist||[]),{data:toISO(new Date()),txt:a.txt}];
-      listM[idxM]=p2;
-      return a.isAdm?{...st,adm:listM}:{...st,jud:listM};
+      var keyM = a.isAdm ? "adm" : "jud";
+      var existsM = st[keyM].some(function(p){ return p.id === a.id; });
+      if (!existsM) return st;
+      return {...st, [keyM]: st[keyM].map(function(p){
+        if (p.id !== a.id) return p;
+        return {...p, hist: [...(p.hist||[]), {data: toISO(new Date()), txt: a.txt}]};
+      })};
     }
     /* ═══ DUPLICAR PROCESSO ═══ */
     case "DUP_P":{
@@ -1033,6 +1065,7 @@ function reducerCore(st,a){
       var rem=function(list,fromId,toId){return list.map(function(p){if(p.id!==fromId)return p;return{...p,linkedIds:(p.linkedIds||[]).filter(function(x){return x!==toId;})};});};
       return{...st,[uk1]:rem(st[uk1],a.id1,a.id2),[uk2]:rem(st[uk2],a.id2,a.id1)};
     }
+    case "RECALC_ALL": return {...st, adm: (st.adm||[]).map(recalc), jud: (st.jud||[]).map(recalc)};
     case "RST":return mkInit();
     default:return st;
   }
@@ -1040,7 +1073,7 @@ function reducerCore(st,a){
 /* Wrapper: adds audit log to every mutation */
 function reducer(st,a){
   var result=reducerCore(st,a);
-  if(result!==st&&a.type!=="LOAD"&&a.type!=="RST"){
+  if(result!==st&&a.type!=="LOAD"&&a.type!=="RST"&&a.type!=="RECALC_ALL"){
     var log=[...(result.auditLog||[])];
     var detail=a.id?(a.ch?JSON.stringify(a.ch).substring(0,120):String(a.id)):(a.type);
     log.unshift(auditEntry(a.type,detail));
@@ -1378,7 +1411,7 @@ function PdfAIModal(props) {
   var analyze=function(b64,mime,fn){
     sLoad(true);sErr("");sResult("");sFname(fn);
     var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+proc.assunto+" | Tipo: "+proc.tipoPeca;
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem analise.");sLoad(false);}).catch(function(){sErr("Erro na analise.");sLoad(false);});
   };
   var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){analyze(ev.target.result.split(",")[1],f.type||"application/pdf",f.name);};r.readAsDataURL(f);};
@@ -1417,7 +1450,7 @@ function GmailSEIModal(props) {
     if(!texto.trim()){setErr("Cole o texto do email antes de analisar.");return;}
     setLoad(true);setErr("");setExtracted(null);
     var prompt="Analise o email abaixo e extraia as informações do processo judicial ou administrativo.\n\nEMAIL:\n"+texto+"\n\nRetorne APENAS um objeto JSON (não array) com:\n- assunto: assunto do email (string)\n- remetente: quem enviou (string)\n- data: data do email (string)\n- numeroSEI: número SEI se houver (string ou null)\n- numeroProcesso: número judicial se houver no formato XXXXXXX-XX.XXXX.X.XX.XXXX (string ou null)\n- tipoPeca: tipo de peça jurídica mencionada (string ou null)\n- prazo: data de prazo mencionada (string ou null)\n- tipo: 'jud' se for processo judicial/tribunal, 'adm' se for administrativo\n- grupo: 1 se mencionar novo prazo SEI atribuído, 2 se for email institucional importante\n- urgencia: 'alta' se mencionar prazo vencendo, 'media' se institucional, 'normal' para demais\n- resumo: 1 frase descrevendo o que o email solicita ou comunica\n\nSeja preciso. SOMENTE JSON, sem markdown.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){
       var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();
@@ -1436,7 +1469,7 @@ function GmailSEIModal(props) {
   /* ── ABA 2: Busca automática via Gmail MCP ───────────────────────────── */
   var buscarGmail=function(){
     setLoad(true);setErr("");setEmails([]);
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
       model:"claude-sonnet-4-20250514",max_tokens:3000,
       messages:[{role:"user",content:"Use o Gmail para buscar emails recentes (últimos 30 dias). Identifique: GRUPO 1 — emails com 'Comunico a atribuição de novo prazo em seu nome no âmbito do sistema SEI'. GRUPO 2 — emails de TRF, STJ, STF, TRT, OAB, AGU, CNJ, CFM, CRM, MP sobre processos, prazos, decisões, intimações. Para cada email retorne JSON: [{assunto, remetente, data, numeroSEI, numeroProcesso, tipoPeca, prazo, tipo (jud/adm), grupo (1/2), urgencia (alta/media/normal), resumo}]. APENAS array JSON."}],
       mcp_servers:[{type:"url",url:"https://gmail.mcp.claude.com/mcp",name:"gmail"}]
@@ -1603,7 +1636,7 @@ function RelatorioModal(props) {
     var mes=new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
     var dados="Mes: "+mes+"\nTotal processos: "+total+"\nRealizados: "+real.length+"\nJudiciais: "+st.jud.length+"\nAdministrativos: "+st.adm.length+"\nSustentacoes: "+st.sust.length+"\nReunioes: "+st.reun.length;
     var lista=real.slice(0,15).map(function(p,i){return (i+1)+". "+p.assunto+" ("+p.tipoPeca+", "+(p.tipo==="jud"?"Judicial":"Adm")+")";}).join("\n");
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2048,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2048,messages:[{role:"user",content:"Voce e advogado senior da COJUR/CFM. Gere Relatorio de Producao Mensal formal para o Coordenador da COJUR. Sem travesSao.\n\nDados:\n"+dados+"\n\nProcessos concluidos:\n"+lista+"\n\nEstrutura: (1) Cabecalho com periodo; (2) Quadro-resumo; (3) Principais atividades; (4) Observacoes; (5) Situacao do acervo. Seja objetivo e institucional."}]})})
     .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);return r.json();}).then(function(d){if(d.error){sResult("Erro da API: "+(d.error.message||"desconhecido"));sLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem relatorio.");sLoad(false);}).catch(function(e){sResult("Erro ao gerar: "+(e.message||"Verifique sua conexão."));sLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){sCopied(true);setTimeout(function(){sCopied(false);},2500);});}catch(e){}};
@@ -1653,7 +1686,7 @@ function DecisaoModal({onClose}) {
     if(!texto.trim())return;
     setLoad(true);setResult("");
     var prompt="Você é advogado sênior da COJUR/CFM. Analise a decisão judicial abaixo e forneça:\n\n1. TIPO DE DECISÃO: (Sentença/Acórdão/Decisão interlocutória/Despacho)\n2. RESULTADO: Resumo em 2 frases do que foi decidido\n3. PRÓXIMA PROVIDÊNCIA: Ação concreta e imediata para a COJUR\n4. PRAZO: Prazo para recurso ou manifestação (com fundamento legal)\n5. ARGUMENTOS A REBATER: Se desfavorável, quais argumentos precisam ser contestados\n6. NÍVEL DE RISCO: Crítico/Médio/Baixo para o CFM — com justificativa\n\nDecisão:\n"+texto+"\n\nSeja direto, técnico e objetivo. Sem travessão.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
     .catch(function(){setResult("Erro na análise.");setLoad(false);});
@@ -1696,7 +1729,7 @@ function RevisaoModal({onClose}) {
     if(!texto.trim())return;
     setLoad(true);setResult("");
     var prompt="Você é advogado sênior especializado em Direito Administrativo e Processual Civil, revisor de peças jurídicas da COJUR/CFM.\n\nRevise a peça abaixo e aponte:\n\n1. ERROS FORMAIS: problemas de formatação, estrutura, numeração de dispositivos\n2. ERROS TÉCNICOS: referências legais incorretas, argumentos juridicamente fracos ou equivocados\n3. MELHORIAS SUGERIDAS: trechos que podem ser reforçados, argumentos adicionais pertinentes\n4. LINGUAGEM: uso de travessão (proibido na COJUR), informalidades, redundâncias\n5. PONTUAÇÃO: ≤10 (necessita revisão profunda), 10-14 (ajustes pontuais), 15-18 (boa qualidade), 19-20 (excelente)\n\nPeça:\n"+texto+"\n\nSeja específico, cite os trechos problemáticos. Sem travessão na sua resposta.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1400,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1400,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);})
     .catch(function(){setResult("Erro na revisão.");setLoad(false);});
@@ -1969,7 +2002,7 @@ function MinutaModal({proc, onClose}) {
     var instrucoes="REGRAS OBRIGATÓRIAS DE ESTILO COJUR/CFM:\n1. PROIBIDO travessão (use vírgula ou ponto)\n2. Use estrutura: RELATÓRIO, FUNDAMENTOS e CONCLUSÃO\n3. Cite NORMA + FATO + CONSEQUÊNCIA JURÍDICA em cada argumento\n4. Linguagem técnica, objetiva, sem redundâncias\n5. Parágrafos numerados quando houver mais de 3\n6. Endereçamento formal ao tribunal correspondente";
     var prompt="Você é advogado sênior do Conselho Federal de Medicina (CFM) especializado em Direito Administrativo e Processual Civil. Redija uma minuta completa de "+tipoMinuta+" seguindo rigorosamente as regras da COJUR/CFM.\n\n"+instrucoes+"\n\nContexto do processo:\n"+ctx+(obsExtra?"\n\nInstruções adicionais:\n"+obsExtra:"")+"\n\nRedija a peça completa, incluindo cabeçalho formal, qualificação das partes, fundamentos jurídicos (indicando os artigos aplicáveis) e pedido final. A peça deve estar pronta para revisão e protocolo.";
     /* ═══ STREAMING SSE — texto aparece em tempo real ═══ */
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4096,stream:true,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4096,stream:true,messages:[{role:"user",content:prompt}]})})
     .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);if(!r.body||!r.body.getReader){return r.json().then(function(d){if(d.error){setMinuta("Erro: "+(d.error.message||"desconhecido"));setLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setMinuta(t||"Sem resultado.");setLoad(false);});}var reader=r.body.getReader();var decoder=new TextDecoder();var acc="";var buf="";function pump(){return reader.read().then(function(result){if(result.done){setLoad(false);return;}buf+=decoder.decode(result.value,{stream:true});var lines=buf.split("\n");buf=lines.pop()||"";lines.forEach(function(line){if(!line.startsWith("data: "))return;var data=line.slice(6).trim();if(data==="[DONE]")return;try{var ev=JSON.parse(data);if(ev.type==="content_block_delta"&&ev.delta&&ev.delta.text){acc+=ev.delta.text;setMinuta(acc);}}catch(e){}});return pump();});}return pump();})
     .catch(function(e){setMinuta("Erro ao gerar: "+(e.message||"Verifique sua conexão."));setLoad(false);});
   };
@@ -2074,7 +2107,7 @@ function DjeAutoModal(djeP){
   var buscar=function(){
     setLoad(true);setErr("");setResult(null);
     var prompt="Pesquise no DJe a publicação mais recente do processo "+numero+" no "+trib+". Retorne JSON: {dataDJe, tipoAto, prazo, intersticio, resumo, encontrado}.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})})
     .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status);return r.json();}).then(function(d){if(d.error){setErr("Erro da API: "+(d.error.message||"desconhecido"));setLoad(false);return;}var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{var jsonMatch=txt.match(/\{[\s\S]*\}/);if(!jsonMatch) throw new Error("JSON não encontrado");setResult(JSON.parse(jsonMatch[0]));setLoad(false);}catch(e){setErr("Não foi possível extrair dados. Verifique o número do processo e tente novamente.");setLoad(false);}}).catch(function(e){setErr("Erro de conexão: "+(e.message||""));setLoad(false);});
   };
   var aplicar=function(){if(!result||!result.dataDJe)return;dp({type:"UPD",id:proc.id,isAdm:false,ch:{pubDJe:result.dataDJe,intersticio:result.intersticio||15}});onClose();};
@@ -2122,7 +2155,7 @@ function IANovoProcessoModal(iaNP){
     if(!descricao.trim())return;
     setLoad(true);setErr("");setResult(null);
     var prompt="Assistente juridico da COJUR/CFM. Extraia dados do processo descrito. Retorne APENAS JSON com: num, numeroSEI, assunto, tribunal, tipoAcao, tipoPeca, parteContraria, prazoFinal (YYYY-MM-DD), status, impacto (1-5), complexidade (1-5), proxProv, obs. Use null para campos desconhecidos.\n\nDescricao: "+descricao;
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
   var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
@@ -2172,7 +2205,7 @@ function RelatorioSemanalModal(rsP){
     var realizados_semana=(st.realizados||[]).slice(0,5);
     var dados="Periodo: "+semana+"\nProcessos criticos (<=5du): "+criticos.length+"\nEm execucao: "+em_exec.length+"\nRealizados recentes: "+realizados_semana.length+"\nTotal no acervo: "+([...st.adm,...st.jud].length)+"\n\nProcessos criticos:\n"+criticos.slice(0,5).map(function(p,i){return (i+1)+". "+p.assunto+" | "+p.tipoPeca+" | "+p.diasRestantes+"du";}).join("\n")+"\n\nEm execucao:\n"+em_exec.slice(0,3).map(function(p,i){return (i+1)+". "+p.assunto+" ("+Math.min(100,Number(p.progresso)||0)+"%)";}).join("\n");
     var prompt="Voce e advogado senior da COJUR/CFM. Gere um resumo semanal de producao conciso e profissional. Sem travesSao.\n\nDados:\n"+dados+"\n\nFormato: (1) Status geral da semana; (2) Prioridades para proxima semana; (3) Alertas criticos; (4) Recomendacao de foco. Seja direto, maximo 200 palavras.";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setResult(t||"Sem resultado.");setLoad(false);}).catch(function(){setResult("Erro.");setLoad(false);});
   };
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
@@ -2753,7 +2786,10 @@ const AnimatedCounter = ({ value, duration = 600, style }) => {
     const from = fromRef.current;
     const to = value;
     startRef.current = performance.now();
+    let rafId = 0;
+    let cancelled = false;
     const tick = () => {
+      if (cancelled) return;
       const t = (performance.now() - startRef.current) / duration;
       if (t >= 1) {
         setDisplay(to);
@@ -2763,9 +2799,10 @@ const AnimatedCounter = ({ value, duration = 600, style }) => {
       /* ease-out cubic */
       const eased = 1 - Math.pow(1 - t, 3);
       setDisplay(Math.round(from + (to - from) * eased));
-      requestAnimationFrame(tick);
+      rafId = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
+    return () => { cancelled = true; if (rafId) cancelAnimationFrame(rafId); };
   }, [value, duration]);
   return <span style={style}>{display}</span>;
 };
@@ -2780,12 +2817,24 @@ const triggerConfetti = (color) => {
 const ConfettiHost = () => {
   const [bursts, setBursts] = useState([]);
   useEffect(() => {
+    const timeouts = new Set();
+    let mounted = true;
     const fn = (id, color) => {
+      if (!mounted) return;
       setBursts(prev => [...prev, { id, color, t: Date.now() }]);
-      setTimeout(() => setBursts(prev => prev.filter(b => b.id !== id)), 2400);
+      const to = setTimeout(() => {
+        timeouts.delete(to);
+        if (mounted) setBursts(prev => prev.filter(b => b.id !== id));
+      }, 2400);
+      timeouts.add(to);
     };
     __confettiListeners.add(fn);
-    return () => __confettiListeners.delete(fn);
+    return () => {
+      mounted = false;
+      __confettiListeners.delete(fn);
+      timeouts.forEach(t => clearTimeout(t));
+      timeouts.clear();
+    };
   }, []);
   return (
     <div aria-hidden="true" style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:9999,overflow:"hidden"}}>
@@ -4958,7 +5007,7 @@ function CalPg({st}){
   const mn=new Date(yr,mo).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
   const hoje=NOW.toISOString().slice(0,10);
 
-  const sameDay=function(d1,d2){return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();};
+  const sameDay=function(d1,d2){if(!d1||!d2)return false;return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();};
 
   const gEv=function(day){
     var d=new Date(yr,mo,day),ev=[];
@@ -5100,9 +5149,9 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
         {/* ═══ DUPLICAR PROCESSO ═══ */}
         {React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();dp({type:"DUP_P",id:p.id});oc();},style:{...btnGhost,padding:"8px 12px",color:"#22d3ee",borderColor:"rgba(34,211,238,.3)"}},React.createElement(Copy,{size:14}),"Duplicar");},null)}
         {/* ═══ RESUMO EXECUTIVO IA ═══ */}
-        {React.createElement(function(){var[loading,sLoad]=useState(false);var[resumo,sResumo]=useState("");var[copied,sCopied]=useState(false);var gerar=function(){sLoad(true);sResumo("");var ctx="Processo: "+(p.num||"N/I")+" | SEI: "+(p.numeroSEI||"—")+" | Assunto: "+(p.assunto||"—")+" | Tipo: "+(p.tipoPeca||"—")+" | Tribunal: "+(p.tribunal||p.orgao||"—")+" | Parte contrária: "+(p.parteContraria||p.interessado||"—")+" | Prazo: "+fmt(p.prazoFinal)+" ("+p.diasRestantes+"du) | Status: "+p.status+" | Fase: "+p.fase+" | Próxima providência: "+(p.proxProv||"—")+" | Obs: "+(p.obs||"—");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:"Gere um RESUMO EXECUTIVO de 3 a 5 linhas deste processo para compartilhar por email com um colega advogado. Seja conciso e objetivo. Sem travessão. Inclua: número, assunto, próxima providência e prazo.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();sResumo(t||"Sem resultado.");sLoad(false);}).catch(function(){sResumo("Erro ao gerar.");sLoad(false);});};if(resumo)return React.createElement("div",{style:{position:"absolute",top:60,right:18,zIndex:10,width:380,padding:16,borderRadius:14,background:K.modal,border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.7)"}},React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Resumo Executivo"),React.createElement("div",{style:{fontSize:12,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:10}},resumo),React.createElement("div",{style:{display:"flex",gap:6}},React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(resumo);sCopied(true);setTimeout(function(){sCopied(false);},2000);}catch(e){}},style:{...btnPrim,flex:1,justifyContent:"center",padding:"8px",fontSize:11,color:copied?"#00ff88":"#00e5ff"}},copied?"✅ Copiado!":"📋 Copiar"),React.createElement("button",{onClick:function(){sResumo("");},style:{...btnGhost,padding:"8px 12px",fontSize:11}},"Fechar")));return React.createElement("button",{onClick:loading?null:gerar,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#ffb800",borderColor:"rgba(255,184,0,.3)"}},loading?"⏳":"📝","Resumo IA");},null)}
+        {React.createElement(function(){var[loading,sLoad]=useState(false);var[resumo,sResumo]=useState("");var[copied,sCopied]=useState(false);var gerar=function(){sLoad(true);sResumo("");var ctx="Processo: "+(p.num||"N/I")+" | SEI: "+(p.numeroSEI||"—")+" | Assunto: "+(p.assunto||"—")+" | Tipo: "+(p.tipoPeca||"—")+" | Tribunal: "+(p.tribunal||p.orgao||"—")+" | Parte contrária: "+(p.parteContraria||p.interessado||"—")+" | Prazo: "+fmt(p.prazoFinal)+" ("+p.diasRestantes+"du) | Status: "+p.status+" | Fase: "+p.fase+" | Próxima providência: "+(p.proxProv||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:"Gere um RESUMO EXECUTIVO de 3 a 5 linhas deste processo para compartilhar por email com um colega advogado. Seja conciso e objetivo. Sem travessão. Inclua: número, assunto, próxima providência e prazo.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();sResumo(t||"Sem resultado.");sLoad(false);}).catch(function(){sResumo("Erro ao gerar.");sLoad(false);});};if(resumo)return React.createElement("div",{style:{position:"absolute",top:60,right:18,zIndex:10,width:380,padding:16,borderRadius:14,background:K.modal,border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.7)"}},React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Resumo Executivo"),React.createElement("div",{style:{fontSize:12,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:10}},resumo),React.createElement("div",{style:{display:"flex",gap:6}},React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(resumo);sCopied(true);setTimeout(function(){sCopied(false);},2000);}catch(e){}},style:{...btnPrim,flex:1,justifyContent:"center",padding:"8px",fontSize:11,color:copied?"#00ff88":"#00e5ff"}},copied?"✅ Copiado!":"📋 Copiar"),React.createElement("button",{onClick:function(){sResumo("");},style:{...btnGhost,padding:"8px 12px",fontSize:11}},"Fechar")));return React.createElement("button",{onClick:loading?null:gerar,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#ffb800",borderColor:"rgba(255,184,0,.3)"}},loading?"⏳":"📝","Resumo IA");},null)}
         {/* ═══ IA SUGESTÃO DE PROVIDÊNCIA ═══ */}
-        {!p.proxProv&&React.createElement(function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#a855f7",borderColor:"rgba(168,85,247,.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");},null)}
+        {!p.proxProv&&React.createElement(function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#a855f7",borderColor:"rgba(168,85,247,.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");},null)}
         <button onClick={function(){exportProcessPDF(p);}} style={{...btnGhost,padding:"8px 12px",color:K.su,borderColor:K.su+"33"}}><FileText size={14}/>PDF</button>
         <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10,marginLeft:4}}><X size={20}/></button>
       </div>
@@ -5430,7 +5479,7 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
         <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v12</strong> · <span style={{color:"#00ff88"}}>Sync cloud Supabase</span> (persistência cross-browser, cross-device) + cache localStorage offline-first + badge de sync no header + toast de aviso quando o sync falha. Todas melhorias v8, v9, v10 e v11 preservadas.</div>
+    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v15</strong> · <span style={{color:"#00ff88"}}>Auditoria completa + hardening de datas</span>: proxy /api/llm para IA, recalc automatico de prazos a cada 60s, AnimatedCounter e ConfettiHost com cleanup, dp memoizado, sync check com dp0, ADD_MOV imutavel, Pomodoro robusto a aba inativa, rehydrate validado, fetchT com timeout, toD/bizDiff/diffD/sameDay/curDate null-safe (processos sem prazo nao aparecem mais como vencendo hoje). Todas melhorias v8 a v14 preservadas.</div>
   </Bx></div>
 )};
 
@@ -5711,7 +5760,7 @@ function InsightsPg({st}){
     });
     var dados=JSON.stringify(stats,null,2);
     var prompt="Voce e advogado senior da COJUR/CFM. Analise os dados agregados do acervo abaixo e retorne 5 INSIGHTS ACIONAVEIS em portugues. Cada insight deve ser: (1) baseado em dados concretos, (2) acionavel (sugerir o que fazer), (3) conciso (maximo 3 linhas). Use numeracao e bullet points. Sem travessao. Foque em: padroes de distribuicao, gargalos, recomendacoes de priorizacao, oportunidades de otimizacao.\n\nDados do acervo:\n"+dados;
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})})
     .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
     .then(function(d){if(d.error){setError(d.error.message||"Erro");setLoad(false);return;}var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();setInsights(t||"Sem resultado.");setLoad(false);})
     .catch(function(e){setError("Erro: "+(e.message||""));setLoad(false);});
@@ -5779,30 +5828,33 @@ function PomodoroTimer({proc, dp}) {
   var intervalRef = useRef(null);
 
   useEffect(function() {
-    if (running) {
-      intervalRef.current = setInterval(function() {
-        setSeconds(function(s) {
-          if (s <= 1) {
-            clearInterval(intervalRef.current);
-            setRunning(false);
-            if (mode === "focus") {
-              var mins = 25;
-              setTotalMin(function(t) { return t + mins; });
-              if (proc && dp) dp({ type: "ADD_TEMPO", id: proc.id, minutos: mins });
-              sendBrowserNotif("Pomodoro concluído!", proc ? proc.assunto : "Sessão finalizada");
-              setMode("break");
-              return 5 * 60;
-            } else {
-              sendBrowserNotif("Pausa encerrada!", "Hora de voltar ao foco");
-              setMode("focus");
-              return 25 * 60;
-            }
-          }
-          return s - 1;
-        });
-      }, 1000);
-    }
+    if (!running) return function() { if (intervalRef.current) clearInterval(intervalRef.current); };
+    /* B4: usa timestamp em vez de decremento, robusto a aba inativa (browser desacelera setInterval) */
+    var startMs = Date.now();
+    var startSeconds = seconds;
+    intervalRef.current = setInterval(function() {
+      var elapsed = Math.floor((Date.now() - startMs) / 1000);
+      var remaining = Math.max(0, startSeconds - elapsed);
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current);
+        setRunning(false);
+        if (mode === "focus") {
+          setTotalMin(function(t) { return t + 25; });
+          if (proc && dp) dp({ type: "ADD_TEMPO", id: proc.id, minutos: 25 });
+          sendBrowserNotif("Pomodoro concluído!", proc ? proc.assunto : "Sessão finalizada");
+          setMode("break");
+          setSeconds(5 * 60);
+        } else {
+          sendBrowserNotif("Pausa encerrada!", "Hora de voltar ao foco");
+          setMode("focus");
+          setSeconds(25 * 60);
+        }
+      } else {
+        setSeconds(remaining);
+      }
+    }, 500);
     return function() { if (intervalRef.current) clearInterval(intervalRef.current); };
+    // eslint-disable-next-line
   }, [running, mode]);
 
   var min = Math.floor(seconds / 60);
@@ -6016,7 +6068,7 @@ function IAPainel({st,ss,sp}){
     });
     if(!isWorkDay){resumo+="\n(Hoje é fim de semana — plano para próxima segunda-feira)";}
     var iaPrompt="Você é assistente jurídico da COJUR/CFM. Planeje o dia de João Gabriel.\n\n"+resumo+"\nREGRAS:\n- Horário fixo: "+H_INI+" às "+H_FIM+" ("+H_DIA+"h úteis)\n- Respeite eventos fixos que bloqueiam tempo\n- Estimativas: Parecer=2-3h, Agravo=2h, Contraminuta=2h, Manifestação=1-2h, Embargos=45min, Ofício=30min, Despacho=15min\n- Reserve 15min final para revisão\n- Sem travessão no texto. Seja direto.\n\nFormato obrigatório:\n📅 PLANO DO DIA — [data]\n🕒 "+H_INI+" às "+H_FIM+"\n\n[lista de tarefas]:\n⬜ HH:MM-HH:MM · [tarefa] · [tempo] · [prioridade]\n\n📊 RESUMO:\n- Tarefas: X\n- Tempo alocado: Xh\n- Críticos cobertos: X\n[alerta se houver críticos fora do horário]";
-    fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
+    fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:iaPrompt}]})})
     .then(function(r){return r.json();})
     .then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();setPlano(txt||"Plano não gerado.");setLoad(false);})
     .catch(function(){setPlano("Erro ao gerar plano.");setLoad(false);});
@@ -6341,7 +6393,7 @@ function EmailAlertModal({st, onClose}) {
     if(!email.trim()) return;
     setLoading(true); setResult(null);
     // Build email HTML inline and send via edge function
-    fetch("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/email-alert", {
+    fetchT("https://vcxastdcsbzdsfcdbtan.supabase.co/functions/v1/email-alert", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({email:email.trim(), processos: urgentes.map(function(p){return {
@@ -6349,7 +6401,7 @@ function EmailAlertModal({st, onClose}) {
         tribunal:p.tribunal||p.orgao||"—", diasRestantes:p.diasRestantes,
         prazoFinal:p.prazoFinal instanceof Date?p.prazoFinal.toISOString().split("T")[0]:p.prazoFinal
       };})})
-    }).then(function(r){return r.json();}).then(function(d){
+    }, 20000).then(function(r){return r.json();}).then(function(d){
       setResult(d); setLoading(false);
     }).catch(function(){setResult({error:"Erro de conexão"});setLoading(false);});
   };
@@ -6425,15 +6477,21 @@ function SyncBadge(){
 
 export default function App() {
   const [st, dp0] = useReducer(reducer, null, mkInit);
-  const dp = function(action){
+  /* M2: dp memoizado, evita recriar funcao a cada render e cascata de re-renders nos filhos */
+  const dp = useCallback(function(action){
     setUndoStack(function(prev){return [...prev.slice(-9),{action,snapshot:st}];});
     dp0(action);
-  };
+  }, [st]);
   const [pg, sPg] = useState("dashboard");
   const [showEmailAlert, setShowEmailAlert] = useState(false);
   const [_tick, setTick] = useState(0);
   useEffect(function(){
-    var t = setInterval(function(){ setTick(function(n){return n+1;}); }, 60000);
+    /* A1: a cada 60s tick para forcar re-render + atualiza NOW + recalcula diasRestantes */
+    var t = setInterval(function(){
+      NOW = getNOW();
+      setTick(function(n){return n+1;});
+      dp0({type:"RECALC_ALL"});
+    }, 60000);
     return function(){ clearInterval(t); };
   }, []);
   const [sel, sSel] = useState(null);
@@ -6504,10 +6562,10 @@ export default function App() {
         ]);
         if (!cancelled && result && result.value) {
           const restored = rehydrate(result.value);
-          dp({ type: "LOAD", state: restored });
+          if (restored) dp({ type: "LOAD", state: restored });
         }
       } catch (e) {
-        console.error("[COJUR sync] load inicial falhou:", e && e.message ? e.message : e);
+        logErr("[COJUR sync] load inicial falhou:", e);
       } finally {
         /* Liberar saves só DEPOIS da tentativa de load — evita sobrescrever nuvem com mock */
         if (!cancelled) setLoaded(true);
@@ -6531,10 +6589,12 @@ export default function App() {
           var localUpdated = new Date(parseInt(localBackupRaw) || 0);
           /* Se versão da nuvem é mais recente, aplicar */
           if (cloudUpdated > localUpdated) {
-            try { localStorage.setItem(STORE_KEY, cloudResult.value); } catch(e){}
             var restored = rehydrate(cloudResult.value);
-            dp({ type: "LOAD", state: restored });
-            setSyncStatus("synced");
+            if (restored) {
+              try { localStorage.setItem(STORE_KEY, cloudResult.value); } catch(e){}
+              dp0({ type: "LOAD", state: restored });
+              setSyncStatus("synced");
+            }
           }
         }
       } catch(e) {}
@@ -6584,13 +6644,7 @@ export default function App() {
     if (u) sSel(u);
   }, [st]);
 
-  /* ═══ NOW REFRESH — atualiza NOW a cada 5 min para evitar stale ═══ */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      NOW = getNOW();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  /* A1: NOW refresh agora unificado no setTick de 60s acima (que tambem dispatcha RECALC_ALL) */
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -6943,7 +6997,7 @@ function IATplModal({proc,onClose}){
       "Use linguagem juridica formal e seja preciso."
     ];
     var prompt=lines.join("\n");
-    fetch("https://api.anthropic.com/v1/messages",{
+    fetch("/api/llm",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2048,messages:[{role:"user",content:prompt}]})
