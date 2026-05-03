@@ -175,6 +175,65 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-prism-card{position:absolute;bottom:calc(30px + var(--h) - 2px);transform:translateX(-50%) translateZ(14px);width:148px;padding:9px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(2,5,20,.96),rgba(8,12,28,.96));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 6px 18px rgba(0,0,0,.55);transform-style:preserve-3d;z-index:4}
 .cn-prism-card .when{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--c);letter-spacing:.08em;font-weight:700}
 .cn-prism-card .what{font-family:'Space Grotesk',sans-serif;font-size:11.5px;color:#e2e8f0;margin-top:3px;line-height:1.25;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* ═══ TIMELINE-PRISM v41.3 · TECNOLOGICO 3D ═══ */
+@keyframes cn-p2-trackPulse{0%{left:-10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:110%;opacity:0}}
+@keyframes cn-p2-grid{0%{background-position:0 0,0 0}100%{background-position:80px 0,0 80px}}
+@keyframes cn-p2-orbFloat{0%,100%{transform:translate(-50%,-50%) translateY(0)}50%{transform:translate(-50%,-50%) translateY(-3px)}}
+@keyframes cn-p2-cardScan{0%{top:-50%}100%{top:120%}}
+@keyframes cn-p2-nowRing{0%{transform:translate(-50%,-50%) scale(.6);opacity:1}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
+@keyframes cn-p2-bezelGlow{0%,100%{opacity:.6}50%{opacity:1}}
+.cn-prism2-stage{position:relative;border-radius:22px;background:linear-gradient(135deg,rgba(8,12,28,.92),rgba(2,5,15,.96));border:1px solid rgba(0,229,255,.18);overflow:hidden;padding:18px 18px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(0,229,255,.08) inset}
+.cn-prism2-stage::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,229,255,.10),transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(184,77,255,.08),transparent 60%);pointer-events:none}
+.cn-prism2-hd{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:6px 4px 14px;border-bottom:1px solid rgba(0,229,255,.12);margin-bottom:14px;z-index:5}
+.cn-prism2-meta{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--cn-ac);letter-spacing:.28em;text-transform:uppercase;display:flex;align-items:center;gap:9px;padding:6px 12px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.3);border-radius:6px;font-weight:700}
+.cn-prism2-dot{width:7px;height:7px;border-radius:50%;background:var(--cn-ac);box-shadow:0 0 10px var(--cn-ac);animation:cn-dot 1.2s infinite}
+.cn-prism2-stats-bar{display:flex;gap:8px}
+.cn-prism2-stat{display:flex;flex-direction:column;align-items:center;padding:4px 14px;background:color-mix(in srgb,var(--c) 8%,rgba(2,5,15,.6));border:1px solid color-mix(in srgb,var(--c) 35%,transparent);border-radius:8px;min-width:70px;box-shadow:0 0 12px color-mix(in srgb,var(--c) 18%,transparent) inset}
+.cn-prism2-stat b{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:var(--c);text-shadow:0 0 12px var(--c);line-height:1}
+.cn-prism2-stat span{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700;margin-top:2px}
+.cn-prism2-filtros{display:flex;gap:5px}
+.cn-prism2-filtro{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.6);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;font-weight:700;text-transform:uppercase}
+.cn-prism2-filtro .d{width:7px;height:7px;border-radius:50%;background:var(--c);opacity:.3;transition:opacity .2s,box-shadow .2s}
+.cn-prism2-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 15%,rgba(2,5,15,.6))}
+.cn-prism2-filtro.on .d{opacity:1;box-shadow:0 0 8px var(--c)}
+.cn-prism2-filtro:hover{transform:translateY(-1px)}
+.cn-prism2-deck{position:relative;height:380px;perspective:1100px;perspective-origin:50% 70%;overflow:hidden;border-radius:14px}
+.cn-prism2-grid3d{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(0,229,255,.18) 79px,rgba(0,229,255,.18) 80px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);transform-origin:center bottom;animation:cn-p2-grid 9s linear infinite;-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);pointer-events:none;opacity:.55}
+.cn-prism2-grid3d.horiz{background:repeating-linear-gradient(0deg,transparent 0,transparent 39px,rgba(184,77,255,.15) 39px,rgba(184,77,255,.15) 40px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);animation-direction:reverse;animation-duration:14s;opacity:.4}
+.cn-prism2-bezel{position:absolute;width:36px;height:36px;border:2px solid var(--cn-ac);box-shadow:0 0 12px var(--cn-ac);z-index:6;pointer-events:none;animation:cn-p2-bezelGlow 2.4s ease-in-out infinite}
+.cn-prism2-bezel.tl{top:8px;left:8px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
+.cn-prism2-bezel.tr{top:8px;right:8px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
+.cn-prism2-bezel.bl{bottom:8px;left:8px;border-right:none;border-top:none;border-radius:0 0 0 8px}
+.cn-prism2-bezel.br{bottom:8px;right:8px;border-left:none;border-top:none;border-radius:0 0 8px 0}
+.cn-prism2-track-wrap{position:absolute;left:60px;right:60px;bottom:36px;height:2px;z-index:4}
+.cn-prism2-track{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,229,255,.15),rgba(0,229,255,.6) 40%,rgba(184,77,255,.6) 60%,rgba(0,229,255,.15));border-radius:2px;box-shadow:0 0 12px rgba(0,229,255,.5),0 0 22px rgba(0,229,255,.25);overflow:visible}
+.cn-prism2-track-pulse{position:absolute;top:-2px;width:60px;height:6px;background:linear-gradient(90deg,transparent,#fff,transparent);box-shadow:0 0 14px #fff,0 0 28px var(--cn-ac);border-radius:6px;animation:cn-p2-trackPulse 3.4s linear infinite;opacity:0}
+.cn-prism2-track-pulse.delay{animation-delay:1.7s}
+.cn-prism2-marker{position:absolute;top:0;transform:translateX(-50%)}
+.cn-prism2-marker .tick{width:1px;height:14px;background:rgba(0,229,255,.6);box-shadow:0 0 4px rgba(0,229,255,.6);margin:auto;transform:translateY(2px)}
+.cn-prism2-marker .lbl{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);letter-spacing:.12em;white-space:nowrap;font-weight:700}
+.cn-prism2-now{position:absolute;top:50%;transform:translate(-50%,-50%);width:0;height:0;z-index:5}
+.cn-prism2-now .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#fff,var(--cn-ac) 60%,transparent);box-shadow:0 0 18px var(--cn-ac),0 0 36px var(--cn-ac)}
+.cn-prism2-now .ring{position:absolute;left:50%;top:50%;width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,229,255,.7);transform:translate(-50%,-50%);animation:cn-p2-nowRing 1.8s ease-out infinite}
+.cn-prism2-now .ring.r2{animation-delay:.6s}
+.cn-prism2-now .lbl{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--cn-ac);letter-spacing:.2em;white-space:nowrap;font-weight:800;text-shadow:0 0 8px var(--cn-ac)}
+.cn-prism2-events{position:absolute;left:60px;right:60px;bottom:36px;top:30px;pointer-events:none}
+.cn-prism2-pin{position:absolute;bottom:0;width:2px;background:linear-gradient(180deg,var(--c) 0%,var(--c) 60%,transparent);box-shadow:0 0 8px var(--c),0 0 16px color-mix(in srgb,var(--c) 50%,transparent);transform:translateX(-50%);transition:filter .2s,box-shadow .2s;z-index:3}
+.cn-prism2-pin.hover{filter:brightness(1.5)}
+.cn-prism2-pin .orb{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:radial-gradient(circle,#fff,var(--c) 60%,transparent);box-shadow:0 0 12px var(--c),0 0 22px var(--c);animation:cn-p2-orbFloat 2.4s ease-in-out infinite}
+.cn-prism2-card{position:absolute;bottom:calc(var(--h) + 6px);transform:translateX(-50%) perspective(800px) rotateX(8deg);width:160px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(2,5,20,.95),rgba(8,12,28,.95));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 8px 24px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04) inset;cursor:pointer;pointer-events:auto;overflow:hidden;transition:transform .25s cubic-bezier(.2,.8,.3,1),box-shadow .25s,border-color .25s;z-index:4;transform-style:preserve-3d}
+.cn-prism2-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 8px var(--c)}
+.cn-prism2-card.hover{transform:translateX(-50%) perspective(800px) rotateX(2deg) translateY(-6px) scale(1.06);box-shadow:0 0 26px color-mix(in srgb,var(--c) 60%,transparent),0 16px 36px rgba(0,0,0,.7),0 0 0 1px var(--c) inset;z-index:8}
+.cn-prism2-card-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 0%,color-mix(in srgb,var(--c) 18%,transparent),transparent 60%);pointer-events:none}
+.cn-prism2-card-scan{position:absolute;left:0;right:0;height:80%;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--c) 35%,transparent),transparent);animation:cn-p2-cardScan 3.6s linear infinite;pointer-events:none;opacity:.4;mix-blend-mode:screen}
+.cn-prism2-card .when{position:relative;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c);letter-spacing:.14em;font-weight:800;display:flex;align-items:center;gap:6px;text-shadow:0 0 6px var(--c);z-index:2}
+.cn-prism2-card .when .dot{width:5px;height:5px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.cn-prism2-card .what{position:relative;font-family:'Space Grotesk',sans-serif;font-size:12px;color:#fff;margin-top:5px;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 0 10px rgba(0,0,0,.5);z-index:2}
+.cn-prism2-card .meta{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);z-index:2}
+.cn-prism2-card .meta b{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:800}
+.cn-prism2-foot{display:flex;align-items:center;gap:14px;padding:8px 6px 0;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--cn-dim);flex-wrap:wrap;border-top:1px solid rgba(0,229,255,.08);margin-top:10px}
+.cn-prism2-foot span{display:flex;align-items:center;gap:6px}
+.cn-prism2-foot i{width:7px;height:7px;border-radius:50%;display:inline-block;box-shadow:0 0 6px currentColor}
 .cn-chassis-corner{position:fixed;width:32px;height:32px;border:2px solid var(--cn-ac);box-shadow:0 0 12px rgba(0,229,255,.5);z-index:50;pointer-events:none}
 .cn-chassis-corner.tl{top:14px;left:14px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
 .cn-chassis-corner.tr{top:14px;right:14px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
@@ -221,7 +280,8 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-fg-legend{margin-top:10px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);flex-wrap:wrap}
 .cn-fg-legend .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
 /* cursor HUD nos paineis NEXUS */
-.cn-tok,.cn-dna-stage,.cn-holo-stage,.cn-towers-stage,.cn-prism-stage{cursor:crosshair}
+.cn-tok,.cn-dna-stage,.cn-holo-stage,.cn-towers-stage,.cn-prism-stage,.cn-prism2-stage{cursor:crosshair}
+.cn-prism2-card{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.cn-holo-card,.cn-tok-ring,.cn-tok-core,.cn-dna-helix,.cn-dna-scanner,.cn-dna-pulse,.cn-particles .cn-p,.cn-particles .cn-blob,.cn-particles .cn-scanH,.cn-glitch::before,.cn-glitch::after,.cn-tok-pip.cr,.cn-noise-css{animation:none !important}}`;
 const injectCnCSS = () => {
   if (typeof document === "undefined") return;
@@ -697,34 +757,151 @@ function TorresPrazo({ data, hMin = 60, hMax = 280 }) {
   );
 }
 
-/* ───── 13. Timeline-Prism ───── */
-function TimelinePrism({ events }) {
-  const ev = useMemo(() => {
-    if (events && events.length) return events.slice(0, 8);
+/* ───── 13. Timeline-Prism · v41.3 TECNOLOGICO 3D ─────
+   Grid 3D animado, trilho holo com pulso eletrico, cards 3D ricos,
+   marcadores T+N, indicador AGORA central, stats topo, filtros, hover/click.
+   API: events: [{x, c, d, t, h, ?tipo, ?ref}], onSelect(ref), range
+   ───────────────────────────────────────────────────────────── */
+function TimelinePrism({ events, onSelect, range = 60 }) {
+  const [hovered, setHovered] = useState(null);
+  const [filtros, setFiltros] = useState({ jud: true, adm: true, sust: true });
+
+  const ev = useMemo(function(){
+    if (events && events.length) return events;
     return [
-      { x: 8, c: "#ff2e5b", d: "02 MAI", t: "Tutela CREMESP", h: 90 },
-      { x: 22, c: "#ffb800", d: "09 MAI", t: "OAB-RJ Lei 9.696", h: 140 },
-      { x: 38, c: "#00e5ff", d: "17 MAI", t: "AgInt TRF1", h: 70 },
-      { x: 54, c: "#b84dff", d: "24 MAI", t: "Sustentação STJ", h: 160 },
-      { x: 72, c: "#00ff88", d: "05 JUN", t: "Parecer 2024.882", h: 100 },
-      { x: 90, c: "#00e5ff", d: "20 JUN", t: "Embargos TST", h: 80 },
+      { x: 8, c: "#ff2e5b", d: "02 MAI", t: "Tutela CREMESP", h: 90, tipo: "jud" },
+      { x: 22, c: "#ffb800", d: "09 MAI", t: "OAB-RJ Lei 9.696", h: 140, tipo: "adm" },
+      { x: 38, c: "#00e5ff", d: "17 MAI", t: "AgInt TRF1", h: 70, tipo: "jud" },
+      { x: 54, c: "#b84dff", d: "24 MAI", t: "Sustentação STJ", h: 160, tipo: "sust" },
+      { x: 72, c: "#00ff88", d: "05 JUN", t: "Parecer 2024.882", h: 100, tipo: "adm" },
+      { x: 90, c: "#00e5ff", d: "20 JUN", t: "Embargos TST", h: 80, tipo: "jud" },
     ];
   }, [events]);
+
+  const visible = useMemo(function(){
+    return ev.filter(function(e){ if (!e.tipo) return true; return filtros[e.tipo] !== false; });
+  }, [ev, filtros]);
+
+  const stats = useMemo(function(){
+    return {
+      total: ev.length,
+      jud: ev.filter(function(e){return e.tipo==="jud";}).length,
+      adm: ev.filter(function(e){return e.tipo==="adm";}).length,
+      sust: ev.filter(function(e){return e.tipo==="sust";}).length,
+      crit: ev.filter(function(e){return e.c === "#ff2e5b";}).length,
+    };
+  }, [ev]);
+
+  const markers = useMemo(function(){
+    var stops = [0, 7, 14, 30, range];
+    return stops.filter(function(s){return s <= range;}).map(function(s){
+      return { p: (s/range)*100, label: "T+" + s + "du" };
+    });
+  }, [range]);
+
+  const toggleFiltro = function(k){
+    setFiltros(function(f){var n={};Object.keys(f).forEach(function(k2){n[k2]=f[k2];});n[k]=!f[k];return n;});
+  };
+
   return (
-    <div className="cn-prism-stage">
-      <div className="cn-prism-hd">▣ LINHA DO TEMPO · PRÓXIMOS 60 DIAS</div>
-      <div className="cn-prism-strip">
-        <div className="cn-prism-track" />
-        <div className="cn-prism-now" style={{ left: "8%" }} />
-        <div className="cn-prism-pulse" style={{ left: "8%" }} />
-        {ev.map((e, i) => (
-          <React.Fragment key={i}>
-            <div className="cn-prism-pin" style={{ left: e.x + "%", height: e.h + "px", "--c": e.c }} />
-            <div className="cn-prism-card" style={{ left: e.x + "%", "--h": e.h + "px", "--c": e.c }}>
-              <div className="when">{e.d}</div><div className="what">{e.t}</div>
-            </div>
-          </React.Fragment>
-        ))}
+    <div className="cn-prism2-stage">
+      {/* Header tecnologico */}
+      <div className="cn-prism2-hd">
+        <div className="cn-prism2-meta">
+          <span className="cn-prism2-dot" />
+          LINHA DO TEMPO · {range}DU · INSPEÇÃO 3D
+        </div>
+        <div className="cn-prism2-stats-bar">
+          <div className="cn-prism2-stat" style={{ "--c": "var(--cn-ac)" }}><b>{stats.total}</b><span>EVENTOS</span></div>
+          <div className="cn-prism2-stat" style={{ "--c": "var(--cn-cr)" }}><b>{stats.crit}</b><span>CRÍTICOS</span></div>
+          <div className="cn-prism2-stat" style={{ "--c": "var(--cn-pu)" }}><b>{stats.sust}</b><span>SUST.</span></div>
+        </div>
+        <div className="cn-prism2-filtros">
+          {[
+            { k: "jud", label: "JUD", c: "var(--cn-ac)" },
+            { k: "adm", label: "ADM", c: "var(--cn-pu)" },
+            { k: "sust", label: "SUST", c: "var(--cn-su)" },
+          ].map(function(f){
+            return (
+              <button key={f.k} onClick={function(){ toggleFiltro(f.k); }} className={"cn-prism2-filtro" + (filtros[f.k] ? " on" : "")} style={{ "--c": f.c }}>
+                <span className="d" />{f.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Container 3D · deck holografico */}
+      <div className="cn-prism2-deck">
+        <div className="cn-prism2-grid3d" />
+        <div className="cn-prism2-grid3d horiz" />
+        <div className="cn-prism2-bezel tl" />
+        <div className="cn-prism2-bezel tr" />
+        <div className="cn-prism2-bezel bl" />
+        <div className="cn-prism2-bezel br" />
+
+        {/* Trilho holo com pulso eletrico */}
+        <div className="cn-prism2-track-wrap">
+          <div className="cn-prism2-track">
+            <div className="cn-prism2-track-pulse" />
+            <div className="cn-prism2-track-pulse delay" />
+          </div>
+          {markers.map(function(m, i){
+            return (
+              <div key={i} className="cn-prism2-marker" style={{ left: m.p + "%" }}>
+                <div className="tick" />
+                <div className="lbl">{m.label}</div>
+              </div>
+            );
+          })}
+          <div className="cn-prism2-now" style={{ left: "0%" }}>
+            <div className="ring r1" />
+            <div className="ring r2" />
+            <div className="core" />
+            <div className="lbl">AGORA</div>
+          </div>
+        </div>
+
+        {/* Pins + Cards 3D */}
+        <div className="cn-prism2-events">
+          {visible.map(function(e, i){
+            const isHover = hovered === i;
+            return (
+              <React.Fragment key={i}>
+                <div className={"cn-prism2-pin" + (isHover ? " hover" : "")} style={{ left: e.x + "%", height: e.h + "px", "--c": e.c }}>
+                  <div className="orb" />
+                </div>
+                <div
+                  className={"cn-prism2-card" + (isHover ? " hover" : "")}
+                  style={{ left: e.x + "%", "--h": e.h + "px", "--c": e.c }}
+                  onMouseEnter={function(){ setHovered(i); }}
+                  onMouseLeave={function(){ setHovered(null); }}
+                  onClick={function(){ if (onSelect && e.ref) onSelect(e.ref); }}
+                >
+                  <div className="cn-prism2-card-bg" />
+                  <div className="cn-prism2-card-scan" />
+                  <div className="when"><span className="dot" />{e.d}</div>
+                  <div className="what">{e.t}</div>
+                  {e.ref && (
+                    <div className="meta">
+                      <span>{(e.ref.num || e.ref.numeroSEI || "—").toString().slice(0, 16)}</span>
+                      <b style={{ color: e.c }}>{e.ref.diasRestantes != null ? e.ref.diasRestantes + "du" : "—"}</b>
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legenda inferior */}
+      <div className="cn-prism2-foot">
+        <span><i style={{background:"#ff2e5b"}}/>≤5du · CRÍTICO</span>
+        <span><i style={{background:"#ffb800"}}/>≤14du · ATENÇÃO</span>
+        <span><i style={{background:"#00e5ff"}}/>≤28du · ACOMPANHAR</span>
+        <span><i style={{background:"#00ff88"}}/>+28du · FOLGADO</span>
+        <span style={{marginLeft:"auto",color:"var(--cn-dim2)"}}>{visible.length}/{ev.length} visíveis · clique no card abre o processo</span>
       </div>
     </div>
   );
@@ -2653,19 +2830,27 @@ function TimelinePg({st,ss}) {
   var all=[...st.adm,...st.jud].filter(function(p){return p.prazoFinal&&p.diasRestantes>=0&&p.diasRestantes<=30;}).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
   var hoje=new Date();
   var dias=Array.from({length:31},function(_,i){return i;});
-  /* v41 · TimelinePrism dataset · proximos 60 dias · alturas alternadas para nao colidir */
+  /* v41.3 · TimelinePrism dataset · 60 dias · alturas alternadas, tipo + ref */
   var prism60 = [...st.adm,...st.jud]
     .filter(function(p){return p.prazoFinal && p.diasRestantes>=0 && p.diasRestantes<=60;})
     .sort(function(a,b){return a.diasRestantes-b.diasRestantes;})
-    .slice(0,8)
+    .slice(0,10)
     .map(function(p, i){
       var d = p.diasRestantes;
       var cor = d<=5 ? "#ff2e5b" : d<=14 ? "#ffb800" : d<=28 ? "#00e5ff" : "#00ff88";
       var dt = new Date(p.prazoFinal);
       var dStr = isNaN(dt) ? (d+"du") : dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).toUpperCase().replace(".","");
-      // alturas alternadas (60, 100, 140, 180) ciclicas para evitar sobreposicao visual
-      var hAlt = [70, 130, 90, 170, 80, 150, 100, 120][i % 8];
-      return { x: Math.max(6, Math.min(94, (d/60)*100)), c: cor, d: dStr, t: (p.assunto||"—").slice(0,28), h: hAlt };
+      var tipo = (p.tipoPeca && /sustent/i.test(p.tipoPeca)) ? "sust" : (p.tipo || "adm");
+      // alturas alternadas para evitar sobreposicao visual
+      var hAlt = [70, 150, 90, 200, 110, 170, 80, 140, 100, 180][i % 10];
+      return {
+        x: Math.max(5, Math.min(95, (d/60)*100)),
+        c: cor, d: dStr,
+        t: (p.assunto||"—").slice(0,32),
+        h: hAlt,
+        tipo: tipo,
+        ref: p,
+      };
     });
   return(
     <div className="cj-pg">
@@ -2676,10 +2861,10 @@ function TimelinePg({st,ss}) {
           <div style={{fontSize:11,color:K.dim,marginTop:2}}>Próximos 30 dias úteis · {all.length} processo{all.length!==1?"s":""} com prazo</div>
         </div>
       </div>
-      {/* v41 · TimelinePrism · vista isometrica dos proximos 60 dias */}
+      {/* v41.3 · TimelinePrism tecnologico · clique em card abre processo */}
       {prism60.length>0 && (
         <div style={{marginBottom:24}}>
-          <TimelinePrism events={prism60}/>
+          <TimelinePrism events={prism60} onSelect={ss} range={60}/>
         </div>
       )}
       {all.length===0&&<div style={{textAlign:"center",padding:60,color:K.dim}}><div style={{fontSize:48,marginBottom:16}}>✅</div><div style={{fontSize:16,fontWeight:700,color:K.txt}}>Nenhum prazo nos próximos 30 dias úteis</div></div>}
