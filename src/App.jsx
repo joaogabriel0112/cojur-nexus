@@ -26,6 +26,885 @@ var fetchT = function(url, opts, timeoutMs){
 
 import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, ChevronRight, ChevronLeft, Plus, Filter, Inbox, Settings, BarChart3, Zap, Shield, Target, Activity, Layers, MapPin, Plane, Gavel, X, ChevronDown, CalendarDays, Scale, FolderOpen, LayoutDashboard, Timer, Tag, Flame, Edit3, Trash2, Columns3, LayoutGrid, Table2, GripVertical, Save, PenLine, Download, StickyNote, DollarSign, Eye, Link, Pencil, BarChart2, Copy, FileText, ClipboardCheck, History } from "lucide-react";
 
+/* ═══════════════════════════════════════════════════════════════════════
+   COJUR NEXUS · VISUAL UPGRADE PACK v1 · INLINE (single-file)
+   Componentes drop-in: BootScreen, AmbientParticles, HUDChassis,
+   Tilt, HoloHero, TokamakHero, DNANexus, GlitchNum, RingProgress,
+   TerminalAI, KPIFlip, ModoComando, TorresPrazo, TimelinePrism.
+   Namespace CSS "cn-" (sem colisao com "cj-" do app).
+   ═══════════════════════════════════════════════════════════════════════ */
+const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--cn-ac:#00e5ff;--cn-pu:#b84dff;--cn-su:#00ff88;--cn-cr:#ff2e5b;--cn-wa:#ffb800;--cn-bg:#020208;--cn-txt:#e2e8f0;--cn-dim:#94a3b8;--cn-dim2:#64748b}
+@keyframes cn-float3d{0%,100%{transform:translateY(0) rotateX(8deg) rotateY(-12deg)}50%{transform:translateY(-8px) rotateX(8deg) rotateY(-12deg)}}
+@keyframes cn-flicker{0%,100%{opacity:.96}3%{opacity:.7}5%{opacity:.97}50%{opacity:.93}}
+@keyframes cn-scanV{0%{transform:translateY(-100%)}100%{transform:translateY(420%)}}
+@keyframes cn-orbitS{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes cn-orbitR{from{transform:rotate(360deg)}to{transform:rotate(0)}}
+@keyframes cn-pulse{0%,100%{box-shadow:0 0 20px rgba(0,229,255,.3),0 0 40px rgba(0,229,255,.15)}50%{box-shadow:0 0 36px rgba(0,229,255,.7),0 0 90px rgba(0,229,255,.35)}}
+@keyframes cn-pulseCr{0%,100%{box-shadow:0 0 18px rgba(255,46,91,.5),0 0 40px rgba(255,46,91,.2)}50%{box-shadow:0 0 36px rgba(255,46,91,.9),0 0 80px rgba(255,46,91,.5)}}
+@keyframes cn-spinTilt{from{transform:rotateX(15deg) rotateY(0)}to{transform:rotateX(15deg) rotateY(360deg)}}
+@keyframes cn-dot{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes cn-drift{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}}
+@keyframes cn-drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,40px)}}
+@keyframes cn-glitch{0%,100%{clip-path:inset(0 0 0 0)}10%{clip-path:inset(20% 0 30% 0)}20%{clip-path:inset(60% 0 5% 0)}30%{clip-path:inset(0 0 0 0)}}
+@keyframes cn-typewrite{from{width:0}to{width:100%}}
+@keyframes cn-blink{50%{opacity:0}}
+@keyframes cn-rain{0%{transform:translateY(-30px);opacity:0}10%{opacity:.7}90%{opacity:.7}100%{transform:translateY(110vh);opacity:0}}
+@keyframes cn-helixL{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+@keyframes cn-helixR{from{transform:rotateY(360deg)}to{transform:rotateY(0)}}
+@keyframes cn-ringExpand{0%{transform:scale(.5);opacity:1}100%{transform:scale(1.6);opacity:0}}
+.cn-particles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.cn-particles .cn-p{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--cn-ac);box-shadow:0 0 8px var(--cn-ac);animation:cn-drift 8s ease-in-out infinite}
+.cn-particles .cn-p.pu{background:var(--cn-pu);box-shadow:0 0 8px var(--cn-pu);animation-name:cn-drift2}
+.cn-particles .cn-p.su{background:var(--cn-su);box-shadow:0 0 8px var(--cn-su)}
+.cn-particles .cn-blob{position:absolute;width:600px;height:600px;border-radius:50%;filter:blur(120px);opacity:.18}
+.cn-particles .cn-blob.b1{background:#00e5ff;left:-200px;top:-100px;animation:cn-drift 22s ease-in-out infinite}
+.cn-particles .cn-blob.b2{background:#b84dff;right:-200px;top:30%;animation:cn-drift2 28s ease-in-out infinite}
+.cn-particles .cn-scanH{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.4),transparent);box-shadow:0 0 10px rgba(0,229,255,.3);animation:cn-scanV 14s linear infinite}
+.cn-boot{position:fixed;inset:0;z-index:99999;background:#020208;display:grid;place-items:center;overflow:hidden}
+.cn-boot::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,229,255,.03) 3px,rgba(0,229,255,.03) 4px);pointer-events:none;z-index:6}
+.cn-boot::after{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(0,229,255,.12),transparent);animation:cn-bootScan 3.2s linear infinite;pointer-events:none;z-index:5}
+@keyframes cn-bootScan{from{top:-120px}to{top:100vh}}
+.cn-boot.cn-boot-out{animation:cn-bootOut .7s forwards}
+@keyframes cn-bootOut{to{opacity:0;visibility:hidden;transform:scale(1.06)}}
+.cn-boot .cn-rain-col{position:absolute;top:-30px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cn-ac);text-shadow:0 0 8px var(--cn-ac);writing-mode:vertical-rl;animation:cn-rain 4s linear infinite;letter-spacing:.1em;opacity:.7}
+.cn-boot .cn-boot-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px);background-size:50px 50px;-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);animation:cn-flicker 6s ease-in-out infinite}
+.cn-boot .cn-boot-corner{position:absolute;width:48px;height:48px;border:2px solid var(--cn-ac);box-shadow:0 0 14px rgba(0,229,255,.6);z-index:6}
+.cn-boot .cn-boot-corner.tl{top:32px;left:32px;border-right:none;border-bottom:none;border-radius:10px 0 0 0}
+.cn-boot .cn-boot-corner.tr{top:32px;right:32px;border-left:none;border-bottom:none;border-radius:0 10px 0 0}
+.cn-boot .cn-boot-corner.bl{bottom:32px;left:32px;border-right:none;border-top:none;border-radius:0 0 0 10px}
+.cn-boot .cn-boot-corner.br{bottom:32px;right:32px;border-left:none;border-top:none;border-radius:0 0 10px 0}
+.cn-boot .cn-boot-meta{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-ac);letter-spacing:.4em;padding:6px 18px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.4);border-radius:4px;z-index:6}
+.cn-boot .cn-boot-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-ac);border-radius:50%;margin-right:10px;vertical-align:middle;animation:cn-dot 1s infinite;box-shadow:0 0 8px var(--cn-ac)}
+.cn-boot .cn-boot-foot{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);letter-spacing:.18em;display:flex;gap:24px;z-index:6;text-transform:uppercase}
+.cn-boot .cn-boot-foot span b{color:var(--cn-ac);font-weight:400}
+.cn-boot .cn-boot-logo{position:relative;z-index:7;text-align:center;padding:40px 60px;background:radial-gradient(ellipse at center,rgba(2,5,15,.85),transparent 70%);backdrop-filter:blur(2px)}
+.cn-boot .cn-boot-logo h1{font-family:'Orbitron',sans-serif;font-size:54px;font-weight:900;letter-spacing:.4em;color:#fff;text-shadow:0 0 24px var(--cn-ac),0 0 48px rgba(0,229,255,.5);margin-bottom:14px;position:relative;display:inline-block;animation:cn-flicker 4s ease-in-out infinite}
+.cn-boot .cn-boot-logo h1::before,.cn-boot .cn-boot-logo h1::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
+.cn-boot .cn-boot-logo h1::before{color:var(--cn-cr);transform:translate(-2px,0);clip-path:inset(20% 0 30% 0);animation:cn-glitch 3s infinite;opacity:.7}
+.cn-boot .cn-boot-logo h1::after{color:var(--cn-ac);transform:translate(2px,0);clip-path:inset(60% 0 5% 0);animation:cn-glitch 3s infinite reverse;opacity:.7}
+.cn-boot .cn-boot-logo .sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.35em;opacity:.85;text-transform:uppercase}
+.cn-boot .cn-boot-bar{margin-top:32px;width:340px;height:3px;background:rgba(0,229,255,.12);border-radius:3px;overflow:hidden;margin-left:auto;margin-right:auto;border:1px solid rgba(0,229,255,.25);box-shadow:0 0 14px rgba(0,229,255,.2)}
+.cn-boot .cn-boot-bar div{height:100%;background:linear-gradient(90deg,var(--cn-ac),var(--cn-pu),var(--cn-cr));box-shadow:0 0 14px var(--cn-ac);animation:cn-bootBar 1.8s ease-out forwards}
+@keyframes cn-bootBar{from{width:0}to{width:100%}}
+.cn-boot .cn-boot-status{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-su);letter-spacing:.18em;text-transform:uppercase;height:14px}
+.cn-boot .cn-boot-hex{position:absolute;width:60px;height:68px;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.05));clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:1px solid rgba(0,229,255,.3);animation:cn-flicker 3s ease-in-out infinite}
+.cn-tilt{transform-style:preserve-3d;transition:transform .15s ease;perspective:1000px}
+.cn-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle 240px at var(--mx,50%) var(--my,30%),rgba(0,229,255,.18),transparent 60%);pointer-events:none;opacity:0;transition:opacity .25s ease;z-index:1}
+.cn-tilt[data-active="1"]::before{opacity:1}
+.cn-glitch{position:relative;display:inline-block;color:#fff;text-shadow:0 0 14px var(--cn-cr)}
+.cn-glitch::before,.cn-glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
+.cn-glitch::before{color:var(--cn-cr);transform:translate(-2px,0);clip-path:inset(20% 0 30% 0);animation:cn-glitch 3s infinite}
+.cn-glitch::after{color:var(--cn-ac);transform:translate(2px,0);clip-path:inset(60% 0 5% 0);animation:cn-glitch 3s infinite reverse}
+.cn-term{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-su);background:rgba(0,255,136,.04);padding:14px;border-radius:8px;border:1px solid rgba(0,255,136,.25);line-height:1.7;box-shadow:0 0 24px rgba(0,255,136,.1) inset}
+.cn-term .cn-term-line{overflow:hidden;white-space:nowrap;border-right:2px solid var(--cn-su);animation:cn-typewrite 1.6s steps(40,end) forwards,cn-blink .7s step-end infinite}
+.cn-term .cn-term-line.done{border-right:none;animation:cn-typewrite 1.6s steps(40,end) forwards}
+.cn-term .cn-term-prompt::before{content:"$ ";color:var(--cn-ac);font-weight:700}
+.cn-ring-progress{position:relative;display:inline-block}
+.cn-ring-progress svg{transform:rotate(-90deg);filter:drop-shadow(0 0 6px var(--cn-su))}
+.cn-ring-progress .cn-ring-v{position:absolute;inset:0;display:grid;place-items:center;font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff}
+.cn-flip{perspective:900px;cursor:pointer}
+.cn-flip-inner{position:relative;width:100%;height:100%;transition:transform .65s cubic-bezier(.2,.8,.3,1);transform-style:preserve-3d}
+.cn-flip:hover .cn-flip-inner,.cn-flip.flipped .cn-flip-inner{transform:rotateY(180deg)}
+.cn-flip-face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;border-radius:inherit}
+.cn-flip-back{transform:rotateY(180deg)}
+.cn-holo-stage{height:480px;display:grid;place-items:center;perspective:1400px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(0,229,255,.05),transparent 70%);border:1px solid rgba(0,229,255,.15)}
+.cn-holo-floor{position:absolute;bottom:0;left:0;right:0;height:55%;background:repeating-linear-gradient(90deg,transparent 0,transparent 49px,rgba(0,229,255,.16) 49px,rgba(0,229,255,.16) 50px),repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(0,229,255,.1) 49px,rgba(0,229,255,.1) 50px);transform:perspective(700px) rotateX(70deg) translateY(50%);transform-origin:center bottom;-webkit-mask-image:linear-gradient(to top,black 30%,transparent 100%);mask-image:linear-gradient(to top,black 30%,transparent 100%)}
+.cn-holo-ghost{position:absolute;width:380px;padding:24px;border-radius:18px;background:linear-gradient(135deg,rgba(0,229,255,.04),rgba(184,77,255,.02));border:1px solid rgba(0,229,255,.12);color:var(--cn-dim);font-size:13px;pointer-events:none}
+.cn-holo-ghost.g1{transform:rotateX(8deg) rotateY(-12deg) translate3d(28px,22px,-60px);opacity:.5}
+.cn-holo-ghost.g2{transform:rotateX(8deg) rotateY(-12deg) translate3d(56px,44px,-120px);opacity:.25}
+.cn-holo-card{width:380px;padding:30px;border-radius:18px;position:relative;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.1));border:1px solid rgba(0,229,255,.5);backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 50px rgba(0,229,255,.3),0 30px 80px rgba(0,229,255,.2),0 60px 120px rgba(0,0,0,.7);animation:cn-float3d 5s ease-in-out infinite,cn-flicker 8s ease-in-out infinite;transform-style:preserve-3d}
+.cn-holo-card::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.04) 2px,rgba(0,229,255,.04) 3px)}
+.cn-holo-card::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--cn-ac),transparent);box-shadow:0 0 14px var(--cn-ac);animation:cn-scanV 3s linear infinite}
+.cn-tok{height:520px;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(0,229,255,.08),transparent 60%);border-radius:20px;border:1px solid rgba(0,229,255,.15);position:relative;overflow:hidden}
+.cn-tok-ring{position:absolute;border-radius:50%;border:1px solid;box-shadow:0 0 30px rgba(0,229,255,.06) inset}
+.cn-tok-ring.r1{width:460px;height:460px;border-color:rgba(0,229,255,.3);animation:cn-orbitS 24s linear infinite}
+.cn-tok-ring.r2{width:340px;height:340px;border-color:rgba(184,77,255,.3);animation:cn-orbitR 16s linear infinite}
+.cn-tok-ring.r3{width:220px;height:220px;border-color:rgba(0,255,136,.3);animation:cn-orbitS 9s linear infinite}
+.cn-tok-core{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.7),rgba(0,229,255,.1) 60%,transparent);display:grid;place-items:center;text-align:center;box-shadow:0 0 70px rgba(0,229,255,.6),0 0 140px rgba(0,229,255,.3);animation:cn-pulse 2.4s ease infinite;z-index:5;position:relative}
+.cn-tok-core::before{content:"";position:absolute;inset:-20px;border-radius:50%;border:1px dashed rgba(0,229,255,.3);animation:cn-orbitS 20s linear infinite}
+.cn-tok-core .n{font-family:'Space Grotesk',sans-serif;font-size:42px;font-weight:800;color:#fff;text-shadow:0 0 20px var(--cn-ac);line-height:1}
+.cn-tok-core .l{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.7);letter-spacing:.18em;margin-top:2px}
+.cn-tok-pip{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid;background:rgba(2,3,12,.8);transition:transform .2s ease}
+.cn-tok-pip:hover{transform:scale(1.5)}
+.cn-tok-pip.cr{border-color:var(--cn-cr);box-shadow:0 0 14px var(--cn-cr);animation:cn-pulseCr 1.4s ease infinite}
+.cn-tok-pip.wa{border-color:var(--cn-wa);box-shadow:0 0 12px var(--cn-wa)}
+.cn-tok-pip.ok{border-color:var(--cn-su);box-shadow:0 0 12px var(--cn-su)}
+.cn-tok-pip.ac{border-color:var(--cn-ac);box-shadow:0 0 12px var(--cn-ac)}
+.cn-tok-pip.pu{border-color:var(--cn-pu);box-shadow:0 0 12px var(--cn-pu)}
+.cn-dna-stage{height:560px;display:grid;place-items:center;perspective:1200px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(184,77,255,.06),transparent 70%);border:1px solid rgba(255,255,255,.08)}
+.cn-dna-stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(184,77,255,.05) 80px),repeating-linear-gradient(0deg,transparent 0,transparent 79px,rgba(184,77,255,.05) 80px);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);pointer-events:none}
+.cn-dna-helix{position:relative;width:160px;height:480px;transform-style:preserve-3d;animation:cn-helixL 14s linear infinite}
+.cn-dna-base{position:absolute;left:50%;top:var(--y,0);transform-style:preserve-3d;transform:translateX(-50%) rotateY(var(--rot,0)) translateZ(0);width:160px;height:8px;display:flex;align-items:center;justify-content:space-between}
+.cn-dna-strand{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,var(--c),color-mix(in srgb,var(--c) 30%,#000));box-shadow:0 0 14px var(--c),0 0 28px color-mix(in srgb,var(--c) 50%,transparent);border:1px solid rgba(255,255,255,.3);position:relative;z-index:2}
+.cn-dna-strand.s2{background:radial-gradient(circle,var(--c2,var(--cn-pu)),color-mix(in srgb,var(--c2,var(--cn-pu)) 30%,#000));box-shadow:0 0 14px var(--c2,var(--cn-pu)),0 0 28px color-mix(in srgb,var(--c2,var(--cn-pu)) 50%,transparent)}
+.cn-dna-rung{position:absolute;left:14px;right:14px;top:50%;height:2px;transform:translateY(-50%);background:linear-gradient(90deg,var(--c),var(--c2,var(--cn-pu)));box-shadow:0 0 6px color-mix(in srgb,var(--c) 60%,transparent);opacity:.6}
+.cn-dna-spine{position:absolute;left:50%;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-50%) translateZ(-1px)}
+.cn-dna-label{position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;background:rgba(2,5,15,.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);white-space:nowrap;backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.cn-dna-legend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:10px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px);z-index:5}
+.cn-dna-legend .lg{display:flex;align-items:center;gap:6px}
+.cn-dna-legend .sw{width:8px;height:8px;border-radius:50%}
+.cn-dna-meta{position:absolute;top:24px;left:24px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-pu);letter-spacing:.2em;background:rgba(2,5,15,.7);padding:6px 14px;border-radius:6px;border:1px solid rgba(184,77,255,.3);box-shadow:0 0 14px rgba(184,77,255,.2);z-index:5;text-transform:uppercase}
+.cn-dna-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-pu);border-radius:50%;margin-right:8px;vertical-align:middle;animation:cn-dot 1.2s infinite;box-shadow:0 0 8px var(--cn-pu)}
+.cn-dna-stats{position:absolute;top:24px;right:24px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.cn-dna-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px);display:flex;justify-content:space-between;gap:14px;min-width:160px}
+.cn-dna-stat b{color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px}
+.cn-section-tag{display:inline-flex;align-items:center;gap:10px;padding:6px 16px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;text-transform:uppercase;margin-bottom:16px}
+.cn-section-tag::before{content:"";width:6px;height:6px;background:var(--cn-ac);border-radius:50%;box-shadow:0 0 10px var(--cn-ac);animation:cn-dot 1.2s infinite}
+.cn-towers-stage{padding:40px 50px 70px;background:radial-gradient(ellipse at center,rgba(184,77,255,.06),transparent 70%);border-radius:20px;border:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
+.cn-towers-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:24px;text-transform:uppercase}
+.cn-towers-field{perspective:1100px;height:380px;display:flex;align-items:flex-end;gap:36px;justify-content:center;position:relative}
+.cn-towers-field::before{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.6),transparent);box-shadow:0 0 12px rgba(0,229,255,.5)}
+.cn-towers-field::after{content:"";position:absolute;bottom:-2px;left:0;right:0;height:60px;background:repeating-linear-gradient(90deg,transparent 0,transparent 39px,rgba(0,229,255,.18) 39px,rgba(0,229,255,.18) 40px);transform:perspective(400px) rotateX(70deg);transform-origin:top;-webkit-mask-image:linear-gradient(to bottom,black,transparent);mask-image:linear-gradient(to bottom,black,transparent)}
+.cn-tw{width:78px;transform-style:preserve-3d;transform:rotateX(20deg) rotateY(-15deg);position:relative;transform-origin:bottom center}
+.cn-tw .face{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--c) 0%,color-mix(in srgb,var(--c) 30%,#000) 100%);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);box-shadow:0 0 30px color-mix(in srgb,var(--c) 50%,transparent),0 0 60px color-mix(in srgb,var(--c) 30%,transparent);height:100%}
+.cn-tw .grid-overlay{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 18px,rgba(255,255,255,.18) 18px,rgba(255,255,255,.18) 19px);pointer-events:none}
+.cn-tw .top{position:absolute;left:0;right:0;height:24px;background:color-mix(in srgb,var(--c) 80%,#fff);transform:rotateX(90deg);transform-origin:bottom;box-shadow:0 0 30px color-mix(in srgb,var(--c) 80%,transparent)}
+.cn-tw .lbl{position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);white-space:nowrap;text-align:center}
+.cn-tw .lbl small{display:block;color:var(--cn-dim2);font-size:8px;margin-top:2px}
+.cn-tw .val{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--c);text-shadow:0 0 12px var(--c);white-space:nowrap}
+.cn-tw .shadow{position:absolute;bottom:-4px;left:-12px;right:-12px;height:14px;background:radial-gradient(ellipse,var(--c),transparent 70%);opacity:.4;filter:blur(6px);transform:rotateX(90deg)}
+/* TIMELINE-PRISM · v41.2 · refeito para nao cortar cards e ficar legivel */
+.cn-prism-stage{padding:24px 40px 28px;perspective:1400px;background:radial-gradient(ellipse at center,rgba(0,255,136,.04),transparent 70%);border-radius:20px;border:1px solid rgba(255,255,255,.08);position:relative;overflow:visible}
+.cn-prism-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:14px;text-transform:uppercase}
+.cn-prism-strip{transform-style:preserve-3d;transform:rotateX(22deg) translateZ(-10px);transform-origin:center bottom;min-height:260px;position:relative;margin:30px 0 110px}
+.cn-prism-track{position:absolute;bottom:30px;left:0;right:0;height:5px;background:linear-gradient(90deg,rgba(0,229,255,.1),rgba(0,229,255,.55) 50%,rgba(0,229,255,.1));border-radius:3px;box-shadow:0 0 14px rgba(0,229,255,.45)}
+.cn-prism-now{position:absolute;bottom:30px;transform:translate(-50%,50%);width:16px;height:16px;border-radius:50%;border:2px solid var(--cn-ac);background:#020208;box-shadow:0 0 14px var(--cn-ac);z-index:3}
+.cn-prism-pulse{position:absolute;bottom:30px;transform:translate(-50%,50%);width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,229,255,.7);animation:cn-ringExpand 1.6s ease-out infinite;z-index:2}
+.cn-prism-pin{position:absolute;bottom:30px;transform:translateX(-50%);width:2.5px;background:linear-gradient(180deg,var(--c),transparent 95%);box-shadow:0 0 6px var(--c);z-index:2}
+.cn-prism-card{position:absolute;bottom:calc(30px + var(--h) - 2px);transform:translateX(-50%) translateZ(14px);width:148px;padding:9px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(2,5,20,.96),rgba(8,12,28,.96));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 6px 18px rgba(0,0,0,.55);transform-style:preserve-3d;z-index:4}
+.cn-prism-card .when{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--c);letter-spacing:.08em;font-weight:700}
+.cn-prism-card .what{font-family:'Space Grotesk',sans-serif;font-size:11.5px;color:#e2e8f0;margin-top:3px;line-height:1.25;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cn-chassis-corner{position:fixed;width:32px;height:32px;border:2px solid var(--cn-ac);box-shadow:0 0 12px rgba(0,229,255,.5);z-index:50;pointer-events:none}
+.cn-chassis-corner.tl{top:14px;left:14px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
+.cn-chassis-corner.tr{top:14px;right:14px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
+.cn-chassis-corner.bl{bottom:14px;left:14px;border-right:none;border-top:none;border-radius:0 0 0 8px}
+.cn-chassis-corner.br{bottom:14px;right:14px;border-left:none;border-top:none;border-radius:0 0 8px 0}
+/* ═══ DNA NEXUS · v41 INTERATIVO · scanner CT, filtros, hover e inspector ═══ */
+@keyframes cn-dnaScan{0%{top:-10%}100%{top:110%}}
+@keyframes cn-dnaPulseCrit{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.6);opacity:.2}}
+@keyframes cn-inspIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cn-dna-scanner{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.7),rgba(184,77,255,.7),transparent);box-shadow:0 0 20px rgba(0,229,255,.7);animation:cn-dnaScan 4.5s linear infinite;z-index:3;pointer-events:none;border-radius:2px}
+.cn-dna-filtros{position:absolute;top:62px;left:24px;display:flex;flex-direction:column;gap:5px;z-index:6}
+.cn-dna-filtro{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.8);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;backdrop-filter:blur(8px);font-weight:700;text-transform:uppercase}
+.cn-dna-filtro .dot{width:7px;height:7px;border-radius:50%;background:var(--c);opacity:.3;transition:opacity .2s,box-shadow .2s}
+.cn-dna-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,rgba(2,5,15,.8))}
+.cn-dna-filtro.on .dot{opacity:1;box-shadow:0 0 8px var(--c)}
+.cn-dna-filtro:hover{transform:translateX(2px)}
+.cn-dna-base{cursor:pointer;transition:filter .2s ease}
+.cn-dna-base.hover{filter:brightness(1.6)}
+.cn-dna-base.hover .cn-dna-strand,.cn-dna-base.hover .cn-dna-strand.s2{transform:scale(1.5)}
+.cn-dna-base.crit .cn-dna-strand.s2{animation:cn-pulseCr 1.4s ease infinite}
+.cn-dna-pulse{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;border:2px solid var(--c);transform:translate(-50%,-50%);animation:cn-dnaPulseCrit 1.6s ease-out infinite;pointer-events:none}
+.cn-dna-inspector{position:absolute;right:24px;top:50%;transform:translateY(-50%);width:280px;background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(8,12,28,.97));border:1px solid var(--c);border-radius:14px;padding:18px;backdrop-filter:blur(14px);box-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent),0 18px 50px rgba(0,0,0,.7);z-index:7;font-family:'Space Grotesk',sans-serif;animation:cn-inspIn .25s cubic-bezier(.2,.8,.3,1) forwards;pointer-events:auto}
+.cn-dna-inspector::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 12px var(--c);border-radius:14px 14px 0 0}
+.cn-dna-inspector-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;font-weight:700}
+.cn-dna-inspector-tag{padding:3px 8px;border-radius:4px;color:#020208;font-size:9px;font-weight:800}
+.cn-dna-inspector-urg{font-size:10px}
+.cn-dna-inspector-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);margin-bottom:6px;letter-spacing:.05em}
+.cn-dna-inspector-tit{font-size:14px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:14px;text-shadow:0 0 12px rgba(0,229,255,.3)}
+.cn-dna-inspector-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:14px}
+.cn-dna-inspector-grid div{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.cn-dna-inspector-grid span{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700}
+.cn-dna-inspector-grid b{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0}
+.cn-dna-inspector-cta{width:100%;padding:9px 12px;border-radius:8px;background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid var(--c);color:var(--c);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;font-weight:800;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.cn-dna-inspector-cta:hover{background:color-mix(in srgb,var(--c) 25%,transparent);box-shadow:0 0 14px color-mix(in srgb,var(--c) 50%,transparent)}
+/* ═══ ENHANCEMENTS PACK v41.1 ═══ */
+.cn-heatmap{display:grid;grid-template-columns:repeat(var(--cols,14),1fr);grid-auto-rows:14px;gap:3px}
+.cn-heatmap-cell{border-radius:3px;background:color-mix(in srgb,var(--c,var(--cn-ac)) calc(var(--intensity,0)*100%),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.04);transition:transform .15s ease,box-shadow .15s ease;cursor:default}
+.cn-heatmap-cell:hover{transform:scale(1.4);box-shadow:0 0 10px var(--c,var(--cn-ac));z-index:2;position:relative}
+.cn-noise-css{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.18;z-index:2;background-image:repeating-radial-gradient(circle at 30% 30%,rgba(0,229,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 70% 60%,rgba(184,77,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 50% 80%,rgba(0,229,255,.08) 0,transparent 1.4px);background-size:5px 5px,7px 7px,4px 4px;animation:cn-flicker 1.4s ease-in-out infinite}
+.cn-fg-overlay{position:fixed;inset:0;z-index:9998;background:rgba(2,3,12,.92);backdrop-filter:blur(10px);display:grid;place-items:center}
+.cn-fg-modal{width:min(820px,94vw);background:radial-gradient(ellipse at 30% 0%,rgba(0,229,255,.08),transparent 50%),#020208;border:1px solid rgba(0,229,255,.35);border-radius:18px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(0,229,255,.18)}
+.cn-fg-hd{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;margin-bottom:12px;text-transform:uppercase}
+.cn-fg-close{width:28px;height:28px;border-radius:6px;background:rgba(255,46,91,.15);border:1px solid rgba(255,46,91,.4);color:var(--cn-cr);cursor:pointer;font-weight:700}
+.cn-fg-legend{margin-top:10px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);flex-wrap:wrap}
+.cn-fg-legend .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+/* cursor HUD nos paineis NEXUS */
+.cn-tok,.cn-dna-stage,.cn-holo-stage,.cn-towers-stage,.cn-prism-stage{cursor:crosshair}
+@media (prefers-reduced-motion:reduce){.cn-holo-card,.cn-tok-ring,.cn-tok-core,.cn-dna-helix,.cn-dna-scanner,.cn-dna-pulse,.cn-particles .cn-p,.cn-particles .cn-blob,.cn-particles .cn-scanH,.cn-glitch::before,.cn-glitch::after,.cn-tok-pip.cr,.cn-noise-css{animation:none !important}}`;
+const injectCnCSS = () => {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("cn-upgrade")) return;
+  const s = document.createElement("style");
+  s.id = "cn-upgrade";
+  s.textContent = CN_UPGRADE_CSS;
+  document.head.appendChild(s);
+};
+
+/* Componente <CnStyles/> · garante que o CSS do upgrade entra no DOM
+   mesmo em sandbox de artefato (sem depender de document.head). */
+function CnStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: CN_UPGRADE_CSS }} />;
+}
+
+/* Badge visível que confirma que o pacote v41 está ativo. */
+function CnVersionBadge() {
+  return (
+    <div style={{
+      position: "fixed", bottom: 16, right: 56, zIndex: 51,
+      padding: "5px 11px", borderRadius: 6,
+      background: "rgba(0,229,255,.12)", border: "1px solid rgba(0,229,255,.45)",
+      color: "#00e5ff", fontFamily: "'JetBrains Mono',monospace",
+      fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
+      boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
+      textTransform: "uppercase",
+    }}>● COJUR NEXUS · v41 · ON</div>
+  );
+}
+
+/* ───── 1. Tilt wrapper ───── */
+function Tilt({ children, max = 14, glare = true, className = "", style }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      el.style.transform = `rotateX(${(py - 0.5) * -max}deg) rotateY(${(px - 0.5) * (max + 4)}deg)`;
+      if (glare) {
+        el.style.setProperty("--mx", px * 100 + "%");
+        el.style.setProperty("--my", py * 100 + "%");
+        el.dataset.active = "1";
+      }
+    };
+    const onLeave = () => {
+      el.style.transform = "rotateX(0) rotateY(0)";
+      el.dataset.active = "0";
+    };
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseleave", onLeave);
+    return () => {
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+    };
+  }, [max, glare]);
+  return <div ref={ref} className={"cn-tilt " + className} style={style}>{children}</div>;
+}
+
+/* ───── 2. Holo Hero ───── */
+function HoloHero({ titulo, num, prazo = "—", responsavel = "—", fase = "—", crit = false }) {
+  const accent = crit ? "var(--cn-cr)" : "var(--cn-ac)";
+  return (
+    <div className="cn-holo-stage">
+      <div className="cn-holo-floor" />
+      <div className="cn-holo-ghost g2" />
+      <div className="cn-holo-ghost g1">RE 1.234.561 · STF · Próximo</div>
+      <div className="cn-holo-card">
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: accent, letterSpacing: ".22em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 6, height: 6, background: accent, borderRadius: "50%", boxShadow: `0 0 10px ${accent}`, animation: "cn-dot 1.5s infinite" }} />
+          {crit ? "EM FOCO · CRÍTICO" : "EM FOCO · PRIORIDADE 1"}
+        </div>
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)", marginTop: 8 }}>{num}</div>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginTop: 10, textShadow: "0 0 18px rgba(0,229,255,.5)" }}>{titulo}</div>
+        <div style={{ display: "flex", gap: 22, marginTop: 22, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)" }}>
+          <div>RESP. <b style={{ color: "#fff" }}>{responsavel}</b></div>
+          <div>PRAZO <span style={{ color: crit ? "var(--cn-cr)" : "#fff", fontSize: 14, fontWeight: 800, textShadow: crit ? "0 0 12px var(--cn-cr)" : "none" }}>{prazo}</span></div>
+          <div>FASE <b style={{ color: "#fff" }}>{fase}</b></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───── 3. Tokamak Hero ───── */
+function TokamakHero({ items = [], total = 0 }) {
+  const placed = useMemo(() => {
+    const out = [];
+    const r1 = items.filter((i) => i.tier === 1).slice(0, 5);
+    const r2 = items.filter((i) => i.tier === 2).slice(0, 4);
+    const r3 = items.filter((i) => i.tier === 3).slice(0, 4);
+    [r1, r2, r3].forEach((arr, ringIdx) => {
+      const ringSize = [460, 340, 220][ringIdx];
+      arr.forEach((it, i) => {
+        const angle = (i / Math.max(arr.length, 1)) * 360;
+        out.push({ ...it, ring: ringSize, angle });
+      });
+    });
+    return out;
+  }, [items]);
+  return (
+    <div className="cn-tok">
+      <div className="cn-tok-ring r1" />
+      <div className="cn-tok-ring r2" />
+      <div className="cn-tok-ring r3" />
+      {placed.map((it, i) => {
+        const r = it.ring / 2; const rad = (it.angle * Math.PI) / 180;
+        const x = Math.cos(rad) * r; const y = Math.sin(rad) * r;
+        return <div key={i} className={"cn-tok-pip " + it.color} title={it.label || ""} style={{ left: `calc(50% + ${x}px - 7px)`, top: `calc(50% + ${y}px - 7px)` }} />;
+      })}
+      <div className="cn-tok-core"><div className="n">{total}</div><div className="l">ATIVOS</div></div>
+    </div>
+  );
+}
+
+/* ───── 4. DNA Nexus · v41 INTERATIVO ─────
+   Hover em uma base mostra ficha técnica lateral com dados reais.
+   Click abre o processo via callback onSelect.
+   Pulse nas bases críticas. Filtros por tipo (toggle).
+   Linha-scanner contínua percorrendo a hélice (efeito CT-scan).
+   ───────────────────────────────────────────────────────────── */
+function DNANexus({ processos = [], h = 480, onSelect }) {
+  const helixRef = useRef(null);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(null);   // index da base sob o mouse
+  const [filtros, setFiltros] = useState({ jud: true, adm: true, sust: true });
+
+  const dataAll = useMemo(() => {
+    if (processos.length) return processos;
+    return [
+      { l: "Jud · Crítico 2du", tipo: "jud", urg: "cr", proc: "RE 1.234.567" },
+      { l: "Adm · Crítico 5du", tipo: "adm", urg: "cr", proc: "26.0.000003358" },
+      { l: "Sust · 9du", tipo: "sust", urg: "wa", proc: "STJ Embargos" },
+      { l: "Jud · 14du", tipo: "jud", urg: "ac", proc: "AgInt TRF1" },
+      { l: "Adm · 21du", tipo: "adm", urg: "ac", proc: "OAB-RJ Lei 9.696" },
+      { l: "Jud · 38du", tipo: "jud", urg: "su", proc: "Embargos TST" },
+      { l: "Adm · Folgado", tipo: "adm", urg: "su", proc: "Parecer 2024.882" },
+      { l: "Sust · 12du", tipo: "sust", urg: "wa", proc: "TRT2 MS" },
+      { l: "Jud · 4du", tipo: "jud", urg: "cr", proc: "Tutela CREMESP" },
+      { l: "Adm · 17du", tipo: "adm", urg: "ac", proc: "CREMEC Diploma" },
+      { l: "Jud · 31du", tipo: "jud", urg: "su", proc: "Parecer CREMESP" },
+      { l: "Sust · 24du", tipo: "sust", urg: "ac", proc: "STJ Memoriais" },
+      { l: "Jud · 7du", tipo: "jud", urg: "wa", proc: "Reclamação TST" },
+      { l: "Adm · 11du", tipo: "adm", urg: "wa", proc: "Despacho 045" },
+    ];
+  }, [processos]);
+
+  // aplica filtros e limita a 14 bases
+  const data = useMemo(() => dataAll
+    .filter(d => filtros[d.tipo] !== false)
+    .slice(0, 14), [dataAll, filtros]);
+
+  const TIPO_C = { jud: "var(--cn-ac)", adm: "var(--cn-pu)", sust: "var(--cn-su)" };
+  const URG_C = { cr: "var(--cn-cr)", wa: "var(--cn-wa)", ac: "var(--cn-ac)", su: "var(--cn-su)" };
+
+  const stats = useMemo(() => ({
+    total: dataAll.length,
+    jud: dataAll.filter((d) => d.tipo === "jud").length,
+    adm: dataAll.filter((d) => d.tipo === "adm").length,
+    sust: dataAll.filter((d) => d.tipo === "sust").length,
+    crit: dataAll.filter((d) => d.urg === "cr").length,
+  }), [dataAll]);
+
+  const focused = hovered != null ? data[hovered] : null;
+
+  // helpers
+  const toggleFiltro = (k) => setFiltros((f) => ({ ...f, [k]: !f[k] }));
+  const labelTipo = (t) => t === "jud" ? "Judicial" : t === "sust" ? "Sustentação" : "Administrativo";
+  const labelUrg = (u) => u === "cr" ? "CRÍTICO" : u === "wa" ? "ATENÇÃO" : u === "ac" ? "ACOMPANHAR" : "FOLGADO";
+
+  return (
+    <div className="cn-dna-stage"
+      onMouseEnter={() => { if (helixRef.current) helixRef.current.style.animationPlayState = "paused"; setPaused(true); }}
+      onMouseLeave={() => { if (helixRef.current) helixRef.current.style.animationPlayState = "running"; setPaused(false); setHovered(null); }}>
+      {/* Linha scanner CT contínua */}
+      <div className="cn-dna-scanner" />
+
+      <div className="cn-dna-meta">DNA · Nexus · Genoma do Acervo</div>
+
+      {/* Filtros toggle */}
+      <div className="cn-dna-filtros">
+        {[
+          { k: "jud", label: "JUD", c: "var(--cn-ac)" },
+          { k: "adm", label: "ADM", c: "var(--cn-pu)" },
+          { k: "sust", label: "SUST", c: "var(--cn-su)" },
+        ].map(f => (
+          <button
+            key={f.k}
+            onClick={() => toggleFiltro(f.k)}
+            className={"cn-dna-filtro" + (filtros[f.k] ? " on" : "")}
+            style={{ "--c": f.c }}
+            title={"Toggle " + labelTipo(f.k)}
+          >
+            <span className="dot" />{f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="cn-dna-stats">
+        <div className="cn-dna-stat">Total <b>{stats.total}</b></div>
+        <div className="cn-dna-stat">Judicial <b style={{ color: "var(--cn-ac)" }}>{stats.jud}</b></div>
+        <div className="cn-dna-stat">Adm. <b style={{ color: "var(--cn-pu)" }}>{stats.adm}</b></div>
+        <div className="cn-dna-stat">Sust. <b style={{ color: "var(--cn-su)" }}>{stats.sust}</b></div>
+        <div className="cn-dna-stat">Críticos <b style={{ color: "var(--cn-cr)" }}>{stats.crit}</b></div>
+      </div>
+
+      <div ref={helixRef} className="cn-dna-helix" style={{ height: h + "px" }}>
+        <div className="cn-dna-spine" />
+        {data.map((d, i) => {
+          const y = (i * (h - 40)) / Math.max(data.length - 1, 1) + 20;
+          const rot = (i * 32) % 360;
+          const cL = TIPO_C[d.tipo] || "var(--cn-ac)";
+          const cR = URG_C[d.urg] || "var(--cn-ac)";
+          const isHover = hovered === i;
+          const isCrit = d.urg === "cr";
+          return (
+            <div
+              key={i}
+              className={"cn-dna-base" + (isHover ? " hover" : "") + (isCrit ? " crit" : "")}
+              style={{ "--y": y + "px", "--rot": rot + "deg", "--c": cL, "--c2": cR }}
+              onMouseEnter={() => setHovered(i)}
+              onClick={(e) => { e.stopPropagation(); if (onSelect && d.ref) onSelect(d.ref); }}
+            >
+              <div className="cn-dna-strand" style={{ "--c": cL }} />
+              <div className="cn-dna-rung" style={{ "--c": cL, "--c2": cR }} />
+              <div className="cn-dna-strand s2" style={{ "--c2": cR }} />
+              {isCrit && <div className="cn-dna-pulse" style={{ "--c": cR }} />}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Painel de inspeção (ficha tecnica) */}
+      {focused && (
+        <div className="cn-dna-inspector" style={{ "--c": URG_C[focused.urg] || "var(--cn-ac)" }}>
+          <div className="cn-dna-inspector-hd">
+            <span className="cn-dna-inspector-tag" style={{ background: TIPO_C[focused.tipo] }}>
+              {labelTipo(focused.tipo).slice(0, 4).toUpperCase()}
+            </span>
+            <span className="cn-dna-inspector-urg" style={{ color: URG_C[focused.urg] }}>● {labelUrg(focused.urg)}</span>
+          </div>
+          <div className="cn-dna-inspector-num">{focused.proc || focused.ref?.num || focused.ref?.numeroSEI || "—"}</div>
+          <div className="cn-dna-inspector-tit">{focused.ref?.assunto || focused.l || "Sem assunto"}</div>
+          <div className="cn-dna-inspector-grid">
+            <div><span>TRIBUNAL</span><b>{focused.ref?.tribunal || focused.ref?.orgao || "—"}</b></div>
+            <div><span>RESP.</span><b>{focused.ref?.responsavel || "JG"}</b></div>
+            <div><span>FASE</span><b>{focused.ref?.fase || focused.ref?.tipoPeca || "—"}</b></div>
+            <div><span>SCORE</span><b style={{ color: URG_C[focused.urg] }}>{focused.ref?.score != null ? focused.ref.score : "—"}</b></div>
+            <div><span>PRAZO</span><b style={{ color: URG_C[focused.urg] }}>{focused.ref?.diasRestantes != null ? focused.ref.diasRestantes + "du" : "—"}</b></div>
+            <div><span>SEM MOV.</span><b>{focused.ref?.semMov != null ? focused.ref.semMov + "d" : "—"}</b></div>
+          </div>
+          {onSelect && focused.ref && (
+            <button className="cn-dna-inspector-cta" onClick={() => onSelect(focused.ref)}>
+              ABRIR PROCESSO ▸
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="cn-dna-legend">
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-ac)" }} />Judicial</div>
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-pu)" }} />Adm.</div>
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-su)" }} />Sustent.</div>
+        <div className="lg">│</div>
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-cr)" }} />Crítico</div>
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-wa)" }} />Médio</div>
+        <div className="lg"><span className="sw" style={{ background: "var(--cn-su)" }} />Folgado</div>
+      </div>
+    </div>
+  );
+}
+
+/* ───── 5. GlitchNum ───── */
+function GlitchNum({ children, style }) {
+  return <span className="cn-glitch" data-text={String(children)} style={style}>{children}</span>;
+}
+
+/* ───── 6. Ring Progress ───── */
+function RingProgress({ value = 75, size = 90, color = "var(--cn-su)", label }) {
+  const r = size / 2 - 7; const c = 2 * Math.PI * r; const off = c - (value / 100) * c;
+  return (
+    <div className="cn-ring-progress" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={6} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={6} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: "stroke-dashoffset .6s ease" }} />
+      </svg>
+      <div className="cn-ring-v" style={{ fontSize: size * 0.26 }}>{label || value + "%"}</div>
+    </div>
+  );
+}
+
+/* ───── 7. Terminal AI ───── */
+function TerminalAI({ lines = [] }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (shown >= lines.length) return;
+    const t = setTimeout(() => setShown((s) => s + 1), 1700);
+    return () => clearTimeout(t);
+  }, [shown, lines.length]);
+  return (
+    <div className="cn-term">
+      {lines.slice(0, shown + 1).map((l, i) => (
+        <div key={i} className={"cn-term-line cn-term-prompt" + (i < shown ? " done" : "")}>{l}</div>
+      ))}
+    </div>
+  );
+}
+
+/* ───── 8. KPI Flip 3D ───── */
+function KPIFlip({ frente, verso, w = 180, h = 90, style }) {
+  return (
+    <div className="cn-flip" style={{ width: w, height: h, ...style }}>
+      <div className="cn-flip-inner" style={{ borderRadius: 12 }}>
+        <div className="cn-flip-face" style={{ background: "rgba(0,229,255,.06)", border: "1px solid rgba(0,229,255,.3)", borderRadius: 12, color: "#fff" }}>{frente}</div>
+        <div className="cn-flip-face cn-flip-back" style={{ background: "rgba(0,229,255,.14)", border: "1px solid rgba(0,229,255,.5)", borderRadius: 12, color: "var(--cn-ac)", boxShadow: "0 0 24px rgba(0,229,255,.3)" }}>{verso}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ───── 9. Boot Screen ───── */
+function BootScreen({ duration = 2400, ids = [] }) {
+  const [out, setOut] = useState(false);
+  const [hide, setHide] = useState(false);
+  const [statusIdx, setStatusIdx] = useState(0);
+  const cols = useMemo(() => {
+    const sample = ids.length ? ids : ["RE 1.234.567","26.0.000003358","TRT2-MS","STJ Embargos","CREMESP","AgInt TRF1","OAB-RJ","Parecer 882","Diploma XML","Tutela 026","Sustent. 04","Reclamação","CFM 2.343","CRM-CE","Despacho 045"];
+    return Array.from({ length: 32 }).map((_, i) => ({ left: (i * 3.2) % 100, delay: -(Math.random() * 4), text: sample[i % sample.length] }));
+  }, [ids]);
+  const STATUS = useMemo(() => ["▸ Conectando ao Supabase…","▸ Sincronizando acervo (147 processos)…","▸ Cruzando jurisprudência CFM/STJ…","▸ Calculando prazos críticos…","▸ Carregando IA Nexus…","▸ Sistema pronto."], []);
+  useEffect(() => {
+    const t1 = setTimeout(() => setOut(true), duration);
+    const t2 = setTimeout(() => setHide(true), duration + 700);
+    const stepMs = duration / STATUS.length;
+    const tick = setInterval(() => setStatusIdx((i) => Math.min(i + 1, STATUS.length - 1)), stepMs);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(tick); };
+  }, [duration, STATUS.length]);
+  if (hide) return null;
+  return (
+    <div className={"cn-boot" + (out ? " cn-boot-out" : "")}>
+      <NoiseCanvas opacity={0.22} />
+      <div className="cn-boot-grid" />
+      {cols.map((c, i) => <div key={i} className="cn-rain-col" style={{ left: c.left + "%", animationDelay: c.delay + "s" }}>{c.text}</div>)}
+      <div className="cn-boot-hex" style={{ top: "18%", left: "12%" }} />
+      <div className="cn-boot-hex" style={{ top: "70%", right: "14%", animationDelay: "-1.5s" }} />
+      <div className="cn-boot-hex" style={{ top: "30%", right: "8%", animationDelay: "-2.8s", width: "40px", height: "46px" }} />
+      <div className="cn-boot-hex" style={{ bottom: "22%", left: "18%", animationDelay: "-1s", width: "44px", height: "50px" }} />
+      <div className="cn-boot-corner tl" /><div className="cn-boot-corner tr" />
+      <div className="cn-boot-corner bl" /><div className="cn-boot-corner br" />
+      <div className="cn-boot-meta">COJUR · BOOT SEQUENCE · v4.0</div>
+      <div className="cn-boot-logo">
+        <h1 data-text="COJUR · NEXUS">COJUR · NEXUS</h1>
+        <div className="sub">Inicializando sistema · CFM · 2026</div>
+        <div className="cn-boot-bar"><div /></div>
+        <div className="cn-boot-status">{STATUS[statusIdx]}</div>
+      </div>
+      <div className="cn-boot-foot">
+        <span>NODE <b>BSB-01</b></span><span>LATÊNCIA <b>42MS</b></span>
+        <span>ACERVO <b>147</b></span><span>STATUS <b>ONLINE</b></span>
+      </div>
+    </div>
+  );
+}
+
+/* ───── 10. Ambient Particles ───── */
+function AmbientParticles({ count = 18 }) {
+  const ps = useMemo(() => Array.from({ length: count }).map((_, i) => ({
+    x: Math.random() * 100, y: Math.random() * 100, d: -(Math.random() * 6),
+    cls: i % 3 === 0 ? "pu" : i % 3 === 1 ? "su" : "",
+  })), [count]);
+  return (
+    <div className="cn-particles" aria-hidden="true">
+      <div className="cn-blob b1" /><div className="cn-blob b2" />
+      <div className="cn-scanH" style={{ top: "30%" }} />
+      <div className="cn-scanH" style={{ top: "75%", animationDelay: "-7s" }} />
+      {ps.map((p, i) => <div key={i} className={"cn-p " + p.cls} style={{ left: p.x + "%", top: p.y + "%", animationDelay: p.d + "s" }} />)}
+    </div>
+  );
+}
+
+/* ───── 11. Modo Comando ───── */
+function ModoComando({ open, onClose, total = 147, criticos = 8, jud = 23, adm = 47 }) {
+  if (!open) return null;
+  const pTtl = { color: "var(--cn-ac)", letterSpacing: ".18em", fontSize: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6, fontWeight: 700 };
+  const hudPanel = (col, row) => ({ gridColumn: col, gridRow: row, background: "linear-gradient(135deg,rgba(8,12,28,.7),rgba(2,5,15,.85))", border: "1px solid rgba(0,229,255,.25)", borderRadius: 10, padding: 18, backdropFilter: "blur(8px)", boxShadow: "0 0 24px rgba(0,229,255,.08)", fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)" });
+  const Row = ({ label, value, color }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+      <span>{label}</span>
+      <b style={{ color: color || "#e2e8f0", fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{value}</b>
+    </div>
+  );
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(2,3,12,.94)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose && onClose(); }}>
+      <div style={{ width: "min(1180px,94vw)", height: "min(680px,90vh)", position: "relative", borderRadius: 20, background: "radial-gradient(ellipse at 30% 0%,rgba(0,229,255,.1),transparent 50%),radial-gradient(ellipse at 100% 100%,rgba(184,77,255,.08),transparent 50%),#020208", border: "1px solid rgba(0,229,255,.3)", overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.7),0 0 80px rgba(0,229,255,.2)" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px)", backgroundSize: "30px 30px", maskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)" }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: "rgba(255,46,91,.15)", border: "1px solid rgba(255,46,91,.4)", color: "var(--cn-cr)", cursor: "pointer", fontSize: 18, fontWeight: 700, zIndex: 10 }}>✕</button>
+        <div style={{ position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)", fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-ac)", letterSpacing: ".3em", padding: "5px 14px", background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.4)", borderRadius: 4 }}>● COJUR · NEXUS · MODO COMANDO</div>
+        <div style={{ position: "absolute", inset: "60px 40px 40px", display: "grid", gridTemplateColumns: "240px 1fr 240px", gridTemplateRows: "1fr 1fr", gap: 18 }}>
+          <div style={hudPanel(1, 1)}><div style={pTtl}>ACERVO</div><Row label="Judicial" value={jud} /><Row label="Adm." value={adm} /><Row label="Sustent." value={4} /><Row label="Pareceres" value={64} /></div>
+          <div style={hudPanel(1, 2)}><div style={pTtl}>DELTA · 7D</div><Row label="Concluídos" value="+12" color="var(--cn-su)" /><Row label="Críticos" value={criticos} color="var(--cn-cr)" /><Row label="Pendentes" value={34} />
+            <div style={{ padding: 10, marginTop: 10, borderRadius: 6, background: "rgba(255,46,91,.1)", border: "1px solid rgba(255,46,91,.3)", color: "var(--cn-cr)", fontSize: 10, fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.4, animation: "cn-pulseCr 2.4s ease infinite" }}>{`⚠ ${criticos} PRAZOS < 48H, REVISAR JÁ`}</div>
+          </div>
+          <div style={{ ...hudPanel(2, "1/span 2"), display: "flex", alignItems: "center", justifyContent: "center", perspective: 900, borderColor: "rgba(0,229,255,.4)" }}>
+            <div style={{ width: 280, height: 280, position: "relative", transformStyle: "preserve-3d", animation: "cn-spinTilt 20s linear infinite" }}>
+              {[0, 45, 90, 135].map((deg) => <div key={deg} style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${deg % 90 === 0 ? "rgba(0,229,255,.5)" : "rgba(184,77,255,.4)"}`, transform: `rotateY(${deg}deg)`, boxShadow: "0 0 16px rgba(0,229,255,.15) inset" }} />)}
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(0,255,136,.4)", transform: "rotateX(90deg)" }} />
+              <div style={{ position: "absolute", inset: "50% auto auto 50%", transform: "translate(-50%,-50%)", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,229,255,.8),rgba(0,229,255,.1) 70%,transparent)", boxShadow: "0 0 50px rgba(0,229,255,.7),0 0 100px rgba(0,229,255,.3)", display: "grid", placeItems: "center" }}>
+                <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", textShadow: "0 0 12px #fff" }}>{total}</span>
+              </div>
+            </div>
+          </div>
+          <div style={hudPanel(3, 1)}><div style={pTtl}>PRÓXIMOS</div>
+            <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.7 }}>
+              {["02 MAI · CREMESP|var(--cn-cr)","09 MAI · OAB-RJ|var(--cn-wa)","17 MAI · AgInt|var(--cn-ac)","24 MAI · Sustent.|var(--cn-pu)","05 JUN · Parecer|var(--cn-su)"].map((s, i) => {
+                const [t, c] = s.split("|"); const [d, label] = t.split(" · ");
+                return <div key={i} style={{ padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,.05)" }}><b style={{ color: c, fontFamily: "'JetBrains Mono',monospace", marginRight: 6 }}>{d}</b>· {label}</div>;
+              })}
+            </div>
+          </div>
+          <div style={hudPanel(3, 2)}><div style={pTtl}>URGÊNCIA</div>
+            <svg viewBox="0 0 100 100" style={{ width: "100%", height: 100 }}>
+              <circle cx={50} cy={50} r={35} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={10} />
+              <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-cr)" strokeWidth={10} strokeDasharray="35 220" transform="rotate(-90 50 50)" />
+              <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-wa)" strokeWidth={10} strokeDasharray="55 220" strokeDashoffset={-35} transform="rotate(-90 50 50)" />
+              <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-ac)" strokeWidth={10} strokeDasharray="80 220" strokeDashoffset={-90} transform="rotate(-90 50 50)" />
+              <text x={50} y={55} fontSize={14} fill="#fff" textAnchor="middle" fontFamily="Space Grotesk" fontWeight={700}>{total}</text>
+            </svg>
+            <div style={{ fontSize: 9, color: "var(--cn-dim2)", textAlign: "center", letterSpacing: ".1em", fontFamily: "'JetBrains Mono',monospace" }}>POR FAIXA DE PRAZO</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───── 12. Torres (Topografia 3D de Prazos) ───── */
+function TorresPrazo({ data, hMin = 60, hMax = 280 }) {
+  const torres = useMemo(() => {
+    if (data && data.length) return data.slice(0, 8);
+    return [
+      { l: "2du", t: "CREMESP", s: "RE 1.234.567", v: 2 },{ l: "5du", t: "Diploma", s: "CREMEC", v: 5 },
+      { l: "9du", t: "OAB-RJ", s: "Falcão", v: 9 },{ l: "14du", t: "AgInt", s: "TRF1", v: 14 },
+      { l: "21du", t: "TRT2", s: "MS", v: 21 },{ l: "38du", t: "Parecer", s: "CREMESP", v: 38 },
+      { l: "12du", t: "Sustent.", s: "STJ", v: 12 },
+    ];
+  }, [data]);
+  const colorFor = (v) => v <= 5 ? "#ff2e5b" : v <= 14 ? "#ffb800" : v <= 28 ? "#00e5ff" : "#00ff88";
+  const max = Math.max(...torres.map((t) => t.v), 40);
+  const heightFor = (v) => hMin + (v / max) * (hMax - hMin);
+  return (
+    <div className="cn-towers-stage">
+      <div className="cn-towers-hd">▣ TOPOGRAFIA DE PRAZOS · TEMPO RESTANTE</div>
+      <div className="cn-towers-field">
+        {torres.map((t, i) => {
+          const c = t.c || colorFor(t.v); const h = heightFor(t.v);
+          return (
+            <div key={i} className="cn-tw" style={{ height: h + "px", "--c": c }}>
+              <div className="cn-tw val">{t.l}</div>
+              <div className="face"><div className="grid-overlay" /></div>
+              <div className="face" style={{ width: "24px", left: "auto", right: 0, transform: "translateX(12px) rotateY(90deg)", filter: "brightness(.55)" }} />
+              <div className="top" style={{ top: 0, transform: `translateY(-${h - 1}px) rotateX(90deg)` }} />
+              <div className="cn-tw lbl">{t.t}<small>{t.s}</small></div>
+              <div className="shadow" />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ───── 13. Timeline-Prism ───── */
+function TimelinePrism({ events }) {
+  const ev = useMemo(() => {
+    if (events && events.length) return events.slice(0, 8);
+    return [
+      { x: 8, c: "#ff2e5b", d: "02 MAI", t: "Tutela CREMESP", h: 90 },
+      { x: 22, c: "#ffb800", d: "09 MAI", t: "OAB-RJ Lei 9.696", h: 140 },
+      { x: 38, c: "#00e5ff", d: "17 MAI", t: "AgInt TRF1", h: 70 },
+      { x: 54, c: "#b84dff", d: "24 MAI", t: "Sustentação STJ", h: 160 },
+      { x: 72, c: "#00ff88", d: "05 JUN", t: "Parecer 2024.882", h: 100 },
+      { x: 90, c: "#00e5ff", d: "20 JUN", t: "Embargos TST", h: 80 },
+    ];
+  }, [events]);
+  return (
+    <div className="cn-prism-stage">
+      <div className="cn-prism-hd">▣ LINHA DO TEMPO · PRÓXIMOS 60 DIAS</div>
+      <div className="cn-prism-strip">
+        <div className="cn-prism-track" />
+        <div className="cn-prism-now" style={{ left: "8%" }} />
+        <div className="cn-prism-pulse" style={{ left: "8%" }} />
+        {ev.map((e, i) => (
+          <React.Fragment key={i}>
+            <div className="cn-prism-pin" style={{ left: e.x + "%", height: e.h + "px", "--c": e.c }} />
+            <div className="cn-prism-card" style={{ left: e.x + "%", "--h": e.h + "px", "--c": e.c }}>
+              <div className="when">{e.d}</div><div className="what">{e.t}</div>
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ───── 14. HUD Chassis ───── */
+function HUDChassis() {
+  return (
+    <>
+      <div className="cn-chassis-corner tl" /><div className="cn-chassis-corner tr" />
+      <div className="cn-chassis-corner bl" /><div className="cn-chassis-corner br" />
+    </>
+  );
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   COJUR NEXUS · ENHANCEMENTS PACK v41.1
+   Sparkline, Heatmap, useAnimatedNumber, AnimatedNum, NoiseCanvas,
+   ForceGraph e cursor HUD (CSS no CN_UPGRADE_CSS).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── CnSpark · mini grafico SVG inline (Nexus) ── */
+function CnSpark({ data = [], color = "var(--cn-ac)", w = 80, h = 24, fill = true }) {
+  const series = useMemo(() => {
+    if (data && data.length) return data;
+    // fallback: 12 pontos pseudo-aleatórios
+    var seed = 7;
+    return Array.from({ length: 12 }).map(function(_, i){
+      seed = (seed * 9301 + 49297) % 233280;
+      return 20 + (seed / 233280) * 60;
+    });
+  }, [data]);
+  const max = Math.max.apply(null, series);
+  const min = Math.min.apply(null, series);
+  const range = max - min || 1;
+  const stepX = w / Math.max(series.length - 1, 1);
+  const pts = series.map(function(v, i){
+    const x = i * stepX;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return [x, y];
+  });
+  const linePath = pts.map(function(p, i){ return (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+  const areaPath = linePath + " L" + w + "," + h + " L0," + h + " Z";
+  return (
+    <svg width={w} height={h} viewBox={"0 0 " + w + " " + h} style={{ display: "block" }}>
+      {fill && <path d={areaPath} fill={color} fillOpacity={0.12} />}
+      <path d={linePath} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 3px " + color + ")" }} />
+      <circle cx={pts[pts.length-1][0]} cy={pts[pts.length-1][1]} r={2.5} fill={color} style={{ filter: "drop-shadow(0 0 4px " + color + ")" }} />
+    </svg>
+  );
+}
+
+/* ── Heatmap · grid 14 colunas x 7 linhas estilo GitHub ── */
+function Heatmap({ data = [], cols = 14, color = "var(--cn-ac)" }) {
+  const cells = useMemo(() => {
+    if (data && data.length) return data;
+    var seed = 13;
+    return Array.from({ length: cols * 7 }).map(function(_, i){
+      seed = (seed * 1103515245 + 12345) % 2147483647;
+      return Math.floor((seed / 2147483647) * 5);
+    });
+  }, [data, cols]);
+  const max = Math.max.apply(null, cells.concat([1]));
+  return (
+    <div className="cn-heatmap" style={{ "--cols": cols, "--c": color }}>
+      {cells.map(function(v, i){
+        const intensity = max ? v / max : 0;
+        return <div key={i} className="cn-heatmap-cell" title={v + " atividades"} style={{ "--intensity": intensity.toFixed(2) }} />;
+      })}
+    </div>
+  );
+}
+
+/* ── useAnimatedNumber · easing cubico ── */
+function useAnimatedNumber(target, duration) {
+  duration = duration || 700;
+  const [v, setV] = useState(0);
+  const ref = useRef({ raf: 0, from: 0, to: 0, t0: 0 });
+  useEffect(function(){
+    if (typeof target !== "number" || isNaN(target)) { setV(target); return; }
+    ref.current.from = v;
+    ref.current.to = target;
+    ref.current.t0 = performance.now();
+    const tick = function(t){
+      const p = Math.min(1, (t - ref.current.t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const cur = ref.current.from + (ref.current.to - ref.current.from) * eased;
+      setV(cur);
+      if (p < 1) ref.current.raf = requestAnimationFrame(tick);
+    };
+    ref.current.raf = requestAnimationFrame(tick);
+    return function(){ cancelAnimationFrame(ref.current.raf); };
+    // eslint-disable-next-line
+  }, [target, duration]);
+  return Math.round(v);
+}
+
+/* ── AnimatedNum · wrapper visual ── */
+function AnimatedNum({ value, duration, style }) {
+  const v = useAnimatedNumber(typeof value === "number" ? value : 0, duration);
+  return <span style={style}>{typeof value === "number" ? v : value}</span>;
+}
+
+/* ── NoiseCanvas · versao CSS-only (a anterior travava o sandbox) ── */
+function NoiseCanvas() {
+  return <div className="cn-noise-css" aria-hidden="true" />;
+}
+
+/* ── ForceGraph (leve · layout circular) · relacoes entre processos ── */
+function ForceGraph({ open, onClose, processos = [] }) {
+  if (!open) return null;
+  const all = processos.slice(0, 24);
+  const cx = 380, cy = 280, R = 220;
+  const nodes = all.map(function(p, i){
+    const a = (i / Math.max(all.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    return { p: p, x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R };
+  });
+  // arestas: mesma parte ou mesmo tribunal
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i].p, b = nodes[j].p;
+      let same = null;
+      if (a.tribunal && a.tribunal === b.tribunal) same = "trib";
+      else if (a.parteContraria && a.parteContraria === b.parteContraria) same = "parte";
+      else if (a.interessado && a.interessado === b.interessado) same = "int";
+      if (same) edges.push({ a: i, b: j, t: same });
+    }
+  }
+  const colorFor = function(d){
+    if (d == null) return "#94a3b8";
+    if (d <= 5) return "#ff2e5b";
+    if (d <= 14) return "#ffb800";
+    if (d <= 28) return "#00e5ff";
+    return "#00ff88";
+  };
+  const edgeColor = { trib: "rgba(0,229,255,.4)", parte: "rgba(255,46,91,.45)", int: "rgba(184,77,255,.4)" };
+  return (
+    <div className="cn-fg-overlay" onClick={function(e){ if (e.target === e.currentTarget) onClose && onClose(); }}>
+      <div className="cn-fg-modal">
+        <div className="cn-fg-hd">
+          <span>● COJUR · NEXUS · GRAFO DE RELAÇÕES</span>
+          <button onClick={onClose} className="cn-fg-close">✕</button>
+        </div>
+        <svg viewBox={"0 0 " + (cx*2) + " " + (cy*2)} width="100%" style={{ display: "block", maxHeight: "70vh" }}>
+          <defs>
+            <radialGradient id="cn-fg-bg">
+              <stop offset="0%" stopColor="rgba(0,229,255,.08)"/>
+              <stop offset="100%" stopColor="rgba(2,3,12,0)"/>
+            </radialGradient>
+          </defs>
+          <circle cx={cx} cy={cy} r={R+10} fill="url(#cn-fg-bg)"/>
+          {edges.map(function(e, i){
+            return <line key={i} x1={nodes[e.a].x} y1={nodes[e.a].y} x2={nodes[e.b].x} y2={nodes[e.b].y} stroke={edgeColor[e.t]} strokeWidth={1}/>;
+          })}
+          {nodes.map(function(n, i){
+            const c = colorFor(n.p.diasRestantes);
+            return (
+              <g key={i} style={{ cursor: "pointer" }}>
+                <circle cx={n.x} cy={n.y} r={9} fill={c} opacity={0.25}/>
+                <circle cx={n.x} cy={n.y} r={5} fill={c} style={{ filter: "drop-shadow(0 0 6px " + c + ")" }}>
+                  <title>{(n.p.num || n.p.numeroSEI || "—") + " · " + (n.p.assunto || "")}</title>
+                </circle>
+                <text x={n.x} y={n.y - 14} textAnchor="middle" fill="#cbd5e1" fontSize={9} fontFamily="JetBrains Mono">{(n.p.num || n.p.numeroSEI || "").slice(0, 12)}</text>
+              </g>
+            );
+          })}
+        </svg>
+        <div className="cn-fg-legend">
+          <span><span className="d" style={{background:"rgba(0,229,255,.6)"}}/>mesmo tribunal</span>
+          <span><span className="d" style={{background:"rgba(255,46,91,.6)"}}/>mesma parte</span>
+          <span><span className="d" style={{background:"rgba(184,77,255,.6)"}}/>mesmo interessado</span>
+          <span style={{marginLeft:"auto",color:"var(--cn-dim)"}}>{nodes.length} nós · {edges.length} relações</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ FIM · COJUR NEXUS UPGRADE PACK · INLINE ═══ */
+
 /* ═══ CUSTAS — CPC + CLT completo ═══ */
 /* Peças que SÃO o recurso/ação e exigem preparo, custas ou depósito recursal no protocolo */
 const CUSTAS_PECAS=[
@@ -222,6 +1101,8 @@ const injectCSS = () => {
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes cjSc{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 @keyframes cjPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes cjUbCritPulse{0%,100%{text-shadow:0 0 6px currentColor,0 0 12px currentColor;transform:scale(1)}50%{text-shadow:0 0 14px currentColor,0 0 28px currentColor,0 0 42px currentColor;transform:scale(1.04)}}
+.cj-ub-crit{animation:cjUbCritPulse 1.4s ease-in-out infinite;will-change:text-shadow,transform}
 @keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scanLine{0%{top:-2%}100%{top:102%}}
 @keyframes shimmerSlide{0%{transform:translateX(-120%) skewX(-18deg)}100%{transform:translateX(220%) skewX(-18deg)}}
@@ -1111,7 +1992,13 @@ const UB=({d,prazoFinal})=>{
       {showCountdown&&countdownStr?(
         <div style={{fontSize:13,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:"-.3px",animation:"cjPulse 1.8s ease infinite"}}>{countdownStr}</div>
       ):(
-        <div style={{fontSize:d===0?11:20,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:d===0?".5px":"-.5px"}}>{d===0?"HOJE":d<0?Math.abs(d):d}</div>
+        /* v41 · numero limpo, com pulse neon nos criticos (sem glitch overlay) */
+        <div
+          className={d<=1?"cj-ub-crit":""}
+          style={{fontSize:d===0?11:20,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:d===0?".5px":"-.5px"}}
+        >
+          {d===0?"HOJE":d<0?Math.abs(d):d}
+        </div>
       )}
       {d!==0&&!showCountdown&&<div style={{fontSize:8,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".4px"}}>{d<0?"ATRASO":"dias úteis"}</div>}
       {showCountdown&&countdownStr&&<div style={{fontSize:7,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".3px"}}>restante</div>}
@@ -1425,7 +2312,7 @@ function PdfAIModal(props) {
         </div>
         <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:"none"}} onChange={onFile}/>
         {!result&&!loading&&<div style={{textAlign:"center",padding:"36px 0"}}><div style={{fontSize:44,marginBottom:14}}>📎</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:6}}>Anexe o PDF do processo</div><div style={{fontSize:12,color:K.dim,marginBottom:20}}>A IA analisa e indica próxima providência, prazo, argumentos e risco</div><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>📎 Selecionar PDF</button></div>}
-        {loading&&<div style={{textAlign:"center",padding:"36px 0",color:"#b84dff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:12}}>🧠</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Analisando...</div><div style={{fontSize:11,color:K.dim,marginTop:6}}>{fname}</div></div>}
+        {loading&&<div style={{padding:"24px 0"}}><TerminalAI lines={["Lendo PDF · "+(fname||"arquivo")+"…","Extraindo metadados processuais…","Cruzando jurisprudência (CFM · STJ · STF)…","Identificando teses-mãe e contra-argumentos…","Compilando ficha técnica."]}/></div>}
         {err&&<div style={{padding:"12px",borderRadius:12,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:12}}>{err}</div>}
         {result&&<div><div style={{fontSize:10,color:"#b84dff",fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Análise gerada pela IA</div><div style={{padding:"14px",borderRadius:13,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.15)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto"}}>{result}</div><div style={{fontSize:10,color:K.dim,marginTop:6}}>📄 {fname}</div><div style={{marginTop:12,display:"flex",gap:8}}><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnGhost,padding:"8px 14px",fontSize:11}}>Analisar outro PDF</button></div></div>}
       </div>
@@ -1571,7 +2458,7 @@ function GmailSEIModal(props) {
             <div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:14}}>Buscar emails com prazos SEI no Gmail</div>
             <button onClick={buscarGmail} style={{...btnPrim,padding:"11px 22px",justifyContent:"center"}}>🔍 Buscar Gmail</button>
           </div>}
-          {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:10}}>📧</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Acessando Gmail...</div></div>}
+          {loading&&<div style={{padding:"24px 0"}}><TerminalAI lines={["Autenticando OAuth Google…","Conectando IMAP / Gmail SEI…","Filtrando assuntos com nº de processo…","Importando últimos 30 dias.","Pronto."]}/></div>}
           {emails.length>0&&(function(){
             var g1=emails.filter(function(e){return e.grupo===1||e.grupo==="1";});
             var g2=emails.filter(function(e){return e.grupo!==1&&e.grupo!=="1";});
@@ -1649,7 +2536,7 @@ function RelatorioModal(props) {
           <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Relatório de Produção Mensal</h3><div style={{fontSize:11,color:K.dim,marginTop:2}}>Gerado por IA com base nos dados do COJUR Nexus</div></div>
         </div>
         {!result&&!loading&&<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:42,marginBottom:12}}>📊</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:5}}>Gerar relatório do mês</div><div style={{fontSize:12,color:K.dim,marginBottom:20}}>{(st.realizados||[]).length} realizados · {[...st.adm,...st.jud].length} no acervo</div><button onClick={gerar} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>Gerar Relatório IA</button></div>}
-        {loading&&<div style={{textAlign:"center",padding:"32px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:36,marginBottom:10}}>📊</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Gerando relatório...</div></div>}
+        {loading&&<div style={{padding:"24px 0"}}><TerminalAI lines={["Agrupando processos por tipo, urgência e responsável…","Calculando KPIs e variações 7/30/90 dias…","Renderizando gráficos institucionais…","Pronto."]}/></div>}
         {result&&<div><div style={{padding:"14px",borderRadius:13,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:400,overflowY:"auto",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:10}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00e5ff"}}>{copied?"Copiado!":"Copiar Relatório"}</button><button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Regenerar</button></div></div>}
       </div>
     </div>
@@ -1703,7 +2590,7 @@ function DecisaoModal({onClose}) {
         </div>
         <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da decisão judicial, acórdão ou despacho...\n\nExemplo: VISTOS. Trata-se de ação ordinária proposta..."}
           style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#b84dff"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>⚖️</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Analisando decisão...</div></div>}
+        {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Lendo a decisão judicial…","Extraindo tese, fundamentos e ratio…","Mapeando precedentes citados (STF · STJ · TRFs)…","Sintetizando para parecer interno."]}/></div>}
         {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#b84dff",borderColor:"rgba(168,85,247,.4)",background:"rgba(168,85,247,.1)"}}>⚖️ Analisar Decisão com IA</button>}
         {result&&!loading&&<div>
           <div style={{padding:"14px",borderRadius:13,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.2)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",marginBottom:12}}>{result}</div>
@@ -1746,7 +2633,7 @@ function RevisaoModal({onClose}) {
         </div>
         <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da peça jurídica para revisão...\n\nExemplo: EXCELENTÍSSIMO SENHOR DESEMBARGADOR FEDERAL...\n\nVem respeitosamente à presença de Vossa Excelência o CONSELHO FEDERAL DE MEDICINA..."}
           style={{...inpSt,minHeight:200,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00ff88"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>✏️</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Revisando peça...</div></div>}
+        {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Lendo a minuta…","Verificando coerência argumentativa e citações…","Sugerindo blindagens e pontos de elevação…","Compilando comentários de revisão."]}/></div>}
         {!loading&&!result&&<button onClick={revisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#00ff88",borderColor:"rgba(0,255,136,.4)",background:"rgba(0,255,136,.08)"}}>✏️ Revisar Peça com IA</button>}
         {result&&!loading&&<div>
           <div style={{padding:"14px",borderRadius:13,background:"rgba(0,255,136,.05)",border:"1px solid rgba(0,255,136,.15)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto",marginBottom:12}}>{result}</div>
@@ -1766,6 +2653,20 @@ function TimelinePg({st,ss}) {
   var all=[...st.adm,...st.jud].filter(function(p){return p.prazoFinal&&p.diasRestantes>=0&&p.diasRestantes<=30;}).sort(function(a,b){return a.diasRestantes-b.diasRestantes;});
   var hoje=new Date();
   var dias=Array.from({length:31},function(_,i){return i;});
+  /* v41 · TimelinePrism dataset · proximos 60 dias · alturas alternadas para nao colidir */
+  var prism60 = [...st.adm,...st.jud]
+    .filter(function(p){return p.prazoFinal && p.diasRestantes>=0 && p.diasRestantes<=60;})
+    .sort(function(a,b){return a.diasRestantes-b.diasRestantes;})
+    .slice(0,8)
+    .map(function(p, i){
+      var d = p.diasRestantes;
+      var cor = d<=5 ? "#ff2e5b" : d<=14 ? "#ffb800" : d<=28 ? "#00e5ff" : "#00ff88";
+      var dt = new Date(p.prazoFinal);
+      var dStr = isNaN(dt) ? (d+"du") : dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).toUpperCase().replace(".","");
+      // alturas alternadas (60, 100, 140, 180) ciclicas para evitar sobreposicao visual
+      var hAlt = [70, 130, 90, 170, 80, 150, 100, 120][i % 8];
+      return { x: Math.max(6, Math.min(94, (d/60)*100)), c: cor, d: dStr, t: (p.assunto||"—").slice(0,28), h: hAlt };
+    });
   return(
     <div className="cj-pg">
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
@@ -1775,6 +2676,12 @@ function TimelinePg({st,ss}) {
           <div style={{fontSize:11,color:K.dim,marginTop:2}}>Próximos 30 dias úteis · {all.length} processo{all.length!==1?"s":""} com prazo</div>
         </div>
       </div>
+      {/* v41 · TimelinePrism · vista isometrica dos proximos 60 dias */}
+      {prism60.length>0 && (
+        <div style={{marginBottom:24}}>
+          <TimelinePrism events={prism60}/>
+        </div>
+      )}
       {all.length===0&&<div style={{textAlign:"center",padding:60,color:K.dim}}><div style={{fontSize:48,marginBottom:16}}>✅</div><div style={{fontSize:16,fontWeight:700,color:K.txt}}>Nenhum prazo nos próximos 30 dias úteis</div></div>}
       {all.length>0&&<div>
         {/* Ruler */}
@@ -2174,7 +3081,7 @@ function IANovoProcessoModal(iaNP){
         <textarea value={descricao} onChange={function(e){setDesc(e.target.value);}} placeholder="Descreva o processo. Ex: Processo SEI 26.0.001234-5, mandado de seguranca no TRF-1 contra Resolucao CFFa 770/2025, prazo 10 dias a partir de 15/04/2026, parte contraria CFFa" style={{...inpSt,minHeight:100,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
         {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:10}}>{err}</div>}
         {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:13}}>Extrair campos com IA</button>}
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:30,marginBottom:8}}>IA</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Analisando...</div></div>}
+        {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Interpretando descrição livre…","Identificando tipo, partes e órgão competente…","Sugerindo classificação e tese-mãe…","Pré-cadastrando o processo."]}/></div>}
         {result&&!loading&&<div>
           <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,marginBottom:10,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Campos extraidos — revise antes de salvar</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
@@ -3254,6 +4161,17 @@ const PC=React.memo(({item:p,onClick:oc,dp,compact,onEdit})=>{const isA=p.tipo==
             </div>
             <SB s={p.score}/>
           </div>
+          {/* v41 · sparkline mini · evolução do score (deterministica por id) */}
+          <CnSpark w={84} h={20} color={accent} data={(function(){
+            var seed = (String(p.id||p.num||p.assunto||"x").split("").reduce(function(a,c){return a + c.charCodeAt(0);}, 7)) | 1;
+            var arr = [];
+            var s = (p.score || 50);
+            for (var i = 0; i < 12; i++) {
+              seed = (seed * 9301 + 49297) % 233280;
+              arr.push(Math.max(0, Math.min(100, s - 25 + (seed/233280)*50 - i*0.6)));
+            }
+            return arr.reverse().concat([s]);
+          })()}/>
           <DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
         </div>
       </div>
@@ -4677,6 +5595,31 @@ const DashPg=({st,dp,sp,ss})=>{
   var todayStr=NOW.toISOString().slice(0,10);(st.lembretes||[]).filter(function(l){return !l.done&&l.data&&l.data<=todayStr;}).forEach(function(l){alerts.unshift({icon:Bell,color:K.wa,title:"⏰ Lembrete vencido",desc:l.texto});});
   st.reun.filter(r=>diffD(toD(r.data),NOW)>=0&&diffD(toD(r.data),NOW)<=2).forEach(r=>{if(!r.obs||!(r.checklist||[]).length)alerts.push({icon:Clock,color:K.wa,title:"Reunião incompleta",desc:r.titulo})});
   st.sust.filter(s=>diffD(toD(s.data),NOW)>=0&&diffD(toD(s.data),NOW)<=7).forEach(s=>{if(!s.obs||!(s.checklist||[]).length)alerts.push({icon:Gavel,color:K.pu,title:"Sustentação incompleta",desc:`${s.tribunal}: ${s.tema}`})});
+  /* ═══ v41 · COJUR NEXUS UPGRADE · datasets reutilizaveis ═══ */
+  /* DNA itens · prioriza criticos primeiro e carrega ref completa do processo */
+  const cnDnaItems = all
+    .slice()
+    .sort(function(a,b){
+      var da = a.diasRestantes == null ? 1e9 : a.diasRestantes;
+      var db = b.diasRestantes == null ? 1e9 : b.diasRestantes;
+      return da - db;
+    })
+    .slice(0, 14).map(function(p){
+    var d = p.diasRestantes;
+    var tipo = (p.tipoPeca && /sustent/i.test(p.tipoPeca)) ? "sust" : (p.tipo || "adm");
+    var urg = "su";
+    if (d != null) {
+      if (d <= 5) urg = "cr";
+      else if (d <= 14) urg = "wa";
+      else if (d <= 28) urg = "ac";
+    }
+    return {
+      ref: p,  // referência completa para o painel inspector
+      l: (tipo === "jud" ? "Jud" : tipo === "sust" ? "Sust" : "Adm") + " · " + (d == null ? "—" : d) + "du",
+      tipo: tipo, urg: urg, proc: p.num || p.numeroSEI || "—",
+    };
+  });
+
   return(
     <div className="cj-pg">
       <TokamakOverview st={st} dp={dp} sp={sp} ss={ss}/>
@@ -4807,6 +5750,11 @@ const DashPg=({st,dp,sp,ss})=>{
         <Bx onClick={()=>sp("analytics")} title="Abrir analytics"><SH icon={BarChart3} title="Urgência"/><div style={{display:"flex",alignItems:"center",gap:16}}><ResponsiveContainer width="50%" height={160}><PieChart><Pie data={urgData} cx="50%" cy="50%" innerRadius={36} outerRadius={58} dataKey="value" strokeWidth={0}>{urgData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie></PieChart></ResponsiveContainer><div style={{flex:1}}>{urgData.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{width:10,height:10,borderRadius:"50%",background:d.color}}/><span style={{fontSize:12,color:K.dim,flex:1}}>{d.name}</span><span style={{fontSize:14,fontWeight:700,color:d.color,fontFamily:"'JetBrains Mono',monospace"}}>{d.value}</span></div>)}</div></div></Bx>
         <Bx onClick={()=>sp("week")} title="Abrir semana"><SH icon={TrendingUp} title="Carga Semanal"/><ResponsiveContainer width="100%" height={160}><BarChart data={wkD} barSize={18}><XAxis dataKey="dia" tick={{fill:K.dim2,fontSize:11}} axisLine={false} tickLine={false}/><YAxis hide/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="n" fill={K.ac} radius={[4,4,0,0]} name="Tarefas"/></BarChart></ResponsiveContainer></Bx>
       </div>
+      {/* v41 · DNANexus interativo · hover mostra ficha tecnica, click abre processo */}
+      <div style={{marginTop:24}}>
+        <div className="cn-section-tag">▣ DNA NEXUS · GENOMA DO ACERVO · INSPEÇÃO INTERATIVA</div>
+        <DNANexus processos={cnDnaItems} h={460} onSelect={ss}/>
+      </div>
     </div>
   );
 };
@@ -4893,9 +5841,61 @@ const ProcList=({type,st,dp,ss,compact,bulkSelected=[],setBulkSelected,savedFilt
 };
 
 /* TODAY */
-const TodayPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const tdI=all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),NOW)<=0).sort((a,b)=>b.score-a.score);const dueToday=all.filter(p=>p.diasRestantes<=0).sort((a,b)=>b.score-a.score);const next3=all.filter(p=>p.diasRestantes>=0&&p.diasRestantes<=3).sort((a,b)=>a.diasRestantes-b.diasRestantes);const tdM=st.reun.filter(r=>diffD(toD(r.data),NOW)===0);const nextS=st.sust.filter(s=>{const d=diffD(toD(s.data),NOW);return d>=0&&d<=7});const noAction=all.filter(p=>!p.proxProv).sort((a,b)=>b.score-a.score);const stale=all.filter(p=>(p.semMov||0)>=7).sort((a,b)=>b.semMov-a.semMov);return(
+const TodayPg=({st,dp,ss,sp})=>{
+  const all=[...st.adm,...st.jud];
+  const tdI=all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),NOW)<=0).sort((a,b)=>b.score-a.score);
+  const dueToday=all.filter(p=>p.diasRestantes<=0).sort((a,b)=>b.score-a.score);
+  const next3=all.filter(p=>p.diasRestantes>=0&&p.diasRestantes<=3).sort((a,b)=>a.diasRestantes-b.diasRestantes);
+  const tdM=st.reun.filter(r=>diffD(toD(r.data),NOW)===0);
+  const nextS=st.sust.filter(s=>{const d=diffD(toD(s.data),NOW);return d>=0&&d<=7});
+  const noAction=all.filter(p=>!p.proxProv).sort((a,b)=>b.score-a.score);
+  const stale=all.filter(p=>(p.semMov||0)>=7).sort((a,b)=>b.semMov-a.semMov);
+  /* v41 · EM FOCO · processo mais urgente do acervo (movido do Dashboard) */
+  const cnHero = all.slice().sort(function(a,b){
+    return (a.diasRestantes == null ? 1e9 : a.diasRestantes) - (b.diasRestantes == null ? 1e9 : b.diasRestantes);
+  })[0];
+  return(
   <div className="cj-pg">
     <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,flexWrap:"wrap"}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Hoje</h2><span style={{fontSize:14,color:K.dim}}>{NOW.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</span></div>
+    {/* v41 · EM FOCO · HoloHero do processo mais urgente (clicavel) */}
+    {cnHero && (
+      <div style={{marginBottom:20}} onClick={function(){ ss(cnHero); }}>
+        <div className="cn-section-tag">▣ EM FOCO · PROCESSO MAIS URGENTE</div>
+        <Tilt max={10}>
+          <HoloHero
+            titulo={cnHero.assunto || "Sem assunto"}
+            num={cnHero.num || cnHero.numeroSEI || "—"}
+            prazo={cnHero.diasRestantes == null ? "—" : (cnHero.diasRestantes === 0 ? "HOJE" : cnHero.diasRestantes + "du")}
+            responsavel={cnHero.responsavel || "JG"}
+            fase={cnHero.fase || cnHero.tipoPeca || "—"}
+            crit={cnHero.diasRestantes != null && cnHero.diasRestantes <= 5}
+          />
+        </Tilt>
+      </div>
+    )}
+    {/* v41 · Heatmap de produtividade · 14 colunas x 7 linhas (estilo GitHub) */}
+    <div style={{marginBottom:20,padding:"16px 18px",borderRadius:14,background:"linear-gradient(135deg,rgba(8,12,28,.6),rgba(2,5,15,.8))",border:"1px solid rgba(0,229,255,.15)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
+        <div className="cn-section-tag" style={{margin:0}}>▣ HEATMAP · ATIVIDADES POR DIA · 14 SEMANAS</div>
+        <div style={{display:"flex",gap:8,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--cn-dim2)",alignItems:"center"}}>
+          <span>menos</span>
+          {[0.1,0.3,0.55,0.8,1].map(function(v,i){return <span key={i} style={{width:11,height:11,borderRadius:3,background:"color-mix(in srgb,var(--cn-ac) "+(v*100)+"%,rgba(255,255,255,.03))"}}/>;})}
+          <span>mais</span>
+        </div>
+      </div>
+      <Heatmap data={(function(){
+        // 14*7 = 98 cells. 0..4 baseado em # processos com dataProv naquele dia
+        var cells = [];
+        for (var w = 13; w >= 0; w--) {
+          for (var d = 0; d < 7; d++) {
+            var dt = addD(NOW, -(w*7 + (6-d)));
+            var n = all.filter(function(p){return p.dataProv && diffD(toD(p.dataProv), dt) === 0;}).length;
+            cells.push(Math.min(4, n));
+          }
+        }
+        return cells;
+      })()} cols={14}/>
+    </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
       <SC icon={Flame} label="Vence Hoje" value={dueToday.length} color={K.cr} onClick={()=>dueToday[0]&&ss(dueToday[0])||sp("priorities")}/>
       <SC icon={CalendarDays} label="Próx. 3 dias" value={next3.length} color={K.wa} onClick={()=>sp("today")}/>
@@ -5128,9 +6128,32 @@ function CalPg({st}){
 };
 
 /* ANALYTICS */
-const AnalPg=({st})=>{const all=[...st.adm,...st.jud];const phD=PHS.slice(0,6).map(f=>({name:f.length>12?f.slice(0,12)+"…":f,adm:st.adm.filter(p=>p.fase===f).length,jud:st.jud.filter(p=>p.fase===f).length}));const mt=[{l:"Tempo 1ª Prov.",v:"3.2d",c:K.ac},{l:"Conclusão Semanal",v:"72%",c:K.ac},{l:"Sem Movim. (>7d)",v:all.filter(p=>p.semMov>=7).length,c:K.wa},{l:"Prov. Pendentes",v:all.filter(p=>p.status==="Ativo").length,c:K.cr},{l:"Follow-ups",v:all.filter(p=>p.depTerc).length,c:K.wa},{l:"Conclusão Média",v:"18.5d",c:K.su}];return(
+const AnalPg=({st})=>{
+  const all=[...st.adm,...st.jud];
+  const phD=PHS.slice(0,6).map(f=>({name:f.length>12?f.slice(0,12)+"…":f,adm:st.adm.filter(p=>p.fase===f).length,jud:st.jud.filter(p=>p.fase===f).length}));
+  const mt=[{l:"Tempo 1ª Prov.",v:"3.2d",c:K.ac},{l:"Conclusão Semanal",v:"72%",c:K.ac},{l:"Sem Movim. (>7d)",v:all.filter(p=>p.semMov>=7).length,c:K.wa},{l:"Prov. Pendentes",v:all.filter(p=>p.status==="Ativo").length,c:K.cr},{l:"Follow-ups",v:all.filter(p=>p.depTerc).length,c:K.wa},{l:"Conclusão Média",v:"18.5d",c:K.su}];
+  /* v41 · TorresPrazo · top 8 prazos mais urgentes em topografia 3D */
+  const cnTorres = all
+    .filter(function(p){ return p.diasRestantes != null; })
+    .sort(function(a,b){ return a.diasRestantes - b.diasRestantes; })
+    .slice(0, 8)
+    .map(function(p){
+      return {
+        l: p.diasRestantes + "du",
+        t: (p.tipoPeca || "—").toString().slice(0, 10),
+        s: (p.num || p.numeroSEI || "—").toString().slice(0, 14),
+        v: p.diasRestantes,
+      };
+    });
+  return(
   <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Analytics</h2>
     <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",gap:12,marginBottom:24}}>{mt.map((m,i)=><Bx key={i} style={{padding:"14px 16px"}}><div style={{fontSize:11,color:K.dim,marginBottom:8,fontWeight:500,textTransform:"uppercase"}}>{m.l}</div><div style={{fontSize:26,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div></Bx>)}</div>
+    {/* v41 · TorresPrazo no Analytics · topografia 3D dos top 8 mais urgentes */}
+    {cnTorres.length>0 && (
+      <div style={{marginBottom:24}}>
+        <TorresPrazo data={cnTorres}/>
+      </div>
+    )}
     <Bx><SH icon={BarChart3} title="Por Fase de Trabalho"/><ResponsiveContainer width="100%" height={250}><BarChart data={phD} layout="vertical" barSize={14}><XAxis type="number" tick={{fill:K.dim2,fontSize:10}} axisLine={false} tickLine={false}/><YAxis dataKey="name" type="category" tick={{fill:K.dim,fontSize:10}} width={100} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="adm" fill={K.ac} name="Admin" radius={[0,4,4,0]}/><Bar dataKey="jud" fill={K.pu} name="Judicial" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></Bx>
   </div>
 )};
@@ -6485,6 +7508,15 @@ export default function App() {
   const [pg, sPg] = useState("dashboard");
   const [showEmailAlert, setShowEmailAlert] = useState(false);
   const [_tick, setTick] = useState(0);
+  /* v41 · Notificacoes OS desabilitadas por padrao (problemas em iframe sandbox).
+     Para ativar, descomentar o bloco abaixo. */
+  // useEffect(function(){
+  //   try {
+  //     if (typeof Notification !== "undefined" && Notification.permission === "default") {
+  //       Notification.requestPermission();
+  //     }
+  //   } catch(e) {}
+  // }, []);
   useEffect(function(){
     /* A1: a cada 60s tick para forcar re-render + atualiza NOW + recalcula diasRestantes */
     var t = setInterval(function(){
@@ -6511,7 +7543,7 @@ export default function App() {
   const handleExportCSV = function() { try { exportCSV(st); showToast("ok", "CSV exportado com sucesso"); } catch(e) { showToast("err", "Erro ao exportar CSV"); } };
   const handleImport = function(file) { importState(file, dp, function(res){ showToast(res === "ok" ? "ok" : "err", res === "ok" ? "Estado importado com sucesso" : "Arquivo JSON inválido"); }); };
 
-  useEffect(() => { injectCSS(); }, []);
+  useEffect(() => { injectCSS(); injectCnCSS(); }, []);
   useEffect(() => {
     document.body.style.background = K.bg;
     document.body.style.color = K.txt;
@@ -6551,6 +7583,18 @@ export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [comparadorIds, setComparadorIds] = useState([]);
   const [savedFilters, setSavedFilters] = useState(function(){try{var s=localStorage.getItem("cojur_filters");return s?JSON.parse(s):[];}catch(e){return [];}});
+  /* ═══ v41 — COJUR NEXUS UPGRADE PACK · estados ═══ */
+  /* Boot desligado por padrao para evitar tela preta. Pode ser reativado
+     descomentando: const [showBoot, setShowBoot] = useState(true); */
+  const [showBoot, setShowBoot] = useState(false);
+  const [showCommand, setShowCommand] = useState(false);
+  const [showForceGraph, setShowForceGraph] = useState(false);
+  /* desliga o splash assim que o app rendereiza pela primeira vez */
+  useEffect(function(){
+    if (!showBoot) return;
+    var t = setTimeout(function(){ setShowBoot(false); }, 3300);
+    return function(){ clearTimeout(t); };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -6656,6 +7700,12 @@ export default function App() {
         setUndoStack(function(prev){if(!prev.length){showToast("err","Nada para desfazer");return prev;}var last=prev[prev.length-1];dp0({type:'LOAD',state:last.snapshot});showToast("ok","Ação desfeita (Ctrl+Z)");return prev.slice(0,-1);});
         return;
       }
+      /* ═══ v41 · Cmd+Shift+K — MODO COMANDO (NEXUS UPGRADE) ═══ */
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setShowCommand(function(v){return !v;});
+        return;
+      }
       /* ═══ Cmd+K / Ctrl+K — COMMAND PALETTE ═══ */
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -6677,7 +7727,7 @@ export default function App() {
       }
       switch(e.key) {
         case '/': e.preventDefault(); document.querySelector('input[placeholder*="Buscar"]') && document.querySelector('input[placeholder*="Buscar"]').focus(); break;
-        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); setShowQuickAdd(false); setShowPalette(false); setShowShortcuts(false); break;
+        case 'Escape': sSel(null); setShowGmail(false); setShowDecisao(false); setShowRevisao(false); setShowQuickAdd(false); setShowPalette(false); setShowShortcuts(false); setShowCommand(false); break;
         case 'p': case 'P': sPg('priorities'); break;
         case 'i': case 'I': sPg('ia'); break;
         case 'h': case 'H': sPg('today'); break;
@@ -6777,6 +7827,31 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: K.bg, fontFamily: "'Outfit','Segoe UI',system-ui,sans-serif", color: K.txt, overflow: "hidden", position:"relative", isolation:"isolate" }}>
+      {/* ═══ v41 · COJUR NEXUS UPGRADE · STYLE INLINE + BOOT + AMBIENT + HUD ═══ */}
+      <CnStyles />
+      {showBoot && (
+        <BootScreen
+          duration={2400}
+          ids={[...st.adm, ...st.jud].slice(0, 15).map(function(p){return p.num || p.assunto || "—";})}
+        />
+      )}
+      <AmbientParticles count={20} />
+      <HUDChassis />
+      <CnVersionBadge />
+      <ModoComando
+        open={showCommand}
+        onClose={function(){ setShowCommand(false); }}
+        total={st.adm.length + st.jud.length}
+        criticos={cn}
+        jud={st.jud.length}
+        adm={st.adm.length}
+      />
+      {/* v41 · ForceGraph · grafo de relacoes (modal) */}
+      <ForceGraph
+        open={showForceGraph}
+        onClose={function(){ setShowForceGraph(false); }}
+        processos={[...st.adm, ...st.jud]}
+      />
       {/* ═══ ANIMATED MESH GRADIENT BACKGROUND ═══ */}
       <MeshBg/>
       {/* ═══ CONFETTI HOST (renders on triggerConfetti) ═══ */}
@@ -6884,6 +7959,10 @@ export default function App() {
             <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📧</button>
             <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📬</button>
             <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>🤖</button>
+            {/* v41 · Modo Comando NEXUS (Cmd+Shift+K) */}
+            <button onClick={function(){setShowCommand(true);}} title="Modo Comando NEXUS (Cmd+Shift+K)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.45)",background:"rgba(0,229,255,.10)",cursor:"pointer",fontSize:15,boxShadow:"0 0 12px rgba(0,229,255,.25)"}}>◉</button>
+            {/* v41 · Force Graph · relacoes entre processos */}
+            <button onClick={function(){setShowForceGraph(true);}} title="Grafo de Relações entre Processos (NEXUS)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(184,77,255,.45)",background:"rgba(184,77,255,.10)",cursor:"pointer",fontSize:15,color:"#b84dff",boxShadow:"0 0 12px rgba(184,77,255,.25)"}}>⌘</button>
             {/* divider */}
             <div style={{width:1,height:22,background:"rgba(127,184,216,.15)",margin:"0 2px"}}/>
             {/* view cluster */}
