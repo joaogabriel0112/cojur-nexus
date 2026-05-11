@@ -78,7 +78,7 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-boot .cn-boot-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-ac);border-radius:50%;margin-right:10px;vertical-align:middle;animation:cn-dot 1s infinite;box-shadow:0 0 8px var(--cn-ac)}
 .cn-boot .cn-boot-foot{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);letter-spacing:.18em;display:flex;gap:24px;z-index:6;text-transform:uppercase}
 .cn-boot .cn-boot-foot span b{color:var(--cn-ac);font-weight:400}
-.cn-boot .cn-boot-logo{position:relative;z-index:7;text-align:center;padding:40px 60px;background:radial-gradient(ellipse at center,rgba(2,5,15,.85),transparent 70%);backdrop-filter:blur(2px)}
+.cn-boot .cn-boot-logo{position:relative;z-index:7;text-align:center;padding:40px 60px;background:radial-gradient(ellipse at center,rgba(2,5,15,.85),transparent 70%);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
 .cn-boot .cn-boot-logo h1{font-family:'Orbitron',sans-serif;font-size:54px;font-weight:900;letter-spacing:.4em;color:#fff;text-shadow:0 0 24px var(--cn-ac),0 0 48px rgba(0,229,255,.5);margin-bottom:14px;position:relative;display:inline-block;animation:cn-flicker 4s ease-in-out infinite}
 .cn-boot .cn-boot-logo h1::before,.cn-boot .cn-boot-logo h1::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
 .cn-boot .cn-boot-logo h1::before{color:var(--cn-cr);transform:translate(-2px,0);clip-path:inset(20% 0 30% 0);animation:cn-glitch 3s infinite;opacity:.7}
@@ -113,7 +113,7 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-holo-ghost{position:absolute;width:380px;padding:24px;border-radius:18px;background:linear-gradient(135deg,rgba(0,229,255,.04),rgba(184,77,255,.02));border:1px solid rgba(0,229,255,.12);color:var(--cn-dim);font-size:13px;pointer-events:none}
 .cn-holo-ghost.g1{transform:rotateX(8deg) rotateY(-12deg) translate3d(28px,22px,-60px);opacity:.5}
 .cn-holo-ghost.g2{transform:rotateX(8deg) rotateY(-12deg) translate3d(56px,44px,-120px);opacity:.25}
-.cn-holo-card{width:380px;padding:30px;border-radius:18px;position:relative;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.1));border:1px solid rgba(0,229,255,.5);backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 50px rgba(0,229,255,.3),0 30px 80px rgba(0,229,255,.2),0 60px 120px rgba(0,0,0,.7);animation:cn-float3d 5s ease-in-out infinite,cn-flicker 8s ease-in-out infinite;transform-style:preserve-3d}
+.cn-holo-card{width:380px;padding:30px;border-radius:18px;position:relative;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.1));border:1px solid rgba(0,229,255,.5);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 50px rgba(0,229,255,.3),0 30px 80px rgba(0,229,255,.2),0 60px 120px rgba(0,0,0,.7);animation:cn-float3d 5s ease-in-out infinite,cn-flicker 8s ease-in-out infinite;transform-style:preserve-3d}
 .cn-holo-card::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.04) 2px,rgba(0,229,255,.04) 3px)}
 .cn-holo-card::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--cn-ac),transparent);box-shadow:0 0 14px var(--cn-ac);animation:cn-scanV 3s linear infinite}
 .cn-tok{height:520px;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(0,229,255,.08),transparent 60%);border-radius:20px;border:1px solid rgba(0,229,255,.15);position:relative;overflow:hidden}
@@ -140,14 +140,14 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-dna-strand.s2{background:radial-gradient(circle,var(--c2,var(--cn-pu)),color-mix(in srgb,var(--c2,var(--cn-pu)) 30%,#000));box-shadow:0 0 14px var(--c2,var(--cn-pu)),0 0 28px color-mix(in srgb,var(--c2,var(--cn-pu)) 50%,transparent)}
 .cn-dna-rung{position:absolute;left:14px;right:14px;top:50%;height:2px;transform:translateY(-50%);background:linear-gradient(90deg,var(--c),var(--c2,var(--cn-pu)));box-shadow:0 0 6px color-mix(in srgb,var(--c) 60%,transparent);opacity:.6}
 .cn-dna-spine{position:absolute;left:50%;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-50%) translateZ(-1px)}
-.cn-dna-label{position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;background:rgba(2,5,15,.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);white-space:nowrap;backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.5)}
-.cn-dna-legend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:10px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px);z-index:5}
+.cn-dna-label{position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;background:rgba(2,5,15,.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);white-space:nowrap;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.cn-dna-legend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:10px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:5}
 .cn-dna-legend .lg{display:flex;align-items:center;gap:6px}
 .cn-dna-legend .sw{width:8px;height:8px;border-radius:50%}
 .cn-dna-meta{position:absolute;top:24px;left:24px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-pu);letter-spacing:.2em;background:rgba(2,5,15,.7);padding:6px 14px;border-radius:6px;border:1px solid rgba(184,77,255,.3);box-shadow:0 0 14px rgba(184,77,255,.2);z-index:5;text-transform:uppercase}
 .cn-dna-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-pu);border-radius:50%;margin-right:8px;vertical-align:middle;animation:cn-dot 1.2s infinite;box-shadow:0 0 8px var(--cn-pu)}
 .cn-dna-stats{position:absolute;top:24px;right:24px;display:flex;flex-direction:column;gap:6px;z-index:5}
-.cn-dna-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px);display:flex;justify-content:space-between;gap:14px;min-width:160px}
+.cn-dna-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;justify-content:space-between;gap:14px;min-width:160px}
 .cn-dna-stat b{color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px}
 .cn-section-tag{display:inline-flex;align-items:center;gap:10px;padding:6px 16px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;text-transform:uppercase;margin-bottom:16px}
 .cn-section-tag::before{content:"";width:6px;height:6px;background:var(--cn-ac);border-radius:50%;box-shadow:0 0 10px var(--cn-ac);animation:cn-dot 1.2s infinite}
@@ -245,7 +245,7 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 @keyframes cn-inspIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .cn-dna-scanner{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.7),rgba(184,77,255,.7),transparent);box-shadow:0 0 20px rgba(0,229,255,.7);animation:cn-dnaScan 4.5s linear infinite;z-index:3;pointer-events:none;border-radius:2px}
 .cn-dna-filtros{position:absolute;top:62px;left:24px;display:flex;flex-direction:column;gap:5px;z-index:6}
-.cn-dna-filtro{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.8);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;backdrop-filter:blur(8px);font-weight:700;text-transform:uppercase}
+.cn-dna-filtro{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.8);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-weight:700;text-transform:uppercase}
 .cn-dna-filtro .dot{width:7px;height:7px;border-radius:50%;background:var(--c);opacity:.3;transition:opacity .2s,box-shadow .2s}
 .cn-dna-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,rgba(2,5,15,.8))}
 .cn-dna-filtro.on .dot{opacity:1;box-shadow:0 0 8px var(--c)}
@@ -255,7 +255,7 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-dna-base.hover .cn-dna-strand,.cn-dna-base.hover .cn-dna-strand.s2{transform:scale(1.5)}
 .cn-dna-base.crit .cn-dna-strand.s2{animation:cn-pulseCr 1.4s ease infinite}
 .cn-dna-pulse{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;border:2px solid var(--c);transform:translate(-50%,-50%);animation:cn-dnaPulseCrit 1.6s ease-out infinite;pointer-events:none}
-.cn-dna-inspector{position:absolute;right:24px;top:50%;transform:translateY(-50%);width:280px;background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(8,12,28,.97));border:1px solid var(--c);border-radius:14px;padding:18px;backdrop-filter:blur(14px);box-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent),0 18px 50px rgba(0,0,0,.7);z-index:7;font-family:'Space Grotesk',sans-serif;animation:cn-inspIn .25s cubic-bezier(.2,.8,.3,1) forwards;pointer-events:auto}
+.cn-dna-inspector{position:absolute;right:24px;top:50%;transform:translateY(-50%);width:280px;background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(8,12,28,.97));border:1px solid var(--c);border-radius:14px;padding:18px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent),0 18px 50px rgba(0,0,0,.7);z-index:7;font-family:'Space Grotesk',sans-serif;animation:cn-inspIn .25s cubic-bezier(.2,.8,.3,1) forwards;pointer-events:auto}
 .cn-dna-inspector::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 12px var(--c);border-radius:14px 14px 0 0}
 .cn-dna-inspector-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;font-weight:700}
 .cn-dna-inspector-tag{padding:3px 8px;border-radius:4px;color:#020208;font-size:9px;font-weight:800}
@@ -273,7 +273,7 @@ const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Sp
 .cn-heatmap-cell{border-radius:3px;background:color-mix(in srgb,var(--c,var(--cn-ac)) calc(var(--intensity,0)*100%),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.04);transition:transform .15s ease,box-shadow .15s ease;cursor:default}
 .cn-heatmap-cell:hover{transform:scale(1.4);box-shadow:0 0 10px var(--c,var(--cn-ac));z-index:2;position:relative}
 .cn-noise-css{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.18;z-index:2;background-image:repeating-radial-gradient(circle at 30% 30%,rgba(0,229,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 70% 60%,rgba(184,77,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 50% 80%,rgba(0,229,255,.08) 0,transparent 1.4px);background-size:5px 5px,7px 7px,4px 4px;animation:cn-flicker 1.4s ease-in-out infinite}
-.cn-fg-overlay{position:fixed;inset:0;z-index:9998;background:rgba(2,3,12,.92);backdrop-filter:blur(10px);display:grid;place-items:center}
+.cn-fg-overlay{position:fixed;inset:0;z-index:9998;background:rgba(2,3,12,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;place-items:center}
 .cn-fg-modal{width:min(820px,94vw);background:radial-gradient(ellipse at 30% 0%,rgba(0,229,255,.08),transparent 50%),#020208;border:1px solid rgba(0,229,255,.35);border-radius:18px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(0,229,255,.18)}
 .cn-fg-hd{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;margin-bottom:12px;text-transform:uppercase}
 .cn-fg-close{width:28px;height:28px;border-radius:6px;background:rgba(255,46,91,.15);border:1px solid rgba(255,46,91,.4);color:var(--cn-cr);cursor:pointer;font-weight:700}
@@ -614,7 +614,7 @@ function BootScreen({ duration = 2400, ids = [] }) {
     const sample = ids.length ? ids : ["RE 1.234.567","26.0.000003358","TRT2-MS","STJ Embargos","CREMESP","AgInt TRF1","OAB-RJ","Parecer 882","Diploma XML","Tutela 026","Sustent. 04","Reclamação","CFM 2.343","CRM-CE","Despacho 045"];
     return Array.from({ length: 32 }).map((_, i) => ({ left: (i * 3.2) % 100, delay: -(Math.random() * 4), text: sample[i % sample.length] }));
   }, [ids]);
-  const STATUS = useMemo(() => ["▸ Conectando ao Supabase…","▸ Sincronizando acervo (147 processos)…","▸ Cruzando jurisprudência CFM/STJ…","▸ Calculando prazos críticos…","▸ Carregando IA Nexus…","▸ Sistema pronto."], []);
+  const STATUS = useMemo(() => ["▸ Conectando ao Supabase…","▸ Sincronizando acervo (4 processos ativos)…","▸ Cruzando jurisprudência CFM/STJ…","▸ Calculando prazos críticos…","▸ Carregando IA Nexus…","▸ Sistema pronto."], []);
   useEffect(() => {
     const t1 = setTimeout(() => setOut(true), duration);
     const t2 = setTimeout(() => setHide(true), duration + 700);
@@ -1256,7 +1256,7 @@ var _copyToastEl = null;
 var showCopyToast = function(txt) {
   if(_copyToastEl) { document.body.removeChild(_copyToastEl); }
   var el = document.createElement("div");
-  el.style.cssText = "position:fixed;bottom:90px;right:24px;z-index:9999;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.08));border:1px solid rgba(0,255,136,.55);color:#00ff88;font-size:13px;font-weight:700;font-family:Orbitron,monospace;box-shadow:0 0 24px rgba(0,255,136,.35),0 12px 32px rgba(0,0,0,.6);backdrop-filter:blur(12px);transition:opacity .4s;pointer-events:none;letter-spacing:.5px;";
+  el.style.cssText = "position:fixed;bottom:90px;right:24px;z-index:9999;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.08));border:1px solid rgba(0,255,136,.55);color:#00ff88;font-size:13px;font-weight:700;font-family:Orbitron,monospace;box-shadow:0 0 24px rgba(0,255,136,.35),0 12px 32px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity .4s;pointer-events:none;letter-spacing:.5px;";
   el.innerText = "✅ Nº copiado: " + txt;
   document.body.appendChild(el);
   _copyToastEl = el;
@@ -1343,7 +1343,7 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 
 /* ═══ TABLE ═══ */
 .cj-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
-.cj-table thead th{position:sticky;top:0;z-index:2;background:rgba(2,2,12,.98);backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,229,255,.15)}
+.cj-table thead th{position:sticky;top:0;z-index:2;background:rgba(2,2,12,.98);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,229,255,.15)}
 .cj-table tbody tr:nth-child(even){background:rgba(0,229,255,.018)}
 .cj-table tbody tr:hover{background:rgba(0,229,255,.06);box-shadow:inset 3px 0 0 rgba(0,229,255,.5)}
 
@@ -1352,7 +1352,7 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 .cj-cal-cell:hover{background:rgba(0,229,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(0,229,255,.3)}
 
 /* ═══ IA CARDS ═══ */
-.cj-ia-card{background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99));backdrop-filter:blur(24px);border:1px solid rgba(0,229,255,.12);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02),inset 0 1px 0 rgba(0,229,255,.06);animation:neonPulse 4s ease-in-out infinite}
+.cj-ia-card{background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(0,229,255,.12);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02),inset 0 1px 0 rgba(0,229,255,.06);animation:neonPulse 4s ease-in-out infinite}
 .cj-ia-card::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.8),rgba(184,77,255,.4),transparent)}
 .cj-ia-card::after{content:"";position:absolute;inset:auto 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,77,255,.3),transparent)}
 
@@ -1417,7 +1417,7 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 .cj-kd{outline:2px dashed rgba(0,229,255,.45);background:rgba(0,229,255,.06)!important}
 
 /* ═══ MISC ═══ */
-.cj-glass{background:rgba(0,229,255,.04);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(255,46,91,.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(255,46,91,.3)}}
+.cj-glass{background:rgba(0,229,255,.04);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(255,46,91,.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(255,46,91,.3)}}
 @keyframes textBlink{0%,100%{opacity:1}50%{opacity:.35}}
 .cj-sust-pulse{animation:neonBlink .9s ease-in-out infinite!important}
 
@@ -1776,19 +1776,15 @@ const syncJudicialLinks=(st,p)=>{
   return {...st,reun,sust};
 };
 
-const D_ADM=[
-  mkA({id:"A1",num:"26.0.000001826-0",numeroSEI:"26.0.000001826-0",assunto:"Tutela Cautelar Administrativa - PAF 005/2025 - CREMESP",interessado:"Maria Camila Lunardi (CREMESP nº 112.691)",orgao:"CFM",prazoFinal:addD(NOW,15),fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Parecer Jurídico",obs:"Pedido de providências c/ tutela cautelar administrativa. Nulidades estruturais, irregularidades graves no PAF 005/2025 do CREMESP. Adv. Marco Aurelio Souza (OAB/SP 193.035). Recebido via Presidência em 23/02/2026.",proxProv:"Analisar inicial e emitir parecer",dataProv:addD(NOW,5),estTempo:"6h",tags:["CREMESP","cautelar","PAF"],semMov:0,hist:[{d:addD(NOW,-45),e:"Recebido via e-mail Presidência 23/02/2026"},{d:addD(NOW,-45),e:"Abertura SEI e encaminhamento à COJUR"}]}),
-  mkA({id:"A2",num:"25.0.000011329-0",numeroSEI:"25.0.000011329-0",assunto:"Indícios de fraude em Diploma Digital (XML) validado pelo MEC",interessado:"CREMEC (CRM-CE)",orgao:"CFM",prazoFinal:addD(NOW,10),status:"Aguardando Resposta",fase:"Aguardando Retorno Externo",impacto:4,complexidade:4,tipoPeca:"Despacho",obs:"Falsificação documental de diploma digital. XML fraudulento validado pelo portal do MEC. Encaminhado à COADM e COINF para análise técnica dos mecanismos de segurança. Denúncia PF e SERES/MEC já realizadas pelo CREMEC. Despacho Coordenador José Alejandro Bullon Silva em 02/12/2025.",proxProv:"Cobrar retorno COADM/COINF",dataProv:addD(NOW,3),estTempo:"1h",depTerc:true,tags:["fraude","diploma","MEC","CREMEC"],semMov:0,hist:[{d:addD(NOW,-130),e:"Despacho Supervisor Evandro Junior 01/12/2025"},{d:addD(NOW,-129),e:"Encaminhado COADM/COINF por Coordenador 02/12/2025"}]}),
-  mkA({id:"A3",num:"26.0.000003358-7",numeroSEI:"26.0.000003358-7",assunto:"Consulta OAB/RJ - Exclusividade prescrição atividade física (Lei 9.696/98)",interessado:"Renata Campos Falcão Baalbaki (OAB/RJ - Comissão Direito Desportivo)",orgao:"CFM",prazoFinal:addD(NOW,20),fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"Consulta institucional da Comissão de Direito Desportivo da OAB/RJ sobre inexistência de exclusividade do profissional de educação física na prescrição de atividade física na área da saúde. Ofício nº 001/2026 de 26/03/2026. Endereçado à Presidência CFM A/C Dr. João Gabriel.",proxProv:"Analisar consulta e elaborar parecer",dataProv:addD(NOW,10),estTempo:"8h",tags:["OAB","atividade física","CONFEF","Lei 9.696"],semMov:0,hist:[{d:addD(NOW,-9),e:"Recebido via e-mail Presidência 31/03/2026"},{d:addD(NOW,-9),e:"Abertura SEI 26.0.000003358-7"}]}),
-];
+/* ═══ v42 · ACERVO REAL · 4 PROCESSOS JUDICIAIS ATIVOS DO USUÁRIO ═══
+   Base de hoje: 11/05/2026. Sem processos administrativos (D_ADM vazio).
+   Origem: PDFs SEI 26.0.000004843-6, 26.0.000003938-0, 26.0.000003378-1, 26.0.000004895-9. */
+const D_ADM=[];
 const D_JUD=[
-  mkJ({id:"J1",num:"1033410-78.2021.4.01.3800",numeroSEI:"26.0.000002275-5",tribunal:"TRF-6",tipoAcao:"Apelação",parteContraria:"João Floresta Neto",prazoFinal:addD(NOW,20),assunto:"Apelação - Registro especialidade medicina do trabalho",fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Contrarrazões de Apelação",obs:"Sentença 1º grau julgou improcedente o pedido do autor (8ª Vara Cível/JEF BH). Autor apelou ao TRF-6. Alega direito a registro de especialista em medicina do trabalho por pós-graduação (Portaria DSST 11/1990). CRM-MG e CFM são apelados.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,10),estTempo:"10h",tags:["especialidade","medicina do trabalho","apelação"],semMov:0,hist:[{d:addD(NOW,-30),e:"Recurso de apelação interposto pelo autor em 04/03/2026"}]}),
-  mkJ({id:"J2",num:"1063185-38.2025.4.01.3400",numeroSEI:"26.0.000002922-9",tribunal:"TRF-1",tipoAcao:"Ação Civil Pública",parteContraria:"Assoc. Brasileira de Médicos c/ Expertise de Pós-Graduação",prazoFinal:addD(NOW,15),assunto:"ACP - Exercício profissional - publicização de pós-graduação",fase:"Análise",impacto:5,complexidade:5,tipoPeca:"Contrarrazões de Apelação",obs:"20ª Vara Federal Cível da SJDF. Sentença julgou improcedente. Autor (associação) apelou em 10/02/2026. Pretensão: direito de publicizar curso pós-graduação sem termo 'NÃO ESPECIALISTA'. CFM é réu. MPF é fiscal da lei. Pedido de tutela antecipada: SIM.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,7),estTempo:"12h",reuniao:false,tags:["ACP","pós-graduação","especialidade","apelação"],semMov:0,hist:[{d:addD(NOW,-60),e:"Sentença improcedente para o autor"},{d:addD(NOW,-58),e:"Apelação interposta pelo autor em 10/02/2026"}]}),
-  mkJ({id:"J3",num:"1008186-77.2021.4.01.3400",numeroSEI:"26.0.000003115-0",tribunal:"TRF-1",tipoAcao:"Cumprimento de Sentença",parteContraria:"Isabel Cristina Jimenez Lobelle",prazoFinal:addD(NOW,10),assunto:"Cumprimento de sentença - Registro profissional - exercício profissional",fase:"Análise",impacto:3,complexidade:3,tipoPeca:"Manifestação em Execução",obs:"22ª Vara Federal Cível da SJDF. Exequentes: CFM e CRM-MA. Executada: Isabel Cristina Jimenez Lobelle. Última movimentação: Juntada de certidão e ato ordinatório em 23/03/2026. Intimação recebida via SEI.",proxProv:"Elaborar manifestação em execução",dataProv:addD(NOW,5),estTempo:"3h",tags:["cumprimento","registro profissional","CRM-MA"],semMov:0,hist:[{d:addD(NOW,-17),e:"Ato ordinatório praticado 23/03/2026"},{d:addD(NOW,-17),e:"Juntada de certidão 23/03/2026"}]}),
-  mkJ({id:"J4",num:"5022793-46.2025.4.03.0000",numeroSEI:"26.0.000002536-3",tribunal:"TRF-3",tipoAcao:"Agravo de Instrumento",parteContraria:"Chrysser Ferreira Alves",prazoFinal:addD(NOW,14),assunto:"Agravo de instrumento - Exercício profissional - Honorários advocatícios",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Memoriais",obs:"3ª Turma do TRF-3. Ref. processo 5006699-80.2021.4.03.6105. Agravante: CFM. Agravado: Chrysser Ferreira Alves. SESSÃO DE JULGAMENTO: 23/04/2026 às 14:00 - Ordinária presencial. Local: Plenário 3ª Turma, Av. Paulista 1.842, São Paulo. Intimação de pauta recebida em 10/03/2026.",proxProv:"Elaborar memoriais para sessão de julgamento 23/04",dataProv:addD(NOW,10),estTempo:"8h",tags:["agravo","honorários","TRF-3","sessão 23/04","memoriais"],semMov:0,hist:[{d:addD(NOW,-30),e:"Intimação de pauta recebida 10/03/2026"},{d:addD(NOW,-30),e:"Sessão designada para 23/04/2026"}]}),
-  mkJ({id:"J5",num:"5037864-24.2025.4.03.6100",numeroSEI:"26.0.000003378-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",parteContraria:"Andre Lanconi da Costa",prazoFinal:addD(NOW,10),assunto:"Exercício profissional - Multas e demais sanções",fase:"Minuta Pendente",impacto:4,complexidade:3,tipoPeca:"Especificação de Provas",obs:"12ª Vara Cível Federal de São Paulo. Autor: Andre Lanconi da Costa. Réu: CREMESP e CFM. SEGREDO DE JUSTIÇA. Despacho de 25/03/2026: manifestar sobre contestação em 15 dias (arts. 350 e 351 CPC) e especificar provas justificando pertinência. Pedido de liminar: SIM.",proxProv:"Elaborar especificação de provas e manifestação sobre contestação",dataProv:addD(NOW,5),estTempo:"6h",tags:["sigilo","multas","CREMESP","especificação de provas"],semMov:0,hist:[{d:addD(NOW,-9),e:"Despacho judicial 25/03/2026 - prazo 15 dias"},{d:addD(NOW,-9),e:"Intimação recebida via SEI"}]}),
-  mkJ({id:"J6",num:"1130316-30.2025.4.01.3400",numeroSEI:"26.0.000002129-5",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",parteContraria:"Médicos estrangeiros (16 autores)",prazoFinal:addD(NOW,30),assunto:"Registro profissional - Médicos estrangeiros vs CFM e União",fase:"Acompanhamento",impacto:4,complexidade:4,tipoPeca:"Petição Simples",obs:"21ª Vara Federal Cível da SJDF. 16 autores (médicos estrangeiros). Réu: CFM e União Federal. Contestação já apresentada em 27/02/2026. Peça já elaborada. Orientação Dr. João Paulo: verificar intimação antes de peticionar; se for apenas contestação, seguir com protocolo.",proxProv:"Acompanhar movimentação processual",dataProv:addD(NOW,15),estTempo:"1h",tags:["registro profissional","médicos estrangeiros","petição simples"],semMov:0,progresso:100,hist:[{d:addD(NOW,-37),e:"Notificação SEI - Pet. Simples atribuída 03/03/2026"},{d:addD(NOW,-36),e:"Peça enviada ao Dr. João Paulo para revisão 04/03/2026"},{d:addD(NOW,-34),e:"Orientação Dr. JP: verificar intimação 06/03/2026"},{d:addD(NOW,-41),e:"Contestação juntada aos autos 27/02/2026"}]}),
-  mkJ({id:"J7",num:"0036173-62.2008.4.01.3400",numeroSEI:"26.0.000003347-1",tribunal:"TRF-1",tipoAcao:"Apelação",parteContraria:"Cândido Pinheiro Koren de Lima",prazoFinal:addD(NOW,13),assunto:"Apelação cível - Multas e demais sanções - Memoriais",fase:"Acompanhamento",impacto:4,complexidade:3,tipoPeca:"Memoriais",obs:"TRF-1 2º grau. Gab. 21 - Des. Fed. José Amilcar de Queiroz Machado. Sessão virtual 22/04 a 28/04/2026. Memoriais já distribuídos conforme orientação do Dr. João Paulo. Habilitação nos autos da Procuradoria do CFM requerida. Peça já elaborada. Acompanhar julgamento.",proxProv:"Acompanhar sessão de julgamento 22/04 a 28/04",dataProv:addD(NOW,13),estTempo:"1h",tags:["memoriais","apelação","multas","sessão 22/04"],semMov:0,progresso:100,hist:[{d:addD(NOW,-9),e:"Atribuição ao Dr. João Gabriel via SEI 31/03/2026"},{d:addD(NOW,-9),e:"Memoriais elaborados e distribuídos"}]}),
+  mkJ({id:"J1",num:"5124366-80.2025.4.02.5101",numeroSEI:"26.0.000004843-6",tribunal:"TRF-2",tipoAcao:"Procedimento Comum",parteContraria:"Kátia Telles Nogueira",prazoFinal:addD(NOW,22),intersticio:20,assunto:"Procedimento Comum cível/servidor público · Kátia Telles x CFM",fase:"Minuta Pendente",impacto:3,complexidade:3,tipoPeca:"Especificação de Provas",obs:"35ª Vara Federal do Rio de Janeiro · Juíza Federal Angelina de Siqueira Costa. Despacho/decisão de 04/05/2026 entende que a matéria comporta julgamento antecipado de mérito (art. 355 CPC) e intima as partes para esclarecer se pretendem produção de outras provas ou concordam com o julgamento antecipado. PRAZO EM DOBRO: 10 du × 2 = 20 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 04/05/2026, considerada ciente em 05/05/2026 (DU+1), início do prazo em 06/05/2026, vencimento estimado em 02/06/2026. Data final para ciência no portal: 14/05/2026. Processo relacionado: 5001029-94.2026.4.02.0000/TRF-2 (Agravo de Instrumento, 2º grau). Notificação SEI ao Dr. João Gabriel em 08/05/2026. Orientação do Dr. João Paulo (07/05/2026): distribuir 'Especificação de Provas' no acompanhamento externo TRF-2 RJ.",proxProv:"Elaborar Especificação de Provas (ou concordância com julgamento antecipado) e protocolar até 02/06/2026",dataProv:addD(NOW,10),estTempo:"4h",tags:["TRF-2","RJ","esp. provas","servidor público","art. 355 CPC","dobro CPC 183"],semMov:0,hist:[{d:addD(NOW,-7),e:"Despacho/decisão da 35ª Vara Federal RJ em 04/05/2026"},{d:addD(NOW,-7),e:"Expedida intimação eletrônica em 04/05/2026"},{d:addD(NOW,-4),e:"Orientação do Dr. João Paulo (e-mail) em 07/05/2026"},{d:addD(NOW,-3),e:"Notificação SEI ao Dr. João Gabriel em 08/05/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence 02/06/2026"}]}),
+  mkJ({id:"J2",num:"1043732-82.2024.4.01.3500",numeroSEI:"26.0.000003938-0",tribunal:"TRF-1",tipoAcao:"Recurso Inominado",parteContraria:"João Pedro Francis Galvão",prazoFinal:addD(NOW,18),intersticio:30,assunto:"Recurso Inominado Cível · Exercício profissional · SJGO · contrarrazões a RE",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Contrarrazões de Recurso Extraordinário",obs:"1ª Relatoria da 1ª Turma Recursal da SJGO (Justiça Federal da 1ª Região). Recorrente: João Pedro Francis Galvão (Advs. João Gustavo Mendonça Machado, Thiago Santos da Silva e Dreice Marcia Nunes). Recorrido: CFM (Adv. José Francisco de Araújo). Histórico: Embargos de Declaração NÃO acolhidos em 26/02/2026. Recurso Extraordinário juntado pelo autor em 27/03/2026. Intimação eletrônica expedida em 13/04/2026. Notificação SEI ao Dr. João Gabriel em 16/04/2026. PRAZO EM DOBRO: 15 du × 2 = 30 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 13/04/2026, ciência em 14/04/2026 (DU+1), início em 15/04/2026, vencimento estimado em 29/05/2026.",proxProv:"Elaborar e protocolar Contrarrazões de Recurso Extraordinário até 29/05/2026",dataProv:addD(NOW,7),estTempo:"10h",tags:["TRF-1","SJGO","RE","contrarrazões","exercício profissional","Turma Recursal","dobro CPC 183"],semMov:0,hist:[{d:addD(NOW,-74),e:"Embargos de Declaração não acolhidos em 26/02/2026"},{d:addD(NOW,-45),e:"Juntada de Recurso Extraordinário pelo autor em 27/03/2026"},{d:addD(NOW,-28),e:"Expedida intimação eletrônica em 13/04/2026"},{d:addD(NOW,-25),e:"Notificação SEI ao Dr. João Gabriel em 16/04/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence 29/05/2026"}]}),
+  mkJ({id:"J3",num:"5037864-24.2025.4.03.6100",numeroSEI:"26.0.000003378-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",parteContraria:"Andre Lanconi da Costa",prazoFinal:addD(NOW,2),intersticio:30,assunto:"Procedimento Comum · Exercício profissional · Multas e sanções · SEGREDO DE JUSTIÇA",fase:"Minuta Pendente",impacto:4,complexidade:3,tipoPeca:"Especificação de Provas",obs:"12ª Vara Cível Federal de São Paulo · SEGREDO DE JUSTIÇA · Nível de Sigilo 1. Autor: Andre Lanconi da Costa (Advs. Paulo Henrique dos Santos OAB/SP 287.897 e Ricardo Calil Haddad Atala OAB/SP 214.749). Réus: CREMESP e CFM. Pedido de liminar: SIM. Valor da causa: R$ 1.000,00. Despacho de 25/03/2026 (Juíza Fabiane Lorenzon Schaly) determina ao autor manifestar-se sobre a contestação em 15 dias (arts. 350 e 351 CPC) e, no mesmo prazo, que as partes especifiquem provas. PRAZO EM DOBRO PARA O CFM: 15 du × 2 = 30 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 25/03/2026, ciência em 26/03/2026 (DU+1), início em 27/03/2026, vencimento estimado em 13/05/2026 (considerando 03/04 feriado Sexta-Feira Santa). Notificação SEI ao Dr. João Gabriel em 31/03/2026.",proxProv:"Protocolar Especificação de Provas até 13/05/2026 (prazo crítico)",dataProv:addD(NOW,0),estTempo:"6h",tags:["sigilo","multas","CREMESP","esp. provas","TRF-3","SP","dobro CPC 183","crítico"],semMov:30,hist:[{d:addD(NOW,-47),e:"Despacho judicial 25/03/2026 · prazo 15 du base (Juíza Fabiane Lorenzon Schaly)"},{d:addD(NOW,-41),e:"Notificação SEI ao Dr. João Gabriel em 31/03/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence ~13/05/2026 · CRÍTICO"}]}),
+  mkJ({id:"J4",num:"1005605-60.2019.4.01.3400",numeroSEI:"26.0.000004895-9",tribunal:"TRF-1",tipoAcao:"Apelação Cível",parteContraria:"Angelo Massaud Pedretti e outros 8 apelantes",prazoFinal:addD(NOW,11),assunto:"Apelação Cível · 13ª Turma TRF-1 · Memoriais para sessão virtual 25 a 29/05/2026",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Memoriais",sustentacao:false,obs:"13ª Turma do TRF-1 · Gab. 38 · Des. Fed. Pedro Braga Filho. SESSÃO VIRTUAL DE JULGAMENTO: 25/05/2026 a 29/05/2026 às 06:00 (SESSÃO VIRTUAL · GAB38). Apelantes: Angelo Massaud Pedretti, Cleber Furlan Filho, Eder Andre Hilbig, Flavia Martins Gonçalves, Ludimila Mendonça de Miranda, Myrna Martinez Rodriguez Hanke, Paulo Gerson Antunes Cavalheiro e Vanessa Santana Lobo (Adv. Leonardo Vasconcelos Guaurino de Oliveira). Apelados: União Federal e CFM (Advs. José Alejandro Bullon Silva e Turibio Teixeira Pires de Campos). Distribuição original 23/02/2021, redistribuído 14/05/2023. Intimação de Pauta publicada em 08/05/2026 (disponibilizada no DJ em 07/05/2026). Notificação SEI ao Dr. João Gabriel em 11/05/2026. Orientação Dr. João Paulo: distribuir Memoriais. OBSERVAÇÃO SOBRE PRAZO: Memoriais não são peça com prazo preclusivo do CPC, sendo entregues antes da sessão de julgamento para distribuição aos desembargadores (sem incidência do dobro do art. 183).",proxProv:"Elaborar e distribuir Memoriais antes da sessão virtual 25 a 29/05/2026",dataProv:addD(NOW,7),estTempo:"8h",tags:["TRF-1","apelação","memoriais","sessão 25/05","13ª Turma","Gab. 38"],semMov:0,hist:[{d:addD(NOW,-81),e:"Conclusos para decisão em 19/02/2026"},{d:addD(NOW,-5),e:"Inclusão para julgamento eletrônico de mérito em 06/05/2026"},{d:addD(NOW,-3),e:"Intimação de Pauta publicada no DJ em 08/05/2026"},{d:addD(NOW,0),e:"Notificação SEI ao Dr. João Gabriel em 11/05/2026"}]}),
 ];
 const D_REUN=[];
 const D_SUST=[];
@@ -1796,11 +1792,38 @@ const D_VIAG=[];
 const D_INBOX=[];
 
 /* ═══ PERSISTENCE — v11: Supabase cloud sync + localStorage cache ═══ */
-const STORE_KEY = "cojur-nexus-state";
-const SUPABASE_URL = "https://vcxastdcsbzdsfcdbtan.supabase.co";
-const SUPABASE_KEY = "sb_publishable_pCP08nZyZti0Dak5p52RJw_0MTunzFr";
-const SUPABASE_USER_ID = "joao_gabriel_cojur";
-const SUPABASE_TABLE = "nexus_state";
+/* v41 · CONFIG via env vars com fallback para dev local
+   Em Vite use VITE_*; em CRA use REACT_APP_*. Em runtime tambem aceita window.__COJUR_ENV__. */
+var __cnEnv = (function(){
+  var e = {};
+  /* v42: import.meta removido para compatibilidade com runtime non-module (artefato).
+     Em build Vite, injete as variaveis em window.__COJUR_ENV__ antes do bundle se necessario. */
+  try {
+    var fn = new Function("try { return (typeof import_meta_env_proxy !== 'undefined') ? import_meta_env_proxy : null; } catch(_){ return null; }");
+    var im = fn();
+    if (im) e = im;
+  } catch(_){}
+  try { if (typeof process !== "undefined" && process.env) e = Object.assign({}, process.env, e); } catch(_){}
+  try { if (typeof window !== "undefined" && window.__COJUR_ENV__) e = Object.assign({}, e, window.__COJUR_ENV__); } catch(_){}
+  return e;
+})();
+var __envOr = function(k1, k2, fb){ return __cnEnv[k1] || __cnEnv[k2] || fb; };
+
+/* v42: bump da chave para invalidar caches antigos do v41 (que tinham 3 admins + 7 judiciais mock).
+   Faz limpeza one-shot do storage anterior para evitar o estado ressurgir via merge no LOAD. */
+const STORE_KEY = "cojur-nexus-state-v42";
+try {
+  if (typeof localStorage !== "undefined") {
+    var __legacyKeys = ["cojur-nexus-state","cojur-nexus-state:ts"];
+    for (var __i=0; __i<__legacyKeys.length; __i++){
+      try { localStorage.removeItem(__legacyKeys[__i]); } catch(_){}
+    }
+  }
+} catch(_){}
+const SUPABASE_URL = __envOr("VITE_SUPABASE_URL", "REACT_APP_SUPABASE_URL", "https://vcxastdcsbzdsfcdbtan.supabase.co");
+const SUPABASE_KEY = __envOr("VITE_SUPABASE_ANON_KEY", "REACT_APP_SUPABASE_ANON_KEY", "sb_publishable_pCP08nZyZti0Dak5p52RJw_0MTunzFr");
+const SUPABASE_USER_ID = __envOr("VITE_SUPABASE_USER_ID", "REACT_APP_SUPABASE_USER_ID", "joao_gabriel_cojur");
+const SUPABASE_TABLE = __envOr("VITE_SUPABASE_TABLE", "REACT_APP_SUPABASE_TABLE", "nexus_state");
 const SYNC_STATUS = { idle: "idle", syncing: "syncing", synced: "synced", offline: "offline", error: "error" };
 var __lastSyncStatus = SYNC_STATUS.idle;
 var __lastSyncTime = null;
@@ -2374,32 +2397,62 @@ const calcPrazoDJe = (pubDate, interst) => {
   return addBizDays(inicio, interst||15);
 };
 
-/* ═══ TABELA DE PRAZOS POR TIPO DE PECA ═══ */
+/* ═══ TABELA DE PRAZOS POR TIPO DE PECA ═══
+   v42: CFM e autarquias federais gozam de prazo em DOBRO para todas as manifestacoes
+        processuais (CPC art. 183). A flag PRAZO_DOBRO_FAZENDA_PUBLICA = true aplica esse
+        dobro automaticamente em getPrazoInfo() e calcPrazoProcessual(). Para casos em que
+        o ente nao seja Fazenda Publica, basta setar false. Memoriais e Sustentacao Oral
+        nao recebem dobro porque nao sao prazos preclusivos do CPC. */
+var PRAZO_DOBRO_FAZENDA_PUBLICA = true;
 var PRAZO_PECA = {
   "Contestacao": {du:15, base:"intimacao", obs:"CPC art.335"},
   "Contestação": {du:15, base:"intimação", obs:"CPC art.335"},
   "Manifestação": {du:15, base:"intimação", obs:"CPC art.238"},
+  "Manifestação em Execução": {du:15, base:"intimação", obs:"CPC art.525"},
   "Contraminuta": {du:15, base:"intimação", obs:"CPC art.1019"},
+  "Especificação de Provas": {du:15, base:"intimação", obs:"CPC arts.350/351"},
+  "Réplica": {du:15, base:"intimação", obs:"CPC art.350"},
   "Agravo Interno": {du:15, base:"publicação acórdão", obs:"CPC art.1021"},
   "Embargos de Declaração": {du:5, base:"publicação acórdão", obs:"CPC art.1023"},
   "Informações em MS": {du:10, base:"notificação", obs:"Lei 12.016, art.9"},
   "Apelação": {du:15, base:"publicação sentença", obs:"CPC art.1003 §5"},
+  "Contrarrazões de Apelação": {du:15, base:"intimação", obs:"CPC art.1010 §1"},
   "Recurso Especial": {du:15, base:"publicação acórdão", obs:"CPC art.1003 §5"},
+  "Contrarrazões de Recurso Especial": {du:15, base:"intimação", obs:"CPC art.1030"},
   "Agravo em Recurso Especial": {du:15, base:"publicação decisão", obs:"CPC art.1042"},
   "Recurso Extraordinário": {du:15, base:"publicação acórdão", obs:"CPC art.1003 §5"},
+  "Contrarrazões de Recurso Extraordinário": {du:15, base:"intimação", obs:"CPC art.1030"},
   "Agravo em Recurso Extraordinário": {du:15, base:"publicação decisão", obs:"CPC art.1042"},
-  "Sustentação Oral": {du:0, base:"data marcada", obs:"CPC art.937"},
-  "Memoriais": {du:0, base:"data marcada", obs:""},
+  "Sustentação Oral": {du:0, base:"data marcada", obs:"CPC art.937 · sem dobro"},
+  "Memoriais": {du:0, base:"data marcada", obs:"sem prazo preclusivo · sem dobro"},
   "Agravo de Instrumento": {du:15, base:"publicação decisão", obs:"CPC art.1003 §5"},
-  "Outro": {du:15, base:"intimação", obs:"CPC art.218 § 3"},
+  "Petição Simples": {du:15, base:"intimação", obs:"CPC art.218 §3"},
+  "Outro": {du:15, base:"intimação", obs:"CPC art.218 §3"},
+};
+/* Aplica dobro do art.183 do CPC quando a peca tem prazo preclusivo (du>0) e a flag esta ativa */
+var aplicarDobroFazenda = function(regraBase) {
+  if(!regraBase) return regraBase;
+  if(!PRAZO_DOBRO_FAZENDA_PUBLICA) return regraBase;
+  if(!regraBase.du || regraBase.du === 0) return regraBase;
+  return {
+    du: regraBase.du * 2,
+    base: regraBase.base,
+    obs: (regraBase.obs ? regraBase.obs + " · " : "") + "em dobro (CPC art.183 · CFM autarquia federal)",
+    duBase: regraBase.du,
+    dobro: true
+  };
 };
 var calcPrazoProcessual = function(pubDate, tipoPeca) {
   if(!pubDate) return null;
-  var regra = PRAZO_PECA[tipoPeca];
+  var regra = aplicarDobroFazenda(PRAZO_PECA[tipoPeca]);
   if(!regra || regra.du === 0) return null;
   return calcPrazoDJe(pubDate, regra.du);
 };
 var getPrazoInfo = function(tipoPeca) {
+  var base = PRAZO_PECA[tipoPeca] || {du:15, base:"intimação", obs:"prazo geral"};
+  return aplicarDobroFazenda(base);
+};
+var getPrazoBaseInfo = function(tipoPeca) {
   return PRAZO_PECA[tipoPeca] || {du:15, base:"intimação", obs:"prazo geral"};
 };
 
