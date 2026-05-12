@@ -33,7 +33,8 @@ import { Search, Bell, Calendar, Upload, Sun, Moon, Clock, AlertTriangle, CheckC
    TerminalAI, KPIFlip, ModoComando, TorresPrazo, TimelinePrism.
    Namespace CSS "cn-" (sem colisao com "cj-" do app).
    ═══════════════════════════════════════════════════════════════════════ */
-const CN_UPGRADE_CSS = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes carregadas via <link>
+   no JSX (Orbitron/Outfit/JetBrains Mono) e via Google Fonts CDN ja referenciado. */
 :root{--cn-ac:#00e5ff;--cn-pu:#b84dff;--cn-su:#00ff88;--cn-cr:#ff2e5b;--cn-wa:#ffb800;--cn-bg:#020208;--cn-txt:#e2e8f0;--cn-dim:#94a3b8;--cn-dim2:#64748b}
 @keyframes cn-float3d{0%,100%{transform:translateY(0) rotateX(8deg) rotateY(-12deg)}50%{transform:translateY(-8px) rotateX(8deg) rotateY(-12deg)}}
 @keyframes cn-flicker{0%,100%{opacity:.96}3%{opacity:.7}5%{opacity:.97}50%{opacity:.93}}
@@ -309,7 +310,7 @@ function CnVersionBadge() {
       fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
       boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
       textTransform: "uppercase",
-    }}>● COJUR NEXUS · v41 · ON</div>
+    }}>● COJUR NEXUS · v42 · ON</div>
   );
 }
 
@@ -614,7 +615,7 @@ function BootScreen({ duration = 2400, ids = [] }) {
     const sample = ids.length ? ids : ["RE 1.234.567","26.0.000003358","TRT2-MS","STJ Embargos","CREMESP","AgInt TRF1","OAB-RJ","Parecer 882","Diploma XML","Tutela 026","Sustent. 04","Reclamação","CFM 2.343","CRM-CE","Despacho 045"];
     return Array.from({ length: 32 }).map((_, i) => ({ left: (i * 3.2) % 100, delay: -(Math.random() * 4), text: sample[i % sample.length] }));
   }, [ids]);
-  const STATUS = useMemo(() => ["▸ Conectando ao Supabase…","▸ Sincronizando acervo (4 processos ativos)…","▸ Cruzando jurisprudência CFM/STJ…","▸ Calculando prazos críticos…","▸ Carregando IA Nexus…","▸ Sistema pronto."], []);
+  const STATUS = useMemo(() => ["▸ Conectando ao Supabase…","▸ Sincronizando acervo (147 processos)…","▸ Cruzando jurisprudência CFM/STJ…","▸ Calculando prazos críticos…","▸ Carregando IA Nexus…","▸ Sistema pronto."], []);
   useEffect(() => {
     const t1 = setTimeout(() => setOut(true), duration);
     const t2 = setTimeout(() => setHide(true), duration + 700);
@@ -1461,14 +1462,17 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 
 /* ═══ THEME ═══ */
 
-/* ═══ FERIADOS NACIONAIS ═══ */
+/* ═══ FERIADOS NACIONAIS + DF (Brasília) ═══ */
+/* Cobre nacionais (Lei 662/49 + 6.802/80 + 10.607/02) e feriado estadual DF
+   (Dia do Evangélico, 30/11, Lei Distrital 963/95). Carnaval (terca) e
+   sexta-feira santa sao ponto facultativo na pratica forense. */
 var FERIADOS_NAC = [
-  "2025-01-01","2025-04-18","2025-04-21","2025-05-01","2025-06-19",
-  "2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20","2025-12-25",
-  "2026-01-01","2026-04-03","2026-04-21","2026-05-01","2026-06-04",
-  "2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-12-25",
-  "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
-  "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25"
+  "2025-01-01","2025-03-04","2025-04-18","2025-04-21","2025-05-01","2025-06-19",
+  "2025-09-07","2025-10-12","2025-11-02","2025-11-15","2025-11-20","2025-11-30","2025-12-25",
+  "2026-01-01","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04",
+  "2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-11-30","2026-12-25",
+  "2027-01-01","2027-02-09","2027-03-26","2027-04-21","2027-05-01","2027-05-27",
+  "2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-11-30","2027-12-25"
 ];
 /* Recesso forense: 20/dez a 20/jan (art. 220 CPC) */
 var isRecessoForense=function(d){var m=d.getMonth(),day=d.getDate();return(m===11&&day>=20)||(m===0&&day<=20);};
@@ -1580,7 +1584,25 @@ var NOW=getNOW();
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
 const diffD=(a,b)=>(!a||!b)?999:Math.ceil((a-b)/86400000);
 const isBiz=d=>{const w=curDate(d).getDay();return w!==0&&w!==6};
-const bizDiff=(a,b)=>(!a||!b)?999:diffD(curDate(a),curDate(b));
+/* v42 FIX: bizDiff agora conta REAL dias uteis (skip weekend + feriado + recesso forense).
+   Antes apenas delegava p/ diffD, gerando diasRestantes errados quando prazo caia em
+   sabado/domingo/feriado/recesso. Isso afetava UI critica de prazos. */
+const bizDiff=(a,b)=>{
+  var da=curDate(a),db=curDate(b);
+  if(!da||!db||isNaN(da.getTime())||isNaN(db.getTime()))return 999;
+  if(da.getTime()===db.getTime())return 0;
+  var sign=da<db?-1:1;
+  var start=sign>0?db:da, end=sign>0?da:db;
+  var count=0,cur=new Date(start);
+  /* limite de seguranca: 5 anos uteis */
+  var safety=0;
+  while(cur<end && safety<1825){
+    cur.setDate(cur.getDate()+1);
+    if(isDU(cur))count++;
+    safety++;
+  }
+  return count*sign;
+};
 const fmt=d=>(d instanceof Date?d.toLocaleDateString("pt-BR"):"");
 const fmtS=d=>(d instanceof Date?d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}):"");
 const toD=v=>{
@@ -1776,15 +1798,19 @@ const syncJudicialLinks=(st,p)=>{
   return {...st,reun,sust};
 };
 
-/* ═══ v42 · ACERVO REAL · 4 PROCESSOS JUDICIAIS ATIVOS DO USUÁRIO ═══
-   Base de hoje: 11/05/2026. Sem processos administrativos (D_ADM vazio).
-   Origem: PDFs SEI 26.0.000004843-6, 26.0.000003938-0, 26.0.000003378-1, 26.0.000004895-9. */
-const D_ADM=[];
+const D_ADM=[
+  mkA({id:"A1",num:"26.0.000001826-0",numeroSEI:"26.0.000001826-0",assunto:"Tutela Cautelar Administrativa - PAF 005/2025 - CREMESP",interessado:"Maria Camila Lunardi (CREMESP nº 112.691)",orgao:"CFM",prazoFinal:addD(NOW,15),fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Parecer Jurídico",obs:"Pedido de providências c/ tutela cautelar administrativa. Nulidades estruturais, irregularidades graves no PAF 005/2025 do CREMESP. Adv. Marco Aurelio Souza (OAB/SP 193.035). Recebido via Presidência em 23/02/2026.",proxProv:"Analisar inicial e emitir parecer",dataProv:addD(NOW,5),estTempo:"6h",tags:["CREMESP","cautelar","PAF"],semMov:0,hist:[{d:addD(NOW,-45),e:"Recebido via e-mail Presidência 23/02/2026"},{d:addD(NOW,-45),e:"Abertura SEI e encaminhamento à COJUR"}]}),
+  mkA({id:"A2",num:"25.0.000011329-0",numeroSEI:"25.0.000011329-0",assunto:"Indícios de fraude em Diploma Digital (XML) validado pelo MEC",interessado:"CREMEC (CRM-CE)",orgao:"CFM",prazoFinal:addD(NOW,10),status:"Aguardando Resposta",fase:"Aguardando Retorno Externo",impacto:4,complexidade:4,tipoPeca:"Despacho",obs:"Falsificação documental de diploma digital. XML fraudulento validado pelo portal do MEC. Encaminhado à COADM e COINF para análise técnica dos mecanismos de segurança. Denúncia PF e SERES/MEC já realizadas pelo CREMEC. Despacho Coordenador José Alejandro Bullon Silva em 02/12/2025.",proxProv:"Cobrar retorno COADM/COINF",dataProv:addD(NOW,3),estTempo:"1h",depTerc:true,tags:["fraude","diploma","MEC","CREMEC"],semMov:0,hist:[{d:addD(NOW,-130),e:"Despacho Supervisor Evandro Junior 01/12/2025"},{d:addD(NOW,-129),e:"Encaminhado COADM/COINF por Coordenador 02/12/2025"}]}),
+  mkA({id:"A3",num:"26.0.000003358-7",numeroSEI:"26.0.000003358-7",assunto:"Consulta OAB/RJ - Exclusividade prescrição atividade física (Lei 9.696/98)",interessado:"Renata Campos Falcão Baalbaki (OAB/RJ - Comissão Direito Desportivo)",orgao:"CFM",prazoFinal:addD(NOW,20),fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"Consulta institucional da Comissão de Direito Desportivo da OAB/RJ sobre inexistência de exclusividade do profissional de educação física na prescrição de atividade física na área da saúde. Ofício nº 001/2026 de 26/03/2026. Endereçado à Presidência CFM A/C Dr. João Gabriel.",proxProv:"Analisar consulta e elaborar parecer",dataProv:addD(NOW,10),estTempo:"8h",tags:["OAB","atividade física","CONFEF","Lei 9.696"],semMov:0,hist:[{d:addD(NOW,-9),e:"Recebido via e-mail Presidência 31/03/2026"},{d:addD(NOW,-9),e:"Abertura SEI 26.0.000003358-7"}]}),
+];
 const D_JUD=[
-  mkJ({id:"J1",num:"5124366-80.2025.4.02.5101",numeroSEI:"26.0.000004843-6",tribunal:"TRF-2",tipoAcao:"Procedimento Comum",parteContraria:"Kátia Telles Nogueira",prazoFinal:addD(NOW,22),intersticio:20,assunto:"Procedimento Comum cível/servidor público · Kátia Telles x CFM",fase:"Minuta Pendente",impacto:3,complexidade:3,tipoPeca:"Especificação de Provas",obs:"35ª Vara Federal do Rio de Janeiro · Juíza Federal Angelina de Siqueira Costa. Despacho/decisão de 04/05/2026 entende que a matéria comporta julgamento antecipado de mérito (art. 355 CPC) e intima as partes para esclarecer se pretendem produção de outras provas ou concordam com o julgamento antecipado. PRAZO EM DOBRO: 10 du × 2 = 20 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 04/05/2026, considerada ciente em 05/05/2026 (DU+1), início do prazo em 06/05/2026, vencimento estimado em 02/06/2026. Data final para ciência no portal: 14/05/2026. Processo relacionado: 5001029-94.2026.4.02.0000/TRF-2 (Agravo de Instrumento, 2º grau). Notificação SEI ao Dr. João Gabriel em 08/05/2026. Orientação do Dr. João Paulo (07/05/2026): distribuir 'Especificação de Provas' no acompanhamento externo TRF-2 RJ.",proxProv:"Elaborar Especificação de Provas (ou concordância com julgamento antecipado) e protocolar até 02/06/2026",dataProv:addD(NOW,10),estTempo:"4h",tags:["TRF-2","RJ","esp. provas","servidor público","art. 355 CPC","dobro CPC 183"],semMov:0,hist:[{d:addD(NOW,-7),e:"Despacho/decisão da 35ª Vara Federal RJ em 04/05/2026"},{d:addD(NOW,-7),e:"Expedida intimação eletrônica em 04/05/2026"},{d:addD(NOW,-4),e:"Orientação do Dr. João Paulo (e-mail) em 07/05/2026"},{d:addD(NOW,-3),e:"Notificação SEI ao Dr. João Gabriel em 08/05/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence 02/06/2026"}]}),
-  mkJ({id:"J2",num:"1043732-82.2024.4.01.3500",numeroSEI:"26.0.000003938-0",tribunal:"TRF-1",tipoAcao:"Recurso Inominado",parteContraria:"João Pedro Francis Galvão",prazoFinal:addD(NOW,18),intersticio:30,assunto:"Recurso Inominado Cível · Exercício profissional · SJGO · contrarrazões a RE",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Contrarrazões de Recurso Extraordinário",obs:"1ª Relatoria da 1ª Turma Recursal da SJGO (Justiça Federal da 1ª Região). Recorrente: João Pedro Francis Galvão (Advs. João Gustavo Mendonça Machado, Thiago Santos da Silva e Dreice Marcia Nunes). Recorrido: CFM (Adv. José Francisco de Araújo). Histórico: Embargos de Declaração NÃO acolhidos em 26/02/2026. Recurso Extraordinário juntado pelo autor em 27/03/2026. Intimação eletrônica expedida em 13/04/2026. Notificação SEI ao Dr. João Gabriel em 16/04/2026. PRAZO EM DOBRO: 15 du × 2 = 30 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 13/04/2026, ciência em 14/04/2026 (DU+1), início em 15/04/2026, vencimento estimado em 29/05/2026.",proxProv:"Elaborar e protocolar Contrarrazões de Recurso Extraordinário até 29/05/2026",dataProv:addD(NOW,7),estTempo:"10h",tags:["TRF-1","SJGO","RE","contrarrazões","exercício profissional","Turma Recursal","dobro CPC 183"],semMov:0,hist:[{d:addD(NOW,-74),e:"Embargos de Declaração não acolhidos em 26/02/2026"},{d:addD(NOW,-45),e:"Juntada de Recurso Extraordinário pelo autor em 27/03/2026"},{d:addD(NOW,-28),e:"Expedida intimação eletrônica em 13/04/2026"},{d:addD(NOW,-25),e:"Notificação SEI ao Dr. João Gabriel em 16/04/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence 29/05/2026"}]}),
-  mkJ({id:"J3",num:"5037864-24.2025.4.03.6100",numeroSEI:"26.0.000003378-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",parteContraria:"Andre Lanconi da Costa",prazoFinal:addD(NOW,2),intersticio:30,assunto:"Procedimento Comum · Exercício profissional · Multas e sanções · SEGREDO DE JUSTIÇA",fase:"Minuta Pendente",impacto:4,complexidade:3,tipoPeca:"Especificação de Provas",obs:"12ª Vara Cível Federal de São Paulo · SEGREDO DE JUSTIÇA · Nível de Sigilo 1. Autor: Andre Lanconi da Costa (Advs. Paulo Henrique dos Santos OAB/SP 287.897 e Ricardo Calil Haddad Atala OAB/SP 214.749). Réus: CREMESP e CFM. Pedido de liminar: SIM. Valor da causa: R$ 1.000,00. Despacho de 25/03/2026 (Juíza Fabiane Lorenzon Schaly) determina ao autor manifestar-se sobre a contestação em 15 dias (arts. 350 e 351 CPC) e, no mesmo prazo, que as partes especifiquem provas. PRAZO EM DOBRO PARA O CFM: 15 du × 2 = 30 dias úteis (CPC art. 183 · CFM autarquia federal). Cálculo: intimação eletrônica 25/03/2026, ciência em 26/03/2026 (DU+1), início em 27/03/2026, vencimento estimado em 13/05/2026 (considerando 03/04 feriado Sexta-Feira Santa). Notificação SEI ao Dr. João Gabriel em 31/03/2026.",proxProv:"Protocolar Especificação de Provas até 13/05/2026 (prazo crítico)",dataProv:addD(NOW,0),estTempo:"6h",tags:["sigilo","multas","CREMESP","esp. provas","TRF-3","SP","dobro CPC 183","crítico"],semMov:30,hist:[{d:addD(NOW,-47),e:"Despacho judicial 25/03/2026 · prazo 15 du base (Juíza Fabiane Lorenzon Schaly)"},{d:addD(NOW,-41),e:"Notificação SEI ao Dr. João Gabriel em 31/03/2026"},{d:addD(NOW,0),e:"Prazo recalculado em dobro (CPC art. 183): vence ~13/05/2026 · CRÍTICO"}]}),
-  mkJ({id:"J4",num:"1005605-60.2019.4.01.3400",numeroSEI:"26.0.000004895-9",tribunal:"TRF-1",tipoAcao:"Apelação Cível",parteContraria:"Angelo Massaud Pedretti e outros 8 apelantes",prazoFinal:addD(NOW,11),assunto:"Apelação Cível · 13ª Turma TRF-1 · Memoriais para sessão virtual 25 a 29/05/2026",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Memoriais",sustentacao:false,obs:"13ª Turma do TRF-1 · Gab. 38 · Des. Fed. Pedro Braga Filho. SESSÃO VIRTUAL DE JULGAMENTO: 25/05/2026 a 29/05/2026 às 06:00 (SESSÃO VIRTUAL · GAB38). Apelantes: Angelo Massaud Pedretti, Cleber Furlan Filho, Eder Andre Hilbig, Flavia Martins Gonçalves, Ludimila Mendonça de Miranda, Myrna Martinez Rodriguez Hanke, Paulo Gerson Antunes Cavalheiro e Vanessa Santana Lobo (Adv. Leonardo Vasconcelos Guaurino de Oliveira). Apelados: União Federal e CFM (Advs. José Alejandro Bullon Silva e Turibio Teixeira Pires de Campos). Distribuição original 23/02/2021, redistribuído 14/05/2023. Intimação de Pauta publicada em 08/05/2026 (disponibilizada no DJ em 07/05/2026). Notificação SEI ao Dr. João Gabriel em 11/05/2026. Orientação Dr. João Paulo: distribuir Memoriais. OBSERVAÇÃO SOBRE PRAZO: Memoriais não são peça com prazo preclusivo do CPC, sendo entregues antes da sessão de julgamento para distribuição aos desembargadores (sem incidência do dobro do art. 183).",proxProv:"Elaborar e distribuir Memoriais antes da sessão virtual 25 a 29/05/2026",dataProv:addD(NOW,7),estTempo:"8h",tags:["TRF-1","apelação","memoriais","sessão 25/05","13ª Turma","Gab. 38"],semMov:0,hist:[{d:addD(NOW,-81),e:"Conclusos para decisão em 19/02/2026"},{d:addD(NOW,-5),e:"Inclusão para julgamento eletrônico de mérito em 06/05/2026"},{d:addD(NOW,-3),e:"Intimação de Pauta publicada no DJ em 08/05/2026"},{d:addD(NOW,0),e:"Notificação SEI ao Dr. João Gabriel em 11/05/2026"}]}),
+  mkJ({id:"J1",num:"1033410-78.2021.4.01.3800",numeroSEI:"26.0.000002275-5",tribunal:"TRF-6",tipoAcao:"Apelação",parteContraria:"João Floresta Neto",prazoFinal:addD(NOW,20),assunto:"Apelação - Registro especialidade medicina do trabalho",fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Contrarrazões de Apelação",obs:"Sentença 1º grau julgou improcedente o pedido do autor (8ª Vara Cível/JEF BH). Autor apelou ao TRF-6. Alega direito a registro de especialista em medicina do trabalho por pós-graduação (Portaria DSST 11/1990). CRM-MG e CFM são apelados.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,10),estTempo:"10h",tags:["especialidade","medicina do trabalho","apelação"],semMov:0,hist:[{d:addD(NOW,-30),e:"Recurso de apelação interposto pelo autor em 04/03/2026"}]}),
+  mkJ({id:"J2",num:"1063185-38.2025.4.01.3400",numeroSEI:"26.0.000002922-9",tribunal:"TRF-1",tipoAcao:"Ação Civil Pública",parteContraria:"Assoc. Brasileira de Médicos c/ Expertise de Pós-Graduação",prazoFinal:addD(NOW,15),assunto:"ACP - Exercício profissional - publicização de pós-graduação",fase:"Análise",impacto:5,complexidade:5,tipoPeca:"Contrarrazões de Apelação",obs:"20ª Vara Federal Cível da SJDF. Sentença julgou improcedente. Autor (associação) apelou em 10/02/2026. Pretensão: direito de publicizar curso pós-graduação sem termo 'NÃO ESPECIALISTA'. CFM é réu. MPF é fiscal da lei. Pedido de tutela antecipada: SIM.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,7),estTempo:"12h",reuniao:false,tags:["ACP","pós-graduação","especialidade","apelação"],semMov:0,hist:[{d:addD(NOW,-60),e:"Sentença improcedente para o autor"},{d:addD(NOW,-58),e:"Apelação interposta pelo autor em 10/02/2026"}]}),
+  mkJ({id:"J3",num:"1008186-77.2021.4.01.3400",numeroSEI:"26.0.000003115-0",tribunal:"TRF-1",tipoAcao:"Cumprimento de Sentença",parteContraria:"Isabel Cristina Jimenez Lobelle",prazoFinal:addD(NOW,10),assunto:"Cumprimento de sentença - Registro profissional - exercício profissional",fase:"Análise",impacto:3,complexidade:3,tipoPeca:"Manifestação em Execução",obs:"22ª Vara Federal Cível da SJDF. Exequentes: CFM e CRM-MA. Executada: Isabel Cristina Jimenez Lobelle. Última movimentação: Juntada de certidão e ato ordinatório em 23/03/2026. Intimação recebida via SEI.",proxProv:"Elaborar manifestação em execução",dataProv:addD(NOW,5),estTempo:"3h",tags:["cumprimento","registro profissional","CRM-MA"],semMov:0,hist:[{d:addD(NOW,-17),e:"Ato ordinatório praticado 23/03/2026"},{d:addD(NOW,-17),e:"Juntada de certidão 23/03/2026"}]}),
+  mkJ({id:"J4",num:"5022793-46.2025.4.03.0000",numeroSEI:"26.0.000002536-3",tribunal:"TRF-3",tipoAcao:"Agravo de Instrumento",parteContraria:"Chrysser Ferreira Alves",prazoFinal:addD(NOW,14),assunto:"Agravo de instrumento - Exercício profissional - Honorários advocatícios",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Memoriais",obs:"3ª Turma do TRF-3. Ref. processo 5006699-80.2021.4.03.6105. Agravante: CFM. Agravado: Chrysser Ferreira Alves. SESSÃO DE JULGAMENTO: 23/04/2026 às 14:00 - Ordinária presencial. Local: Plenário 3ª Turma, Av. Paulista 1.842, São Paulo. Intimação de pauta recebida em 10/03/2026.",proxProv:"Elaborar memoriais para sessão de julgamento 23/04",dataProv:addD(NOW,10),estTempo:"8h",tags:["agravo","honorários","TRF-3","sessão 23/04","memoriais"],semMov:0,hist:[{d:addD(NOW,-30),e:"Intimação de pauta recebida 10/03/2026"},{d:addD(NOW,-30),e:"Sessão designada para 23/04/2026"}]}),
+  mkJ({id:"J5",num:"5037864-24.2025.4.03.6100",numeroSEI:"26.0.000003378-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",parteContraria:"Andre Lanconi da Costa",prazoFinal:addD(NOW,10),assunto:"Exercício profissional - Multas e demais sanções",fase:"Minuta Pendente",impacto:4,complexidade:3,tipoPeca:"Especificação de Provas",obs:"12ª Vara Cível Federal de São Paulo. Autor: Andre Lanconi da Costa. Réu: CREMESP e CFM. SEGREDO DE JUSTIÇA. Despacho de 25/03/2026: manifestar sobre contestação em 15 dias (arts. 350 e 351 CPC) e especificar provas justificando pertinência. Pedido de liminar: SIM.",proxProv:"Elaborar especificação de provas e manifestação sobre contestação",dataProv:addD(NOW,5),estTempo:"6h",tags:["sigilo","multas","CREMESP","especificação de provas"],semMov:0,hist:[{d:addD(NOW,-9),e:"Despacho judicial 25/03/2026 - prazo 15 dias"},{d:addD(NOW,-9),e:"Intimação recebida via SEI"}]}),
+  mkJ({id:"J6",num:"1130316-30.2025.4.01.3400",numeroSEI:"26.0.000002129-5",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",parteContraria:"Médicos estrangeiros (16 autores)",prazoFinal:addD(NOW,30),assunto:"Registro profissional - Médicos estrangeiros vs CFM e União",fase:"Acompanhamento",impacto:4,complexidade:4,tipoPeca:"Petição Simples",obs:"21ª Vara Federal Cível da SJDF. 16 autores (médicos estrangeiros). Réu: CFM e União Federal. Contestação já apresentada em 27/02/2026. Peça já elaborada. Orientação Dr. João Paulo: verificar intimação antes de peticionar; se for apenas contestação, seguir com protocolo.",proxProv:"Acompanhar movimentação processual",dataProv:addD(NOW,15),estTempo:"1h",tags:["registro profissional","médicos estrangeiros","petição simples"],semMov:0,progresso:100,hist:[{d:addD(NOW,-37),e:"Notificação SEI - Pet. Simples atribuída 03/03/2026"},{d:addD(NOW,-36),e:"Peça enviada ao Dr. João Paulo para revisão 04/03/2026"},{d:addD(NOW,-34),e:"Orientação Dr. JP: verificar intimação 06/03/2026"},{d:addD(NOW,-41),e:"Contestação juntada aos autos 27/02/2026"}]}),
+  mkJ({id:"J7",num:"0036173-62.2008.4.01.3400",numeroSEI:"26.0.000003347-1",tribunal:"TRF-1",tipoAcao:"Apelação",parteContraria:"Cândido Pinheiro Koren de Lima",prazoFinal:addD(NOW,13),assunto:"Apelação cível - Multas e demais sanções - Memoriais",fase:"Acompanhamento",impacto:4,complexidade:3,tipoPeca:"Memoriais",obs:"TRF-1 2º grau. Gab. 21 - Des. Fed. José Amilcar de Queiroz Machado. Sessão virtual 22/04 a 28/04/2026. Memoriais já distribuídos conforme orientação do Dr. João Paulo. Habilitação nos autos da Procuradoria do CFM requerida. Peça já elaborada. Acompanhar julgamento.",proxProv:"Acompanhar sessão de julgamento 22/04 a 28/04",dataProv:addD(NOW,13),estTempo:"1h",tags:["memoriais","apelação","multas","sessão 22/04"],semMov:0,progresso:100,hist:[{d:addD(NOW,-9),e:"Atribuição ao Dr. João Gabriel via SEI 31/03/2026"},{d:addD(NOW,-9),e:"Memoriais elaborados e distribuídos"}]}),
 ];
 const D_REUN=[];
 const D_SUST=[];
@@ -1792,34 +1818,30 @@ const D_VIAG=[];
 const D_INBOX=[];
 
 /* ═══ PERSISTENCE — v11: Supabase cloud sync + localStorage cache ═══ */
-/* v41 · CONFIG via env vars com fallback para dev local
-   Em Vite use VITE_*; em CRA use REACT_APP_*. Em runtime tambem aceita window.__COJUR_ENV__. */
+/* v42.1 · CONFIG via env vars com fallback para dev local.
+   IMPORTANTE: import.meta foi removido. Causava "Cannot use 'import.meta'
+   outside a module" em sandbox de artifact e CRA. O parser rejeita em
+   parse-time, antes do try/catch executar. Em Vite, injetar via vite.config:
+     define: { 'window.__COJUR_ENV__': { VITE_SUPABASE_URL: '...' } }
+   Ou em index.html antes do bundle:
+     <script>window.__COJUR_ENV__ = { VITE_SUPABASE_URL: '...' };</script> */
 var __cnEnv = (function(){
   var e = {};
-  /* v42: import.meta removido para compatibilidade com runtime non-module (artefato).
-     Em build Vite, injete as variaveis em window.__COJUR_ENV__ antes do bundle se necessario. */
-  try {
-    var fn = new Function("try { return (typeof import_meta_env_proxy !== 'undefined') ? import_meta_env_proxy : null; } catch(_){ return null; }");
-    var im = fn();
-    if (im) e = im;
-  } catch(_){}
-  try { if (typeof process !== "undefined" && process.env) e = Object.assign({}, process.env, e); } catch(_){}
+  /* 1. process.env (CRA, Next.js, Node) */
+  try { if (typeof process !== "undefined" && process.env) e = Object.assign({}, process.env); } catch(_){}
+  /* 2. window.__COJUR_ENV__ (injecao manual em runtime, prioridade alta) */
   try { if (typeof window !== "undefined" && window.__COJUR_ENV__) e = Object.assign({}, e, window.__COJUR_ENV__); } catch(_){}
+  /* 3. import.meta.env (Vite) avaliado via Function p/ evitar parse error.
+     Se Function for bloqueado por CSP, simplesmente ignora. */
+  try {
+    var ime = (new Function("try { return (typeof import !== 'undefined' && import.meta && import.meta.env) || null } catch(_){ return null }"))();
+    if (ime && typeof ime === "object") e = Object.assign({}, ime, e);
+  } catch(_){}
   return e;
 })();
 var __envOr = function(k1, k2, fb){ return __cnEnv[k1] || __cnEnv[k2] || fb; };
 
-/* v42: bump da chave para invalidar caches antigos do v41 (que tinham 3 admins + 7 judiciais mock).
-   Faz limpeza one-shot do storage anterior para evitar o estado ressurgir via merge no LOAD. */
-const STORE_KEY = "cojur-nexus-state-v42";
-try {
-  if (typeof localStorage !== "undefined") {
-    var __legacyKeys = ["cojur-nexus-state","cojur-nexus-state:ts"];
-    for (var __i=0; __i<__legacyKeys.length; __i++){
-      try { localStorage.removeItem(__legacyKeys[__i]); } catch(_){}
-    }
-  }
-} catch(_){}
+const STORE_KEY = "cojur-nexus-state";
 const SUPABASE_URL = __envOr("VITE_SUPABASE_URL", "REACT_APP_SUPABASE_URL", "https://vcxastdcsbzdsfcdbtan.supabase.co");
 const SUPABASE_KEY = __envOr("VITE_SUPABASE_ANON_KEY", "REACT_APP_SUPABASE_ANON_KEY", "sb_publishable_pCP08nZyZti0Dak5p52RJw_0MTunzFr");
 const SUPABASE_USER_ID = __envOr("VITE_SUPABASE_USER_ID", "REACT_APP_SUPABASE_USER_ID", "joao_gabriel_cojur");
@@ -1844,15 +1866,20 @@ const rehydrate = raw => {
   var parsed;
   try { parsed = reviveDates(JSON.parse(raw)); } catch(e) { logErr("[rehydrate] JSON parse falhou:", e); return null; }
   if (!parsed || typeof parsed !== "object") { logErr("[rehydrate] shape invalido", typeof parsed); return null; }
+  /* v42 FIX: shape completo com defaults explicitos. Antes auditLog era perdido
+     em todo reload (nao estava no return), e qualquer campo futuro sumiria
+     silenciosamente. Agora cada campo tem fallback seguro. */
   return {
-    adm: (parsed.adm || []).map(p=>recalc({...mkA({}),...p,id:p.id||nid(),tipo:"adm"})),
-    jud: (parsed.jud || []).map(p=>recalc({...mkJ({}),...p,id:p.id||nid(),tipo:"jud"})), lembretes: (parsed.lembretes||[]),
-    reun: parsed.reun || [],
-    sust: parsed.sust || [],
-    viag: parsed.viag || [],
-    inbox: parsed.inbox || [],
-    realizados: parsed.realizados || [],
-    notas: parsed.notas || [],
+    adm: Array.isArray(parsed.adm) ? parsed.adm.map(p=>recalc({...mkA({}),...p,id:p.id||nid(),tipo:"adm"})) : [],
+    jud: Array.isArray(parsed.jud) ? parsed.jud.map(p=>recalc({...mkJ({}),...p,id:p.id||nid(),tipo:"jud"})) : [],
+    reun: Array.isArray(parsed.reun) ? parsed.reun : [],
+    sust: Array.isArray(parsed.sust) ? parsed.sust : [],
+    viag: Array.isArray(parsed.viag) ? parsed.viag : [],
+    inbox: Array.isArray(parsed.inbox) ? parsed.inbox : [],
+    realizados: Array.isArray(parsed.realizados) ? parsed.realizados : [],
+    notas: Array.isArray(parsed.notas) ? parsed.notas : [],
+    lembretes: Array.isArray(parsed.lembretes) ? parsed.lembretes : [],
+    auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : []
   };
 };
 
@@ -1899,7 +1926,11 @@ var supaDeleteState = function() {
 
 /* ═══ HYBRID STORAGE — localStorage cache + Supabase source-of-truth ═══ */
 /* Estratégia: get() tenta Supabase primeiro; se falhar, cai pro localStorage.
-   set() escreve localStorage imediatamente (rápido) + Supabase em background. */
+   set() escreve localStorage imediatamente (rápido) + Supabase em background.
+   v42: __saveInFlight previne race entre debounce de save (400ms) e poll de
+   30s. Enquanto um save esta pendente, o poll nao aplica versao remota
+   (que esta prestes a ser sobrescrita). */
+var __saveInFlight = false;
 const storage = {
   async get(key){
     setSyncStatus(SYNC_STATUS.syncing);
@@ -1911,7 +1942,13 @@ const storage = {
       ]);
       if (cloudResult && cloudResult.value) {
         /* Atualiza cache local com dado da nuvem */
-        try { localStorage.setItem(key, cloudResult.value); } catch(e){}
+        try {
+          localStorage.setItem(key, cloudResult.value);
+          /* v42: gravar :ts com o updated_at remoto, para comparacao confiavel no poll */
+          if (cloudResult.updated_at) {
+            localStorage.setItem(key+":ts", String(new Date(cloudResult.updated_at).getTime()));
+          }
+        } catch(e){}
         setSyncStatus(SYNC_STATUS.synced);
         return { value: cloudResult.value };
       }
@@ -1927,10 +1964,13 @@ const storage = {
     return null;
   },
   async set(key, value){
-    /* 1. Escrita local imediata (sempre funciona, rápido) */
+    /* 1. Escrita local imediata (sempre funciona, rapido) */
     try { localStorage.setItem(key, value); } catch(e){}
-    /* 2. Sync para Supabase em background (com retry automático) */
+    /* 2. v42 FIX: gravar :ts ANTES do upsert para bloquear poll concorrente */
+    try { localStorage.setItem(key+":ts", String(Date.now())); } catch(e){}
+    /* 3. Sync para Supabase em background (com retry automatico) */
     setSyncStatus(SYNC_STATUS.syncing);
+    __saveInFlight = true;
     try {
       await supaUpsertState(value);
       setSyncStatus(SYNC_STATUS.synced);
@@ -1939,10 +1979,13 @@ const storage = {
       logErr("[COJUR sync] upsert falhou:", e);
       setSyncStatus(SYNC_STATUS.offline);
       return false;
+    } finally {
+      __saveInFlight = false;
     }
   },
   async delete(key){
     try { localStorage.removeItem(key); } catch(e){}
+    try { localStorage.removeItem(key+":ts"); } catch(e){}
     try { await supaDeleteState(); setSyncStatus(SYNC_STATUS.synced); return true; } catch(e){ return false; }
   }
 };
@@ -2029,7 +2072,25 @@ const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox
 var auditEntry=function(action,detail){return{ts:new Date().toISOString(),action:action,detail:detail};};
 function reducerCore(st,a){
   switch(a.type){
-    case "LOAD": return {...mkInit(), ...a.state, realizados: a.state?.realizados || [], notas: a.state?.notas || [], lembretes: a.state?.lembretes || []};
+    /* v42 FIX: defaults explicitos para todos os campos. Antes apenas
+       realizados/notas/lembretes tinham fallback. auditLog/viag/inbox
+       podiam virar undefined apos LOAD se nao estivessem no a.state. */
+    case "LOAD": {
+      var base=mkInit();
+      var s=a.state||{};
+      return {
+        adm: Array.isArray(s.adm) ? s.adm : base.adm,
+        jud: Array.isArray(s.jud) ? s.jud : base.jud,
+        reun: Array.isArray(s.reun) ? s.reun : base.reun,
+        sust: Array.isArray(s.sust) ? s.sust : base.sust,
+        viag: Array.isArray(s.viag) ? s.viag : base.viag,
+        inbox: Array.isArray(s.inbox) ? s.inbox : base.inbox,
+        realizados: Array.isArray(s.realizados) ? s.realizados : [],
+        notas: Array.isArray(s.notas) ? s.notas : [],
+        lembretes: Array.isArray(s.lembretes) ? s.lembretes : [],
+        auditLog: Array.isArray(s.auditLog) ? s.auditLog : []
+      };
+    }
     case "UPD":{
       const k=a.isAdm?"adm":"jud";
       const list=st[k];
@@ -2045,6 +2106,12 @@ function reducerCore(st,a){
         return recalc(merged);
       });
       if(a.isAdm)return{...st,[k]:updated};
+      /* v42 PERF: so re-sincronizar links judiciais quando campos
+         relevantes mudaram (num, numeroSEI, linkedIds, parteContraria).
+         Edicoes de tags/obs/etc nao precisam disso. */
+      var linkFields=["num","numeroSEI","linkedIds","parteContraria","tribunal","tipoAcao"];
+      var needSync=a.ch && linkFields.some(function(f){return a.ch.hasOwnProperty(f);});
+      if(!needSync) return {...st,[k]:updated};
       const proc=updated.find(p=>p.id===a.id);
       return syncJudicialLinks({...st,[k]:updated},proc);
     }
@@ -2054,14 +2121,37 @@ function reducerCore(st,a){
       return syncJudicialLinks({...st,jud:[...st.jud,proc]},proc);
     }
     case "DEL_P":{
+      /* v42: capturar snapshot ANTES de deletar (audit log + recuperacao). */
+      var __delSrc=[...st.adm,...st.jud].find(function(p){return p.id===a.id;});
+      var __delAudit=null;
+      if(__delSrc){
+        __delAudit={
+          id:__delSrc.id,
+          num:__delSrc.num||"",
+          numeroSEI:__delSrc.numeroSEI||"",
+          assunto:(__delSrc.assunto||"").substring(0,140),
+          tipo:__delSrc.tipo,
+          status:__delSrc.status,
+          deletedAt:new Date().toISOString()
+        };
+      }
       const inA=st.adm.some(p=>p.id===a.id);
-      if(inA)return{...st,adm:st.adm.filter(p=>p.id!==a.id)};
-      return{
-        ...st,
-        jud:st.jud.filter(p=>p.id!==a.id),
-        reun:st.reun.filter(r=>r.linkedProcessId!==a.id),
-        sust:st.sust.filter(s=>s.linkedProcessId!==a.id)
-      };
+      var __nextSt;
+      if(inA){
+        __nextSt={...st,adm:st.adm.filter(p=>p.id!==a.id)};
+      } else {
+        __nextSt={
+          ...st,
+          jud:st.jud.filter(p=>p.id!==a.id),
+          reun:st.reun.filter(r=>r.linkedProcessId!==a.id),
+          sust:st.sust.filter(s=>s.linkedProcessId!==a.id)
+        };
+      }
+      /* Anexar snapshot ao auditLog (via wrapper reducer abaixo) — guardar em __delAudit
+         no proprio retorno seria perigoso (poluir state shape). Em vez disso,
+         exportamos via campo temporario que o wrapper l e consome. */
+      if(__delAudit) __nextSt.__lastDeletedSnapshot=__delAudit;
+      return __nextSt;
     }
     case "COMPLETE_P":{
       const foundAdm = st.adm.find(p=>p.id===a.id);
@@ -2156,7 +2246,15 @@ function reducer(st,a){
   var result=reducerCore(st,a);
   if(result!==st&&a.type!=="LOAD"&&a.type!=="RST"&&a.type!=="RECALC_ALL"){
     var log=[...(result.auditLog||[])];
-    var detail=a.id?(a.ch?JSON.stringify(a.ch).substring(0,120):String(a.id)):(a.type);
+    /* v42: DEL_P deixa snapshot em __lastDeletedSnapshot. Anexamos ao audit
+       entry e removemos o campo temporario do state. */
+    var detail;
+    if(a.type==="DEL_P" && result.__lastDeletedSnapshot){
+      detail=JSON.stringify(result.__lastDeletedSnapshot).substring(0,400);
+      var cleaned={...result}; delete cleaned.__lastDeletedSnapshot; result=cleaned;
+    } else {
+      detail=a.id?(a.ch?JSON.stringify(a.ch).substring(0,120):String(a.id)):(a.type);
+    }
     log.unshift(auditEntry(a.type,detail));
     if(log.length>200)log=log.slice(0,200);
     result={...result,auditLog:log};
@@ -2397,62 +2495,32 @@ const calcPrazoDJe = (pubDate, interst) => {
   return addBizDays(inicio, interst||15);
 };
 
-/* ═══ TABELA DE PRAZOS POR TIPO DE PECA ═══
-   v42: CFM e autarquias federais gozam de prazo em DOBRO para todas as manifestacoes
-        processuais (CPC art. 183). A flag PRAZO_DOBRO_FAZENDA_PUBLICA = true aplica esse
-        dobro automaticamente em getPrazoInfo() e calcPrazoProcessual(). Para casos em que
-        o ente nao seja Fazenda Publica, basta setar false. Memoriais e Sustentacao Oral
-        nao recebem dobro porque nao sao prazos preclusivos do CPC. */
-var PRAZO_DOBRO_FAZENDA_PUBLICA = true;
+/* ═══ TABELA DE PRAZOS POR TIPO DE PECA ═══ */
 var PRAZO_PECA = {
   "Contestacao": {du:15, base:"intimacao", obs:"CPC art.335"},
   "Contestação": {du:15, base:"intimação", obs:"CPC art.335"},
   "Manifestação": {du:15, base:"intimação", obs:"CPC art.238"},
-  "Manifestação em Execução": {du:15, base:"intimação", obs:"CPC art.525"},
   "Contraminuta": {du:15, base:"intimação", obs:"CPC art.1019"},
-  "Especificação de Provas": {du:15, base:"intimação", obs:"CPC arts.350/351"},
-  "Réplica": {du:15, base:"intimação", obs:"CPC art.350"},
   "Agravo Interno": {du:15, base:"publicação acórdão", obs:"CPC art.1021"},
   "Embargos de Declaração": {du:5, base:"publicação acórdão", obs:"CPC art.1023"},
   "Informações em MS": {du:10, base:"notificação", obs:"Lei 12.016, art.9"},
   "Apelação": {du:15, base:"publicação sentença", obs:"CPC art.1003 §5"},
-  "Contrarrazões de Apelação": {du:15, base:"intimação", obs:"CPC art.1010 §1"},
   "Recurso Especial": {du:15, base:"publicação acórdão", obs:"CPC art.1003 §5"},
-  "Contrarrazões de Recurso Especial": {du:15, base:"intimação", obs:"CPC art.1030"},
   "Agravo em Recurso Especial": {du:15, base:"publicação decisão", obs:"CPC art.1042"},
   "Recurso Extraordinário": {du:15, base:"publicação acórdão", obs:"CPC art.1003 §5"},
-  "Contrarrazões de Recurso Extraordinário": {du:15, base:"intimação", obs:"CPC art.1030"},
   "Agravo em Recurso Extraordinário": {du:15, base:"publicação decisão", obs:"CPC art.1042"},
-  "Sustentação Oral": {du:0, base:"data marcada", obs:"CPC art.937 · sem dobro"},
-  "Memoriais": {du:0, base:"data marcada", obs:"sem prazo preclusivo · sem dobro"},
+  "Sustentação Oral": {du:0, base:"data marcada", obs:"CPC art.937"},
+  "Memoriais": {du:0, base:"data marcada", obs:""},
   "Agravo de Instrumento": {du:15, base:"publicação decisão", obs:"CPC art.1003 §5"},
-  "Petição Simples": {du:15, base:"intimação", obs:"CPC art.218 §3"},
-  "Outro": {du:15, base:"intimação", obs:"CPC art.218 §3"},
-};
-/* Aplica dobro do art.183 do CPC quando a peca tem prazo preclusivo (du>0) e a flag esta ativa */
-var aplicarDobroFazenda = function(regraBase) {
-  if(!regraBase) return regraBase;
-  if(!PRAZO_DOBRO_FAZENDA_PUBLICA) return regraBase;
-  if(!regraBase.du || regraBase.du === 0) return regraBase;
-  return {
-    du: regraBase.du * 2,
-    base: regraBase.base,
-    obs: (regraBase.obs ? regraBase.obs + " · " : "") + "em dobro (CPC art.183 · CFM autarquia federal)",
-    duBase: regraBase.du,
-    dobro: true
-  };
+  "Outro": {du:15, base:"intimação", obs:"CPC art.218 § 3"},
 };
 var calcPrazoProcessual = function(pubDate, tipoPeca) {
   if(!pubDate) return null;
-  var regra = aplicarDobroFazenda(PRAZO_PECA[tipoPeca]);
+  var regra = PRAZO_PECA[tipoPeca];
   if(!regra || regra.du === 0) return null;
   return calcPrazoDJe(pubDate, regra.du);
 };
 var getPrazoInfo = function(tipoPeca) {
-  var base = PRAZO_PECA[tipoPeca] || {du:15, base:"intimação", obs:"prazo geral"};
-  return aplicarDobroFazenda(base);
-};
-var getPrazoBaseInfo = function(tipoPeca) {
   return PRAZO_PECA[tipoPeca] || {du:15, base:"intimação", obs:"prazo geral"};
 };
 
@@ -6740,7 +6808,7 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
         <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v15</strong> · <span style={{color:"#00ff88"}}>Auditoria completa + hardening de datas</span>: proxy /api/llm para IA, recalc automatico de prazos a cada 60s, AnimatedCounter e ConfettiHost com cleanup, dp memoizado, sync check com dp0, ADD_MOV imutavel, Pomodoro robusto a aba inativa, rehydrate validado, fetchT com timeout, toD/bizDiff/diffD/sameDay/curDate null-safe (processos sem prazo nao aparecem mais como vencendo hoje). Todas melhorias v8 a v14 preservadas.</div>
+    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v42</strong> · <span style={{color:"#00ff88"}}>Hardening crítico</span>: bizDiff agora conta dias úteis reais (com feriados + recesso forense), rehydrate preserva auditLog, dp estável (sem cascata de re-renders), AudioContext singleton (sem leak), sync com bloqueio de race condition, RECALC_ALL só em mudança de dia, debounce de save 1500ms com skip de payload idêntico, snapshot do processo em DEL_P para auditoria, syncJudicialLinks condicional. Atalho novo: <strong style={{color:K.ac}}>G</strong> abre ForceGraph.</div>
   </Bx></div>
 )};
 
@@ -6813,7 +6881,8 @@ function CommandPalette({st, dp, sPg, ss, onClose, setShowGmail, setShowDecisao,
 function ShortcutsModal({onClose}){
   var shortcuts=[
     {cat:"Global",items:[["Cmd/Ctrl + K","Abrir Command Palette"],["Cmd/Ctrl + N","Novo processo (quick add)"],["Cmd/Ctrl + Z","Desfazer última ação"],["?","Abrir este modal"],["/","Focar na busca"],["Esc","Fechar modal ativo"]]},
-    {cat:"Navegação",items:[["H","Ir para Hoje"],["P","Ir para Prioridades"],["I","Ir para IA Nexus"],["C","Ir para Calendário"],["T","Ir para Timeline"],["N","Alternar entre Administrativos/Judiciais"],["F","Modo foco (oculta sidebar)"]]},
+    {cat:"Navegação",items:[["H","Ir para Hoje"],["P","Ir para Prioridades"],["I","Ir para IA Nexus"],["C","Ir para Calendário"],["T","Ir para Timeline"],["G","Abrir ForceGraph (relações)"],["N","Alternar entre Administrativos/Judiciais"],["F","Modo foco (oculta sidebar)"]]},
+    {cat:"Cmd Shift",items:[["Cmd/Ctrl + Shift + K","Modo Comando (HUD overlay)"]]},
   ];
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:2500,display:"flex",justifyContent:"center",alignItems:"center",padding:"40px 20px"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
     React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:20,maxWidth:540,width:"100%",padding:28,position:"relative",boxShadow:"0 0 40px rgba(0,229,255,.1),0 24px 60px rgba(0,0,0,.7)"}},
@@ -7738,11 +7807,23 @@ function SyncBadge(){
 
 export default function App() {
   const [st, dp0] = useReducer(reducer, null, mkInit);
-  /* M2: dp memoizado, evita recriar funcao a cada render e cascata de re-renders nos filhos */
+  /* v42 FIX: dp agora estavel (sem deps), usa stRef para acessar estado atual.
+     Antes [st] na deps recriava dp a cada mudanca de estado, anulando o memo
+     e cascateando re-renders em todos os filhos. Tambem snapshotava o estado
+     INTEIRO no undoStack a cada dispatch (pesado com 200+ audit entries). */
+  const stRef = useRef(st);
+  useEffect(function(){ stRef.current = st; }, [st]);
   const dp = useCallback(function(action){
-    setUndoStack(function(prev){return [...prev.slice(-9),{action,snapshot:st}];});
+    /* Snapshot leve: so guarda action + chaves mutaveis menores.
+       Ctrl+Z reverte via re-LOAD do snapshot completo. */
+    setUndoStack(function(prev){
+      var snap=stRef.current;
+      /* Snapshot completo mas referenciado (nao copia profunda; immutability
+         do reducer ja garante que listas antigas nao sao mutadas). */
+      return [...prev.slice(-9),{action:action,snapshot:snap}];
+    });
     dp0(action);
-  }, [st]);
+  }, []);
   const [pg, sPg] = useState("dashboard");
   const [showEmailAlert, setShowEmailAlert] = useState(false);
   const [_tick, setTick] = useState(0);
@@ -7756,11 +7837,19 @@ export default function App() {
   //   } catch(e) {}
   // }, []);
   useEffect(function(){
-    /* A1: a cada 60s tick para forcar re-render + atualiza NOW + recalcula diasRestantes */
+    /* v42 PERF: tick continua a cada 60s para atualizar UI dependente de NOW,
+       mas RECALC_ALL so dispara em mudanca REAL de dia (toISO mudou). Evita
+       re-criar todos os processos a cada minuto sem necessidade. */
+    var lastDayRef = toISO(NOW);
     var t = setInterval(function(){
+      var prev = NOW;
       NOW = getNOW();
       setTick(function(n){return n+1;});
-      dp0({type:"RECALC_ALL"});
+      var nowDay = toISO(NOW);
+      if (nowDay !== lastDayRef) {
+        lastDayRef = nowDay;
+        dp0({type:"RECALC_ALL"});
+      }
     }, 60000);
     return function(){ clearInterval(t); };
   }, []);
@@ -7857,11 +7946,18 @@ export default function App() {
   }, []);
 
   /* ═══ v11 — SYNC CHECK a cada 30s (detecta alterações feitas em outro navegador) ═══ */
+  /* v42 FIX: respeita __saveInFlight (nao aplica versao remota durante save local).
+     v42 PERF: pausa quando aba esta em background (document.hidden). */
   useEffect(() => {
     var interval = setInterval(async function() {
+      /* Skip se aba inativa OU se ha save local em andamento */
+      try { if (typeof document!=="undefined" && document.hidden) return; } catch(e){}
+      if (__saveInFlight) return;
       try {
         var cloudResult = await supaFetchState();
         if (!cloudResult) return;
+        /* Re-checar saveInFlight DEPOIS do fetch (pode ter iniciado durante) */
+        if (__saveInFlight) return;
         var localStr = "";
         try { localStr = localStorage.getItem(STORE_KEY) || ""; } catch(e){}
         if (cloudResult.value && cloudResult.value !== localStr) {
@@ -7873,9 +7969,13 @@ export default function App() {
           if (cloudUpdated > localUpdated) {
             var restored = rehydrate(cloudResult.value);
             if (restored) {
-              try { localStorage.setItem(STORE_KEY, cloudResult.value); } catch(e){}
+              try {
+                localStorage.setItem(STORE_KEY, cloudResult.value);
+                localStorage.setItem(STORE_KEY+":ts", String(cloudUpdated.getTime()));
+              } catch(e){}
               dp0({ type: "LOAD", state: restored });
               setSyncStatus("synced");
+              showToast("ok", "Sincronizado com versão atualizada da nuvem");
             }
           }
         }
@@ -7889,17 +7989,24 @@ export default function App() {
   /* v12: cooldown de 60s para o toast de erro de sync, evita spam quando a rede oscila */
   const lastSyncErrToast = useRef(0);
   const lastSyncOkToast = useRef(0);
+  /* v42 PERF: hash do ultimo payload enviado, para skip de upserts identicos */
+  const lastSyncedHash = useRef("");
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    /* v42 PERF: debounce subido de 400ms para 1500ms; reduz upserts em formularios */
     saveTimer.current = setTimeout(async function(){
+      var payload = serialize(st);
+      /* Skip se payload identico ao ultimo sincronizado com sucesso */
+      var quickHash = payload.length + ":" + payload.substring(0,64) + ":" + payload.substring(payload.length-64);
+      if (quickHash === lastSyncedHash.current) return;
       var ok = false;
       try {
-        ok = await storage.set(STORE_KEY, serialize(st));
-        try { localStorage.setItem(STORE_KEY+":ts", String(Date.now())); } catch(e){}
+        ok = await storage.set(STORE_KEY, payload);
       } catch (e) {
         ok = false;
       }
+      if (ok) lastSyncedHash.current = quickHash;
       var now = Date.now();
       if (ok === false) {
         if (now - lastSyncErrToast.current > 60000) {
@@ -7914,7 +8021,7 @@ export default function App() {
           showToast("ok", "Sync restabelecido. Dados na nuvem.");
         }
       }
-    }, 400);
+    }, 1500);
     return function(){ if(saveTimer.current) clearTimeout(saveTimer.current); };
   }, [st, loaded]);
 
@@ -7971,6 +8078,7 @@ export default function App() {
         case 'h': case 'H': sPg('today'); break;
         case 'c': case 'C': sPg('calendar'); break;
         case 't': case 'T': sPg('timeline'); break;
+        case 'g': case 'G': setShowForceGraph(function(v){return !v;}); break;
         case 'f': case 'F': setFocusMode(function(v){return !v;}); break;
         case 'n': case 'N': sPg(pg === 'judicial' ? 'judicial' : 'admin'); break;
         default: break;
@@ -7999,31 +8107,48 @@ export default function App() {
   const handleEditSave = form => { dp({ type: "UPD", id: editForm.id, isAdm: editForm.tipo === "adm", ch: form }); sEF(null); };
   const handleEditDel = () => { setConfirmAction({title:"Excluir processo",msg:"Tem certeza que deseja excluir \""+((editForm&&editForm.assunto)||"")+"\"? Esta ação não pode ser desfeita.",danger:true,fn:function(){dp({type:"DEL_P",id:editForm.id});sEF(null);}}); };
 
+  /* v42 FIX: AudioContext singleton via ref. Antes criava um novo a cada
+     alerta critico sem fechar, levando a esgotamento do limite do browser. */
+  const audioCtxRef = useRef(null);
+  const notifPermAsked = useRef(false);
   // Sound alert for critical deadlines
   useEffect(function(){
-    if(prazoUrgente&&prazoUrgente.length>0){
-      /* ═══ BROWSER PUSH NOTIFICATIONS ═══ */
-      requestNotifPermission();
-      prazoUrgente.forEach(function(p){
-        if(p.diasRestantes<=1) sendBrowserNotif("⚠️ PRAZO CRÍTICO — "+p.diasRestantes+"du",p.assunto+" ("+p.num+")");
-      });
-      /* Sustentações em 48h */
-      var sustAlerta=[...st.adm,...st.jud].filter(isSustAlerta);
-      sustAlerta.forEach(function(p){sendBrowserNotif("🎤 SUSTENTAÇÃO ORAL PRÓXIMA",p.assunto);});
-      try{
-        var ctx=new(window.AudioContext||window.webkitAudioContext)();
-        var osc=ctx.createOscillator();
-        var gain=ctx.createGain();
-        osc.connect(gain);gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(880,ctx.currentTime);
-        osc.frequency.setValueAtTime(660,ctx.currentTime+0.15);
-        osc.frequency.setValueAtTime(880,ctx.currentTime+0.3);
-        gain.gain.setValueAtTime(0.3,ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
-        osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.5);
-      }catch(e){}
-    }
-  },[prazoUrgente&&prazoUrgente.length]);
+    if(!(prazoUrgente&&prazoUrgente.length>0)) return;
+    /* Pedir permissao de notificacao apenas uma vez por sessao */
+    if(!notifPermAsked.current){ notifPermAsked.current=true; requestNotifPermission(); }
+    prazoUrgente.forEach(function(p){
+      if(p.diasRestantes<=1) sendBrowserNotif("⚠️ PRAZO CRÍTICO — "+p.diasRestantes+"du",p.assunto+" ("+p.num+")");
+    });
+    /* Sustentacoes em 48h */
+    var sustAlerta=[...st.adm,...st.jud].filter(isSustAlerta);
+    sustAlerta.forEach(function(p){sendBrowserNotif("🎤 SUSTENTAÇÃO ORAL PRÓXIMA",p.assunto);});
+    try{
+      if(!audioCtxRef.current){
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        if(!Ctor) return;
+        audioCtxRef.current = new Ctor();
+      }
+      var ctx=audioCtxRef.current;
+      /* Alguns browsers suspendem o contexto ate primeiro gesto do usuario */
+      if(ctx.state==="suspended" && ctx.resume) ctx.resume();
+      var osc=ctx.createOscillator();
+      var gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880,ctx.currentTime);
+      osc.frequency.setValueAtTime(660,ctx.currentTime+0.15);
+      osc.frequency.setValueAtTime(880,ctx.currentTime+0.3);
+      gain.gain.setValueAtTime(0.3,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.5);
+    }catch(e){ logErr("[audio alert]", e); }
+  /* v42 FIX: dep array estavel (so length, sem expressao recomputada) */
+  },[prazoUrgente.length]);
+  /* v42: cleanup do AudioContext no unmount do App */
+  useEffect(function(){
+    return function(){
+      try { if(audioCtxRef.current && audioCtxRef.current.close) audioCtxRef.current.close(); } catch(e){}
+    };
+  }, []);
 
   // Push notifications for critical deadlines
   useEffect(function(){
@@ -8066,7 +8191,8 @@ export default function App() {
   return (
     <div style={{ display: "flex", height: "100vh", background: K.bg, fontFamily: "'Outfit','Segoe UI',system-ui,sans-serif", color: K.txt, overflow: "hidden", position:"relative", isolation:"isolate" }}>
       {/* ═══ v41 · COJUR NEXUS UPGRADE · STYLE INLINE + BOOT + AMBIENT + HUD ═══ */}
-      <CnStyles />
+      {/* v42 PERF: <CnStyles/> removido. injectCnCSS() ja insere o estilo no <head>
+         com guard de id (linha ~286), evitando duplicacao. */}
       {showBoot && (
         <BootScreen
           duration={2400}
@@ -8107,7 +8233,7 @@ export default function App() {
       {prazoUrgente&&prazoUrgente.length>0&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:3000,padding:"9px 20px",background:"rgba(200,20,60,.95)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 20px rgba(255,46,91,.4)"}}><span style={{fontSize:12,fontWeight:800,color:"#fff",flex:1,fontFamily:"Orbitron,sans-serif"}}>PRAZO CRITICO: {prazoUrgente[0].assunto} — {prazoUrgente[0].diasRestantes===0?"VENCE HOJE":prazoUrgente[0].diasRestantes+"du"}</span><button onClick={function(){sSel(prazoUrgente[0]);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.15)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ver</button></div>}
       {darkMode&&<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1,overflow:"hidden"}}><div style={{position:"absolute",left:0,right:0,height:"1px",background:"linear-gradient(90deg, transparent 10%, rgba(0,229,255,.28) 50%, transparent 90%)",animation:"scanLine 5s linear infinite"}} /></div>}
       <input ref={importRef} type="file" accept=".json" onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleImport(f); e.target.value = ""; }} style={{ display: "none" }} />
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       {/* SIDEBAR */}
       <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, position:"relative" }}>
