@@ -310,7 +310,7 @@ function CnVersionBadge() {
       fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
       boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
       textTransform: "uppercase",
-    }}>● COJUR NEXUS · v42.5 · ON</div>
+    }}>● COJUR NEXUS · v42.7 · ON</div>
   );
 }
 
@@ -1322,6 +1322,13 @@ const injectCSS = () => {
 .cj-modal-body::-webkit-scrollbar-thumb{background:rgba(0,229,255,.35);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
 .cj-modal-body::-webkit-scrollbar-thumb:hover{background:rgba(0,229,255,.6);background-clip:padding-box}
 .cj-modal-body{scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.35) rgba(255,255,255,.03)}
+/* v42.7: backdrop nativo do <dialog> HTML5 (renderiza na top layer, imune a
+   transform/filter/contain de qualquer ancestral). Substitui o overlay
+   manual que falhava em ambientes com containing-block exotico. */
+dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+dialog[open]{animation:cjSc .22s ease both}
+dialog::-webkit-scrollbar{width:10px}
+dialog::-webkit-scrollbar-thumb{background:rgba(0,229,255,.35);border-radius:999px}
 ::-webkit-scrollbar-track{background:transparent}
 @keyframes cjProtocolar{0%,100%{box-shadow:0 0 12px rgba(0,255,136,.4),0 0 30px rgba(0,255,136,.15)}50%{box-shadow:0 0 28px rgba(0,255,136,.9),0 0 60px rgba(0,255,136,.35),inset 0 0 10px rgba(0,255,136,.1)}}
 @keyframes cjCorrecao{0%,100%{box-shadow:0 0 12px rgba(255,184,0,.45),0 0 28px rgba(255,184,0,.18)}50%{box-shadow:0 0 26px rgba(255,184,0,.95),0 0 55px rgba(255,184,0,.38),inset 0 0 10px rgba(255,184,0,.1)}}
@@ -3518,24 +3525,55 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
   const[confirmDel,setCD]=useState(false);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const sugestoesFor=suggestions||{};
-  /* v42.4: ref no body para garantir scroll no topo ao abrir, e tambem para
-     forcar reflow caso algum CSS exotic interfira. */
+  /* v42.4: ref no body para scroll inicial no topo */
   const bodyRef=useRef(null);
+  /* v42.7: dialog ref para usar API nativa do HTML5 <dialog>.
+     <dialog> renderiza na "top layer" do browser, ACIMA de tudo, IMUNE a
+     qualquer CSS de ancestrais (transform, filter, contain, etc). E a
+     solucao nativa para "modal preso em containing block transformado". */
+  const dialogRef=useRef(null);
   useEffect(function(){
+    var d=dialogRef.current;
+    if(d && typeof d.showModal==="function" && !d.open){
+      try { d.showModal(); } catch(e){}
+    }
     if(bodyRef.current) bodyRef.current.scrollTop=0;
+    /* Listener para Esc fechar via API nativa */
+    var onCancel=function(e){ e.preventDefault(); onClose(); };
+    if(d) d.addEventListener("cancel",onCancel);
+    return function(){
+      if(d) d.removeEventListener("cancel",onCancel);
+      if(d && d.open) { try { d.close(); } catch(e){} }
+    };
   },[]);
+  /* Click no backdrop fecha o modal */
+  var handleDialogClick=function(e){
+    if(e.target===dialogRef.current) onClose();
+  };
 
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:1100,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      {/* v42.4 FIX: defesa em camadas. Overlay externo tem overflowY:auto e
-         alignItems:flex-start (caso maxHeight interno falhe). Modal interno
-         tem altura limitada por 85vh, layout flex column com 3 zonas, header
-         e footer com flexShrink:0 explicito. */}
-      <div className="cj-sc" style={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:20,width:"100%",maxWidth:620,maxHeight:"85vh",display:"flex",flexDirection:"column",position:"relative",overflow:"hidden",boxShadow:"0 24px 70px rgba(0,0,0,.65)",margin:"0 auto"}}>
+    <dialog
+      ref={dialogRef}
+      onClick={handleDialogClick}
+      style={{
+        padding:0,
+        border:`1px solid ${K.brd}`,
+        borderRadius:20,
+        background:K.modal,
+        color:K.txt,
+        width:"min(620px, calc(100vw - 40px))",
+        maxWidth:"none",
+        maxHeight:"85vh",
+        boxShadow:"0 24px 70px rgba(0,0,0,.65)",
+        overflow:"hidden",
+        outline:"none"
+      }}
+    >
+      <div style={{display:"flex",flexDirection:"column",height:"100%",maxHeight:"85vh"}}>
         {/* HEADER fixo no topo */}
         <div style={{flexShrink:0,flexGrow:0,padding:"20px 32px 14px",borderBottom:`1px solid ${K.brd}`,display:"flex",alignItems:"center",gap:12,background:K.modal,minHeight:60}}>
           <h2 style={{margin:0,fontSize:18,fontWeight:700,color:K.txt,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>{title}</h2>
-          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.5</span>
+          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.7</span>
           <button onClick={onClose} style={{flexShrink:0,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:6,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}} title="Fechar (Esc)"><X size={20}/></button>
         </div>
 
@@ -3576,7 +3614,6 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
                   <input style={inpSt} type="date" value={form[f.key] instanceof Date ? toISO(form[f.key]) : (form[f.key]||"")} onChange={e=>{
                     var val=e.target.value?new Date(e.target.value+"T12:00:00"):null;
                     set(f.key,val);
-                    // Auto-calc prazoFinal when pubDJe changes
                     if(f.key==="pubDJe"&&val){
                       var np=calcPrazoDJe(val,form.intersticio||15);
                       if(np){set("prazoFinal",np);showToast&&showToast("Prazo calculado automaticamente do DJe","success");}
@@ -3617,7 +3654,6 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
           <div style={{display:"flex",gap:10}}>
             <button style={btnGhost} onClick={onClose}>Cancelar</button>
             <button style={btnPrim} onClick={()=>{
-              /* ═══ VALIDAÇÃO DE FORMULÁRIO ═══ */
               var erros=[];
               if(!form.assunto||!form.assunto.trim()) erros.push("Assunto é obrigatório");
               if(!form.prazoFinal) erros.push("Prazo Final é obrigatório");
@@ -3633,7 +3669,7 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
