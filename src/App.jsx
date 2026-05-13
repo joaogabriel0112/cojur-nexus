@@ -3507,7 +3507,11 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
 
   return(
     <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:1100,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="cj-sc" style={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:20,width:"100%",maxWidth:620,padding:32,position:"relative"}}>
+      {/* v42.2 FIX: maxHeight + overflowY interno garantem scroll mesmo quando
+         viewport e curta ou quando algum CSS herdado limita o container externo.
+         Antes o modal era cortado em janelas baixas (laptop pequeno, monitor
+         compacto), mostrando so o titulo e os 2 primeiros campos. */}
+      <div className="cj-sc" style={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:20,width:"100%",maxWidth:620,padding:32,position:"relative",maxHeight:"calc(100vh - 80px)",overflowY:"auto",overflowX:"hidden"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,right:16,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:8}}><X size={20}/></button>
         <h2 style={{margin:"0 0 24px",fontSize:20,fontWeight:700,color:K.txt}}>{title}</h2>
 
@@ -4701,8 +4705,10 @@ function QuickAddModal({dp,onClose,st}){
     onClose();
   };
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(10px)",zIndex:1800,display:"flex",justifyContent:"center",alignItems:"center",padding:20}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-sc" style={{background:K.modal,border:"1px solid "+K.ac+"33",borderRadius:22,padding:24,maxWidth:480,width:"100%",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(10px)",zIndex:1800,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
+      {/* v42.2 FIX: alignItems flex-start + maxHeight/overflow internos. Antes
+         estava center, cortando em viewport baixo. */}
+      <div className="cj-sc" style={{background:K.modal,border:"1px solid "+K.ac+"33",borderRadius:22,padding:24,maxWidth:480,width:"100%",maxHeight:"calc(100vh - 80px)",overflowY:"auto",overflowX:"hidden",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
           <Zap size={20} color={K.ac}/><h3 style={{margin:0,fontSize:16,fontWeight:800,color:K.ac,fontFamily:"Orbitron,sans-serif"}}>Cadastro Rápido</h3>
           <span style={{marginLeft:"auto",fontSize:10,color:K.dim,background:"rgba(255,255,255,.05)",padding:"2px 8px",borderRadius:6,fontFamily:"monospace"}}>Cmd+N</span>
