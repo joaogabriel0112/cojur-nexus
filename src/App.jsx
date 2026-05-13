@@ -310,7 +310,7 @@ function CnVersionBadge() {
       fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
       boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
       textTransform: "uppercase",
-    }}>● COJUR NEXUS · v42.4 · ON</div>
+    }}>● COJUR NEXUS · v42.5 · ON</div>
   );
 }
 
@@ -1275,13 +1275,20 @@ const injectCSS = () => {
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 /* ═══ KEYFRAMES ═══ */
-@keyframes cjUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* v42.5 FIX RAIZ: estados finais sem 'transform' (so opacity). Antes terminavam
+   em transform:translateY(0) ou scale(1), o que mantinha a propriedade transform
+   no elemento mesmo apos a animacao. Isso criava um novo "containing block" no
+   pai .cj-pg, e o modal filho com position:fixed era posicionado relativo a esse
+   pai em vez do viewport. Resultado: modal aparecia deslocado e seu maxHeight
+   nao batia com a viewport real, cortando body e footer. Trick: deixar transform
+   apenas em 'from', o 'to' herda o default (none) e nao cria containing block. */
+@keyframes cjUp{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes cjSc{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes cjSc{from{opacity:0;transform:scale(.95)}to{opacity:1}}
 @keyframes cjPulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes cjUbCritPulse{0%,100%{text-shadow:0 0 6px currentColor,0 0 12px currentColor;transform:scale(1)}50%{text-shadow:0 0 14px currentColor,0 0 28px currentColor,0 0 42px currentColor;transform:scale(1.04)}}
 .cj-ub-crit{animation:cjUbCritPulse 1.4s ease-in-out infinite;will-change:text-shadow,transform}
-@keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
 @keyframes scanLine{0%{top:-2%}100%{top:102%}}
 @keyframes shimmerSlide{0%{transform:translateX(-120%) skewX(-18deg)}100%{transform:translateX(220%) skewX(-18deg)}}
 @keyframes neonPulse{0%,100%{box-shadow:0 0 14px rgba(0,229,255,.18),inset 0 0 14px rgba(0,229,255,.03)}50%{box-shadow:0 0 36px rgba(0,229,255,.38),inset 0 0 28px rgba(0,229,255,.07)}}
@@ -3528,7 +3535,7 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
         {/* HEADER fixo no topo */}
         <div style={{flexShrink:0,flexGrow:0,padding:"20px 32px 14px",borderBottom:`1px solid ${K.brd}`,display:"flex",alignItems:"center",gap:12,background:K.modal,minHeight:60}}>
           <h2 style={{margin:0,fontSize:18,fontWeight:700,color:K.txt,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>{title}</h2>
-          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.4</span>
+          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.5</span>
           <button onClick={onClose} style={{flexShrink:0,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:6,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}} title="Fechar (Esc)"><X size={20}/></button>
         </div>
 
