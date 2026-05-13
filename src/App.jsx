@@ -310,7 +310,7 @@ function CnVersionBadge() {
       fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
       boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
       textTransform: "uppercase",
-    }}>● COJUR NEXUS · v42 · ON</div>
+    }}>● COJUR NEXUS · v42.3 · ON</div>
   );
 }
 
@@ -1308,6 +1308,13 @@ const injectCSS = () => {
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(0,229,255,.4),rgba(184,77,255,.4));border-radius:999px}
 ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(0,229,255,.7),rgba(184,77,255,.7))}
+/* v42.3: scrollbar visivel dentro de modais (precisa ser largo para o usuario
+   perceber que ha conteudo abaixo do que esta visivel). */
+.cj-modal-body::-webkit-scrollbar{width:10px;height:10px}
+.cj-modal-body::-webkit-scrollbar-track{background:rgba(255,255,255,.03);border-radius:999px}
+.cj-modal-body::-webkit-scrollbar-thumb{background:rgba(0,229,255,.35);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+.cj-modal-body::-webkit-scrollbar-thumb:hover{background:rgba(0,229,255,.6);background-clip:padding-box}
+.cj-modal-body{scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.35) rgba(255,255,255,.03)}
 ::-webkit-scrollbar-track{background:transparent}
 @keyframes cjProtocolar{0%,100%{box-shadow:0 0 12px rgba(0,255,136,.4),0 0 30px rgba(0,255,136,.15)}50%{box-shadow:0 0 28px rgba(0,255,136,.9),0 0 60px rgba(0,255,136,.35),inset 0 0 10px rgba(0,255,136,.1)}}
 @keyframes cjCorrecao{0%,100%{box-shadow:0 0 12px rgba(255,184,0,.45),0 0 28px rgba(255,184,0,.18)}50%{box-shadow:0 0 26px rgba(255,184,0,.95),0 0 55px rgba(255,184,0,.38),inset 0 0 10px rgba(255,184,0,.1)}}
@@ -3506,16 +3513,23 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
   const sugestoesFor=suggestions||{};
 
   return(
-    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:1100,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      {/* v42.2 FIX: maxHeight + overflowY interno garantem scroll mesmo quando
-         viewport e curta ou quando algum CSS herdado limita o container externo.
-         Antes o modal era cortado em janelas baixas (laptop pequeno, monitor
-         compacto), mostrando so o titulo e os 2 primeiros campos. */}
-      <div className="cj-sc" style={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:20,width:"100%",maxWidth:620,padding:32,position:"relative",maxHeight:"calc(100vh - 80px)",overflowY:"auto",overflowX:"hidden"}}>
-        <button onClick={onClose} style={{position:"absolute",top:16,right:16,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:8}}><X size={20}/></button>
-        <h2 style={{margin:"0 0 24px",fontSize:20,fontWeight:700,color:K.txt}}>{title}</h2>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",backdropFilter:"blur(8px)",zIndex:1100,display:"flex",justifyContent:"center",alignItems:"center",padding:20}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      {/* v42.3 FIX DEFINITIVO: layout flex-column com header/body/footer separados.
+         Header e footer sempre visiveis, so o corpo (campos) rola. Resolve de vez
+         o modal cortado: usuario sempre ve o titulo, sempre alcanca o botao Salvar
+         independente do tamanho da viewport, e o scrollbar interno e visivel
+         (classe cj-modal-body, regra CSS mais larga que o ::-webkit-scrollbar
+         global de 3px). */}
+      <div className="cj-sc" style={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:20,width:"100%",maxWidth:620,maxHeight:"calc(100vh - 40px)",display:"flex",flexDirection:"column",position:"relative",overflow:"hidden",boxShadow:"0 24px 70px rgba(0,0,0,.65)"}}>
+        {/* HEADER fixo */}
+        <div style={{flexShrink:0,padding:"24px 32px 16px",borderBottom:`1px solid ${K.brd}`,display:"flex",alignItems:"center",gap:12}}>
+          <h2 style={{margin:0,fontSize:20,fontWeight:700,color:K.txt,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</h2>
+          <button onClick={onClose} style={{flexShrink:0,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:8,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}} title="Fechar (Esc)"><X size={20}/></button>
+        </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* BODY scrollavel */}
+        <div className="cj-modal-body" style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden",padding:"20px 32px 24px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
           {fields.map(f=>{
             const span=f.full?{gridColumn:"1 / -1"}:{};
             return(
@@ -3573,9 +3587,11 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
               </div>
             );
           })}
+          </div>
         </div>
 
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:24,gap:12}}>
+        {/* FOOTER fixo com botoes sempre visiveis */}
+        <div style={{flexShrink:0,padding:"16px 32px 20px",borderTop:`1px solid ${K.brd}`,background:K.modal,display:"flex",justifyContent:"space-between",gap:12}}>
           <div>
             {onDelete && !confirmDel && <button style={btnDanger} onClick={()=>setCD(true)}><Trash2 size={14}/>Excluir</button>}
             {onDelete && confirmDel && (
