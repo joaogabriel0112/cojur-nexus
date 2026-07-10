@@ -19,7 +19,16 @@ var fetchT = function(url, opts, timeoutMs){
     var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
     var to = setTimeout(function(){ if (ctrl) ctrl.abort(); else reject(new Error("timeout")); }, timeoutMs);
     var o = Object.assign({}, opts || {});
-    if (ctrl && !o.signal) o.signal = ctrl.signal;
+    /* v44 FIX: antes, se o chamador passasse seu proprio signal, o timeout
+       abortava um controller NAO ligado ao fetch -> a promise ficava pendurada.
+       Agora sempre usamos ctrl.signal e encadeamos o signal externo nele. */
+    if (ctrl) {
+      if (o.signal) {
+        if (o.signal.aborted) { ctrl.abort(); }
+        else { try { o.signal.addEventListener("abort", function(){ ctrl.abort(); }); } catch(_){} }
+      }
+      o.signal = ctrl.signal;
+    }
     fetch(url, o).then(function(r){ clearTimeout(to); resolve(r); }, function(e){ clearTimeout(to); reject(e); });
   });
 };
@@ -41,8 +50,8 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 @keyframes cn-scanV{0%{transform:translateY(-100%)}100%{transform:translateY(420%)}}
 @keyframes cn-orbitS{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes cn-orbitR{from{transform:rotate(360deg)}to{transform:rotate(0)}}
-@keyframes cn-pulse{0%,100%{box-shadow:0 0 20px rgba(0,229,255,.3),0 0 40px rgba(0,229,255,.15)}50%{box-shadow:0 0 36px rgba(0,229,255,.7),0 0 90px rgba(0,229,255,.35)}}
-@keyframes cn-pulseCr{0%,100%{box-shadow:0 0 18px rgba(255,46,91,.5),0 0 40px rgba(255,46,91,.2)}50%{box-shadow:0 0 36px rgba(255,46,91,.9),0 0 80px rgba(255,46,91,.5)}}
+@keyframes cn-pulse{0%,100%{box-shadow:0 0 20px rgba(var(--cj-acrgb),.3),0 0 40px rgba(var(--cj-acrgb),.15)}50%{box-shadow:0 0 36px rgba(var(--cj-acrgb),.7),0 0 90px rgba(var(--cj-acrgb),.35)}}
+@keyframes cn-pulseCr{0%,100%{box-shadow:0 0 18px rgba(var(--cj-crrgb),.5),0 0 40px rgba(var(--cj-crrgb),.2)}50%{box-shadow:0 0 36px rgba(var(--cj-crrgb),.9),0 0 80px rgba(var(--cj-crrgb),.5)}}
 @keyframes cn-spinTilt{from{transform:rotateX(15deg) rotateY(0)}to{transform:rotateX(15deg) rotateY(360deg)}}
 @keyframes cn-dot{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes cn-drift{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}}
@@ -61,43 +70,43 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 .cn-particles .cn-blob{position:absolute;width:600px;height:600px;border-radius:50%;filter:blur(120px);opacity:.18}
 .cn-particles .cn-blob.b1{background:#00e5ff;left:-200px;top:-100px;animation:cn-drift 22s ease-in-out infinite}
 .cn-particles .cn-blob.b2{background:#b84dff;right:-200px;top:30%;animation:cn-drift2 28s ease-in-out infinite}
-.cn-particles .cn-scanH{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.4),transparent);box-shadow:0 0 10px rgba(0,229,255,.3);animation:cn-scanV 14s linear infinite}
+.cn-particles .cn-scanH{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--cj-acrgb),.4),transparent);box-shadow:0 0 10px rgba(var(--cj-acrgb),.3);animation:cn-scanV 14s linear infinite}
 .cn-boot{position:fixed;inset:0;z-index:99999;background:#020208;display:grid;place-items:center;overflow:hidden}
-.cn-boot::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,229,255,.03) 3px,rgba(0,229,255,.03) 4px);pointer-events:none;z-index:6}
-.cn-boot::after{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(0,229,255,.12),transparent);animation:cn-bootScan 3.2s linear infinite;pointer-events:none;z-index:5}
+.cn-boot::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(var(--cj-acrgb),.03) 3px,rgba(var(--cj-acrgb),.03) 4px);pointer-events:none;z-index:6}
+.cn-boot::after{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(var(--cj-acrgb),.12),transparent);animation:cn-bootScan 3.2s linear infinite;pointer-events:none;z-index:5}
 @keyframes cn-bootScan{from{top:-120px}to{top:100vh}}
 .cn-boot.cn-boot-out{animation:cn-bootOut .7s forwards}
 @keyframes cn-bootOut{to{opacity:0;visibility:hidden;transform:scale(1.06)}}
-.cn-boot .cn-rain-col{position:absolute;top:-30px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cn-ac);text-shadow:0 0 8px var(--cn-ac);writing-mode:vertical-rl;animation:cn-rain 4s linear infinite;letter-spacing:.1em;opacity:.7}
-.cn-boot .cn-boot-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px);background-size:50px 50px;-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);animation:cn-flicker 6s ease-in-out infinite}
-.cn-boot .cn-boot-corner{position:absolute;width:48px;height:48px;border:2px solid var(--cn-ac);box-shadow:0 0 14px rgba(0,229,255,.6);z-index:6}
+.cn-boot .cn-rain-col{position:absolute;top:-30px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--cn-ac);text-shadow:0 0 8px var(--cn-ac);writing-mode:vertical-rl;animation:cn-rain 4s linear infinite;letter-spacing:.1em;opacity:.7}
+.cn-boot .cn-boot-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(var(--cj-acrgb),.04) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--cj-acrgb),.04) 1px,transparent 1px);background-size:50px 50px;-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);animation:cn-flicker 6s ease-in-out infinite}
+.cn-boot .cn-boot-corner{position:absolute;width:48px;height:48px;border:2px solid var(--cn-ac);box-shadow:0 0 14px rgba(var(--cj-acrgb),.6);z-index:6}
 .cn-boot .cn-boot-corner.tl{top:32px;left:32px;border-right:none;border-bottom:none;border-radius:10px 0 0 0}
 .cn-boot .cn-boot-corner.tr{top:32px;right:32px;border-left:none;border-bottom:none;border-radius:0 10px 0 0}
 .cn-boot .cn-boot-corner.bl{bottom:32px;left:32px;border-right:none;border-top:none;border-radius:0 0 0 10px}
 .cn-boot .cn-boot-corner.br{bottom:32px;right:32px;border-left:none;border-top:none;border-radius:0 0 10px 0}
-.cn-boot .cn-boot-meta{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-ac);letter-spacing:.4em;padding:6px 18px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.4);border-radius:4px;z-index:6}
+.cn-boot .cn-boot-meta{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.4em;padding:6px 18px;background:rgba(var(--cj-acrgb),.08);border:1px solid rgba(var(--cj-acrgb),.4);border-radius:4px;z-index:6}
 .cn-boot .cn-boot-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-ac);border-radius:50%;margin-right:10px;vertical-align:middle;animation:cn-dot 1s infinite;box-shadow:0 0 8px var(--cn-ac)}
-.cn-boot .cn-boot-foot{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);letter-spacing:.18em;display:flex;gap:24px;z-index:6;text-transform:uppercase}
+.cn-boot .cn-boot-foot{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim2);letter-spacing:.18em;display:flex;gap:24px;z-index:6;text-transform:uppercase}
 .cn-boot .cn-boot-foot span b{color:var(--cn-ac);font-weight:400}
-.cn-boot .cn-boot-logo{position:relative;z-index:7;text-align:center;padding:40px 60px;background:radial-gradient(ellipse at center,rgba(2,5,15,.85),transparent 70%);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
-.cn-boot .cn-boot-logo h1{font-family:'Orbitron',sans-serif;font-size:54px;font-weight:900;letter-spacing:.4em;color:#fff;text-shadow:0 0 24px var(--cn-ac),0 0 48px rgba(0,229,255,.5);margin-bottom:14px;position:relative;display:inline-block;animation:cn-flicker 4s ease-in-out infinite}
+.cn-boot .cn-boot-logo{position:relative;z-index:7;text-align:center;padding:40px 60px;background:radial-gradient(ellipse at center,rgba(var(--cj-panelrgb),.85),transparent 70%);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.cn-boot .cn-boot-logo h1{font-family:'Orbitron',sans-serif;font-size:54px;font-weight:900;letter-spacing:.4em;color:#fff;text-shadow:0 0 24px var(--cn-ac),0 0 48px rgba(var(--cj-acrgb),.5);margin-bottom:14px;position:relative;display:inline-block;animation:cn-flicker 4s ease-in-out infinite}
 .cn-boot .cn-boot-logo h1::before,.cn-boot .cn-boot-logo h1::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
 .cn-boot .cn-boot-logo h1::before{color:var(--cn-cr);transform:translate(-2px,0);clip-path:inset(20% 0 30% 0);animation:cn-glitch 3s infinite;opacity:.7}
 .cn-boot .cn-boot-logo h1::after{color:var(--cn-ac);transform:translate(2px,0);clip-path:inset(60% 0 5% 0);animation:cn-glitch 3s infinite reverse;opacity:.7}
-.cn-boot .cn-boot-logo .sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.35em;opacity:.85;text-transform:uppercase}
-.cn-boot .cn-boot-bar{margin-top:32px;width:340px;height:3px;background:rgba(0,229,255,.12);border-radius:3px;overflow:hidden;margin-left:auto;margin-right:auto;border:1px solid rgba(0,229,255,.25);box-shadow:0 0 14px rgba(0,229,255,.2)}
+.cn-boot .cn-boot-logo .sub{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cn-ac);letter-spacing:.35em;opacity:.85;text-transform:uppercase}
+.cn-boot .cn-boot-bar{margin-top:32px;width:340px;height:3px;background:rgba(var(--cj-acrgb),.12);border-radius:3px;overflow:hidden;margin-left:auto;margin-right:auto;border:1px solid rgba(var(--cj-acrgb),.25);box-shadow:0 0 14px rgba(var(--cj-acrgb),.2)}
 .cn-boot .cn-boot-bar div{height:100%;background:linear-gradient(90deg,var(--cn-ac),var(--cn-pu),var(--cn-cr));box-shadow:0 0 14px var(--cn-ac);animation:cn-bootBar 1.8s ease-out forwards}
 @keyframes cn-bootBar{from{width:0}to{width:100%}}
-.cn-boot .cn-boot-status{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-su);letter-spacing:.18em;text-transform:uppercase;height:14px}
-.cn-boot .cn-boot-hex{position:absolute;width:60px;height:68px;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.05));clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:1px solid rgba(0,229,255,.3);animation:cn-flicker 3s ease-in-out infinite}
+.cn-boot .cn-boot-status{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-su);letter-spacing:.18em;text-transform:uppercase;height:14px}
+.cn-boot .cn-boot-hex{position:absolute;width:60px;height:68px;background:linear-gradient(135deg,rgba(var(--cj-acrgb),.15),rgba(var(--cj-purgb),.05));clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:1px solid rgba(var(--cj-acrgb),.3);animation:cn-flicker 3s ease-in-out infinite}
 .cn-tilt{transform-style:preserve-3d;transition:transform .15s ease;perspective:1000px}
-.cn-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle 240px at var(--mx,50%) var(--my,30%),rgba(0,229,255,.18),transparent 60%);pointer-events:none;opacity:0;transition:opacity .25s ease;z-index:1}
+.cn-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle 240px at var(--mx,50%) var(--my,30%),rgba(var(--cj-acrgb),.18),transparent 60%);pointer-events:none;opacity:0;transition:opacity .25s ease;z-index:1}
 .cn-tilt[data-active="1"]::before{opacity:1}
 .cn-glitch{position:relative;display:inline-block;color:#fff;text-shadow:0 0 14px var(--cn-cr)}
 .cn-glitch::before,.cn-glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%}
 .cn-glitch::before{color:var(--cn-cr);transform:translate(-2px,0);clip-path:inset(20% 0 30% 0);animation:cn-glitch 3s infinite}
 .cn-glitch::after{color:var(--cn-ac);transform:translate(2px,0);clip-path:inset(60% 0 5% 0);animation:cn-glitch 3s infinite reverse}
-.cn-term{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-su);background:rgba(0,255,136,.04);padding:14px;border-radius:8px;border:1px solid rgba(0,255,136,.25);line-height:1.7;box-shadow:0 0 24px rgba(0,255,136,.1) inset}
+.cn-term{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cn-su);background:rgba(var(--cj-surgb),.04);padding:14px;border-radius:8px;border:1px solid rgba(var(--cj-surgb),.25);line-height:1.7;box-shadow:0 0 24px rgba(var(--cj-surgb),.1) inset}
 .cn-term .cn-term-line{overflow:hidden;white-space:nowrap;border-right:2px solid var(--cn-su);animation:cn-typewrite 1.6s steps(40,end) forwards,cn-blink .7s step-end infinite}
 .cn-term .cn-term-line.done{border-right:none;animation:cn-typewrite 1.6s steps(40,end) forwards}
 .cn-term .cn-term-prompt::before{content:"$ ";color:var(--cn-ac);font-weight:700}
@@ -109,73 +118,73 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 .cn-flip:hover .cn-flip-inner,.cn-flip.flipped .cn-flip-inner{transform:rotateY(180deg)}
 .cn-flip-face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;border-radius:inherit}
 .cn-flip-back{transform:rotateY(180deg)}
-.cn-holo-stage{height:480px;display:grid;place-items:center;perspective:1400px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(0,229,255,.05),transparent 70%);border:1px solid rgba(0,229,255,.15)}
-.cn-holo-floor{position:absolute;bottom:0;left:0;right:0;height:55%;background:repeating-linear-gradient(90deg,transparent 0,transparent 49px,rgba(0,229,255,.16) 49px,rgba(0,229,255,.16) 50px),repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(0,229,255,.1) 49px,rgba(0,229,255,.1) 50px);transform:perspective(700px) rotateX(70deg) translateY(50%);transform-origin:center bottom;-webkit-mask-image:linear-gradient(to top,black 30%,transparent 100%);mask-image:linear-gradient(to top,black 30%,transparent 100%)}
-.cn-holo-ghost{position:absolute;width:380px;padding:24px;border-radius:18px;background:linear-gradient(135deg,rgba(0,229,255,.04),rgba(184,77,255,.02));border:1px solid rgba(0,229,255,.12);color:var(--cn-dim);font-size:13px;pointer-events:none}
+.cn-holo-stage{height:480px;display:grid;place-items:center;perspective:1400px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(var(--cj-acrgb),.05),transparent 70%);border:1px solid rgba(var(--cj-acrgb),.15)}
+.cn-holo-floor{position:absolute;bottom:0;left:0;right:0;height:55%;background:repeating-linear-gradient(90deg,transparent 0,transparent 49px,rgba(var(--cj-acrgb),.16) 49px,rgba(var(--cj-acrgb),.16) 50px),repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(var(--cj-acrgb),.1) 49px,rgba(var(--cj-acrgb),.1) 50px);transform:perspective(700px) rotateX(70deg) translateY(50%);transform-origin:center bottom;-webkit-mask-image:linear-gradient(to top,black 30%,transparent 100%);mask-image:linear-gradient(to top,black 30%,transparent 100%)}
+.cn-holo-ghost{position:absolute;width:380px;padding:24px;border-radius:18px;background:linear-gradient(135deg,rgba(var(--cj-acrgb),.04),rgba(var(--cj-purgb),.02));border:1px solid rgba(var(--cj-acrgb),.12);color:var(--cn-dim);font-size:14px;pointer-events:none}
 .cn-holo-ghost.g1{transform:rotateX(8deg) rotateY(-12deg) translate3d(28px,22px,-60px);opacity:.5}
 .cn-holo-ghost.g2{transform:rotateX(8deg) rotateY(-12deg) translate3d(56px,44px,-120px);opacity:.25}
-.cn-holo-card{width:380px;padding:30px;border-radius:18px;position:relative;background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(184,77,255,.1));border:1px solid rgba(0,229,255,.5);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 50px rgba(0,229,255,.3),0 30px 80px rgba(0,229,255,.2),0 60px 120px rgba(0,0,0,.7);animation:cn-float3d 5s ease-in-out infinite,cn-flicker 8s ease-in-out infinite;transform-style:preserve-3d}
-.cn-holo-card::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.04) 2px,rgba(0,229,255,.04) 3px)}
+.cn-holo-card{width:380px;padding:30px;border-radius:18px;position:relative;background:linear-gradient(135deg,rgba(var(--cj-acrgb),.15),rgba(var(--cj-purgb),.1));border:1px solid rgba(var(--cj-acrgb),.5);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(var(--cj-fgrgb),.05) inset,0 0 50px rgba(var(--cj-acrgb),.3),0 30px 80px rgba(var(--cj-acrgb),.2),0 60px 120px rgba(0,0,0,.7);animation:cn-float3d 5s ease-in-out infinite,cn-flicker 8s ease-in-out infinite;transform-style:preserve-3d}
+.cn-holo-card::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(var(--cj-acrgb),.04) 2px,rgba(var(--cj-acrgb),.04) 3px)}
 .cn-holo-card::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--cn-ac),transparent);box-shadow:0 0 14px var(--cn-ac);animation:cn-scanV 3s linear infinite}
-.cn-tok{height:520px;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(0,229,255,.08),transparent 60%);border-radius:20px;border:1px solid rgba(0,229,255,.15);position:relative;overflow:hidden}
-.cn-tok-ring{position:absolute;border-radius:50%;border:1px solid;box-shadow:0 0 30px rgba(0,229,255,.06) inset}
-.cn-tok-ring.r1{width:460px;height:460px;border-color:rgba(0,229,255,.3);animation:cn-orbitS 24s linear infinite}
-.cn-tok-ring.r2{width:340px;height:340px;border-color:rgba(184,77,255,.3);animation:cn-orbitR 16s linear infinite}
-.cn-tok-ring.r3{width:220px;height:220px;border-color:rgba(0,255,136,.3);animation:cn-orbitS 9s linear infinite}
-.cn-tok-core{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.7),rgba(0,229,255,.1) 60%,transparent);display:grid;place-items:center;text-align:center;box-shadow:0 0 70px rgba(0,229,255,.6),0 0 140px rgba(0,229,255,.3);animation:cn-pulse 2.4s ease infinite;z-index:5;position:relative}
-.cn-tok-core::before{content:"";position:absolute;inset:-20px;border-radius:50%;border:1px dashed rgba(0,229,255,.3);animation:cn-orbitS 20s linear infinite}
+.cn-tok{height:520px;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(var(--cj-acrgb),.08),transparent 60%);border-radius:20px;border:1px solid rgba(var(--cj-acrgb),.15);position:relative;overflow:hidden}
+.cn-tok-ring{position:absolute;border-radius:50%;border:1px solid;box-shadow:0 0 30px rgba(var(--cj-acrgb),.06) inset}
+.cn-tok-ring.r1{width:460px;height:460px;border-color:rgba(var(--cj-acrgb),.3);animation:cn-orbitS 24s linear infinite}
+.cn-tok-ring.r2{width:340px;height:340px;border-color:rgba(var(--cj-purgb),.3);animation:cn-orbitR 16s linear infinite}
+.cn-tok-ring.r3{width:220px;height:220px;border-color:rgba(var(--cj-surgb),.3);animation:cn-orbitS 9s linear infinite}
+.cn-tok-core{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(var(--cj-acrgb),.7),rgba(var(--cj-acrgb),.1) 60%,transparent);display:grid;place-items:center;text-align:center;box-shadow:0 0 70px rgba(var(--cj-acrgb),.6),0 0 140px rgba(var(--cj-acrgb),.3);animation:cn-pulse 2.4s ease infinite;z-index:5;position:relative}
+.cn-tok-core::before{content:"";position:absolute;inset:-20px;border-radius:50%;border:1px dashed rgba(var(--cj-acrgb),.3);animation:cn-orbitS 20s linear infinite}
 .cn-tok-core .n{font-family:'Space Grotesk',sans-serif;font-size:42px;font-weight:800;color:#fff;text-shadow:0 0 20px var(--cn-ac);line-height:1}
-.cn-tok-core .l{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.7);letter-spacing:.18em;margin-top:2px}
-.cn-tok-pip{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid;background:rgba(2,3,12,.8);transition:transform .2s ease}
+.cn-tok-core .l{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--cj-fgrgb),.7);letter-spacing:.18em;margin-top:2px}
+.cn-tok-pip{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid;background:rgba(var(--cj-panelrgb),.8);transition:transform .2s ease}
 .cn-tok-pip:hover{transform:scale(1.5)}
 .cn-tok-pip.cr{border-color:var(--cn-cr);box-shadow:0 0 14px var(--cn-cr);animation:cn-pulseCr 1.4s ease infinite}
 .cn-tok-pip.wa{border-color:var(--cn-wa);box-shadow:0 0 12px var(--cn-wa)}
 .cn-tok-pip.ok{border-color:var(--cn-su);box-shadow:0 0 12px var(--cn-su)}
 .cn-tok-pip.ac{border-color:var(--cn-ac);box-shadow:0 0 12px var(--cn-ac)}
 .cn-tok-pip.pu{border-color:var(--cn-pu);box-shadow:0 0 12px var(--cn-pu)}
-.cn-dna-stage{height:560px;display:grid;place-items:center;perspective:1200px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(184,77,255,.06),transparent 70%);border:1px solid rgba(255,255,255,.08)}
-.cn-dna-stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(184,77,255,.05) 80px),repeating-linear-gradient(0deg,transparent 0,transparent 79px,rgba(184,77,255,.05) 80px);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);pointer-events:none}
+.cn-dna-stage{height:560px;display:grid;place-items:center;perspective:1200px;position:relative;overflow:hidden;border-radius:20px;background:radial-gradient(ellipse at center,rgba(var(--cj-purgb),.06),transparent 70%);border:1px solid rgba(var(--cj-fgrgb),.08)}
+.cn-dna-stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(var(--cj-purgb),.05) 80px),repeating-linear-gradient(0deg,transparent 0,transparent 79px,rgba(var(--cj-purgb),.05) 80px);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);pointer-events:none}
 .cn-dna-helix{position:relative;width:160px;height:480px;transform-style:preserve-3d;animation:cn-helixL 14s linear infinite}
 .cn-dna-base{position:absolute;left:50%;top:var(--y,0);transform-style:preserve-3d;transform:translateX(-50%) rotateY(var(--rot,0)) translateZ(0);width:160px;height:8px;display:flex;align-items:center;justify-content:space-between}
-.cn-dna-strand{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,var(--c),color-mix(in srgb,var(--c) 30%,#000));box-shadow:0 0 14px var(--c),0 0 28px color-mix(in srgb,var(--c) 50%,transparent);border:1px solid rgba(255,255,255,.3);position:relative;z-index:2}
+.cn-dna-strand{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,var(--c),color-mix(in srgb,var(--c) 30%,#000));box-shadow:0 0 14px var(--c),0 0 28px color-mix(in srgb,var(--c) 50%,transparent);border:1px solid rgba(var(--cj-fgrgb),.3);position:relative;z-index:2}
 .cn-dna-strand.s2{background:radial-gradient(circle,var(--c2,var(--cn-pu)),color-mix(in srgb,var(--c2,var(--cn-pu)) 30%,#000));box-shadow:0 0 14px var(--c2,var(--cn-pu)),0 0 28px color-mix(in srgb,var(--c2,var(--cn-pu)) 50%,transparent)}
 .cn-dna-rung{position:absolute;left:14px;right:14px;top:50%;height:2px;transform:translateY(-50%);background:linear-gradient(90deg,var(--c),var(--c2,var(--cn-pu)));box-shadow:0 0 6px color-mix(in srgb,var(--c) 60%,transparent);opacity:.6}
-.cn-dna-spine{position:absolute;left:50%;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-50%) translateZ(-1px)}
-.cn-dna-label{position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;background:rgba(2,5,15,.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);white-space:nowrap;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.5)}
-.cn-dna-legend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:10px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:5}
+.cn-dna-spine{position:absolute;left:50%;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(var(--cj-fgrgb),.08),transparent);transform:translateX(-50%) translateZ(-1px)}
+.cn-dna-label{position:absolute;font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;background:rgba(var(--cj-panelrgb),.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(var(--cj-fgrgb),.2);white-space:nowrap;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.cn-dna-legend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-dim);background:rgba(var(--cj-panelrgb),.7);padding:10px 18px;border-radius:20px;border:1px solid rgba(var(--cj-fgrgb),.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:5}
 .cn-dna-legend .lg{display:flex;align-items:center;gap:6px}
 .cn-dna-legend .sw{width:8px;height:8px;border-radius:50%}
-.cn-dna-meta{position:absolute;top:24px;left:24px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-pu);letter-spacing:.2em;background:rgba(2,5,15,.7);padding:6px 14px;border-radius:6px;border:1px solid rgba(184,77,255,.3);box-shadow:0 0 14px rgba(184,77,255,.2);z-index:5;text-transform:uppercase}
+.cn-dna-meta{position:absolute;top:24px;left:24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-pu);letter-spacing:.2em;background:rgba(var(--cj-panelrgb),.7);padding:6px 14px;border-radius:6px;border:1px solid rgba(var(--cj-purgb),.3);box-shadow:0 0 14px rgba(var(--cj-purgb),.2);z-index:5;text-transform:uppercase}
 .cn-dna-meta::before{content:"";display:inline-block;width:6px;height:6px;background:var(--cn-pu);border-radius:50%;margin-right:8px;vertical-align:middle;animation:cn-dot 1.2s infinite;box-shadow:0 0 8px var(--cn-pu)}
 .cn-dna-stats{position:absolute;top:24px;right:24px;display:flex;flex-direction:column;gap:6px;z-index:5}
-.cn-dna-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);background:rgba(2,5,15,.7);padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;justify-content:space-between;gap:14px;min-width:160px}
-.cn-dna-stat b{color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px}
-.cn-section-tag{display:inline-flex;align-items:center;gap:10px;padding:6px 16px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;text-transform:uppercase;margin-bottom:16px}
+.cn-dna-stat{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-dim);background:rgba(var(--cj-panelrgb),.7);padding:6px 12px;border-radius:6px;border:1px solid rgba(var(--cj-fgrgb),.08);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;justify-content:space-between;gap:14px;min-width:160px}
+.cn-dna-stat b{color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px}
+.cn-section-tag{display:inline-flex;align-items:center;gap:10px;padding:6px 16px;background:rgba(var(--cj-acrgb),.08);border:1px solid rgba(var(--cj-acrgb),.3);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.3em;text-transform:uppercase;margin-bottom:16px}
 .cn-section-tag::before{content:"";width:6px;height:6px;background:var(--cn-ac);border-radius:50%;box-shadow:0 0 10px var(--cn-ac);animation:cn-dot 1.2s infinite}
-.cn-towers-stage{padding:40px 50px 70px;background:radial-gradient(ellipse at center,rgba(184,77,255,.06),transparent 70%);border-radius:20px;border:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
-.cn-towers-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:24px;text-transform:uppercase}
+.cn-towers-stage{padding:40px 50px 70px;background:radial-gradient(ellipse at center,rgba(var(--cj-purgb),.06),transparent 70%);border-radius:20px;border:1px solid rgba(var(--cj-fgrgb),.08);position:relative;overflow:hidden}
+.cn-towers-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:24px;text-transform:uppercase}
 .cn-towers-field{perspective:1100px;height:380px;display:flex;align-items:flex-end;gap:36px;justify-content:center;position:relative}
-.cn-towers-field::before{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.6),transparent);box-shadow:0 0 12px rgba(0,229,255,.5)}
-.cn-towers-field::after{content:"";position:absolute;bottom:-2px;left:0;right:0;height:60px;background:repeating-linear-gradient(90deg,transparent 0,transparent 39px,rgba(0,229,255,.18) 39px,rgba(0,229,255,.18) 40px);transform:perspective(400px) rotateX(70deg);transform-origin:top;-webkit-mask-image:linear-gradient(to bottom,black,transparent);mask-image:linear-gradient(to bottom,black,transparent)}
+.cn-towers-field::before{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(var(--cj-acrgb),.6),transparent);box-shadow:0 0 12px rgba(var(--cj-acrgb),.5)}
+.cn-towers-field::after{content:"";position:absolute;bottom:-2px;left:0;right:0;height:60px;background:repeating-linear-gradient(90deg,transparent 0,transparent 39px,rgba(var(--cj-acrgb),.18) 39px,rgba(var(--cj-acrgb),.18) 40px);transform:perspective(400px) rotateX(70deg);transform-origin:top;-webkit-mask-image:linear-gradient(to bottom,black,transparent);mask-image:linear-gradient(to bottom,black,transparent)}
 .cn-tw{width:78px;transform-style:preserve-3d;transform:rotateX(20deg) rotateY(-15deg);position:relative;transform-origin:bottom center}
 .cn-tw .face{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--c) 0%,color-mix(in srgb,var(--c) 30%,#000) 100%);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);box-shadow:0 0 30px color-mix(in srgb,var(--c) 50%,transparent),0 0 60px color-mix(in srgb,var(--c) 30%,transparent);height:100%}
-.cn-tw .grid-overlay{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 18px,rgba(255,255,255,.18) 18px,rgba(255,255,255,.18) 19px);pointer-events:none}
+.cn-tw .grid-overlay{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 18px,rgba(var(--cj-fgrgb),.18) 18px,rgba(var(--cj-fgrgb),.18) 19px);pointer-events:none}
 .cn-tw .top{position:absolute;left:0;right:0;height:24px;background:color-mix(in srgb,var(--c) 80%,#fff);transform:rotateX(90deg);transform-origin:bottom;box-shadow:0 0 30px color-mix(in srgb,var(--c) 80%,transparent)}
-.cn-tw .lbl{position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);white-space:nowrap;text-align:center}
-.cn-tw .lbl small{display:block;color:var(--cn-dim2);font-size:8px;margin-top:2px}
+.cn-tw .lbl{position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-dim);white-space:nowrap;text-align:center}
+.cn-tw .lbl small{display:block;color:var(--cn-dim2);font-size:11px;margin-top:2px}
 .cn-tw .val{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--c);text-shadow:0 0 12px var(--c);white-space:nowrap}
 .cn-tw .shadow{position:absolute;bottom:-4px;left:-12px;right:-12px;height:14px;background:radial-gradient(ellipse,var(--c),transparent 70%);opacity:.4;filter:blur(6px);transform:rotateX(90deg)}
 /* TIMELINE-PRISM · v41.2 · refeito para nao cortar cards e ficar legivel */
-.cn-prism-stage{padding:24px 40px 28px;perspective:1400px;background:radial-gradient(ellipse at center,rgba(0,255,136,.04),transparent 70%);border-radius:20px;border:1px solid rgba(255,255,255,.08);position:relative;overflow:visible}
-.cn-prism-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:14px;text-transform:uppercase}
+.cn-prism-stage{padding:24px 40px 28px;perspective:1400px;background:radial-gradient(ellipse at center,rgba(var(--cj-surgb),.04),transparent 70%);border-radius:20px;border:1px solid rgba(var(--cj-fgrgb),.08);position:relative;overflow:visible}
+.cn-prism-hd{text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.2em;margin-bottom:14px;text-transform:uppercase}
 .cn-prism-strip{transform-style:preserve-3d;transform:rotateX(22deg) translateZ(-10px);transform-origin:center bottom;min-height:260px;position:relative;margin:30px 0 110px}
-.cn-prism-track{position:absolute;bottom:30px;left:0;right:0;height:5px;background:linear-gradient(90deg,rgba(0,229,255,.1),rgba(0,229,255,.55) 50%,rgba(0,229,255,.1));border-radius:3px;box-shadow:0 0 14px rgba(0,229,255,.45)}
+.cn-prism-track{position:absolute;bottom:30px;left:0;right:0;height:5px;background:linear-gradient(90deg,rgba(var(--cj-acrgb),.1),rgba(var(--cj-acrgb),.55) 50%,rgba(var(--cj-acrgb),.1));border-radius:3px;box-shadow:0 0 14px rgba(var(--cj-acrgb),.45)}
 .cn-prism-now{position:absolute;bottom:30px;transform:translate(-50%,50%);width:16px;height:16px;border-radius:50%;border:2px solid var(--cn-ac);background:#020208;box-shadow:0 0 14px var(--cn-ac);z-index:3}
-.cn-prism-pulse{position:absolute;bottom:30px;transform:translate(-50%,50%);width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,229,255,.7);animation:cn-ringExpand 1.6s ease-out infinite;z-index:2}
+.cn-prism-pulse{position:absolute;bottom:30px;transform:translate(-50%,50%);width:28px;height:28px;border-radius:50%;border:2px solid rgba(var(--cj-acrgb),.7);animation:cn-ringExpand 1.6s ease-out infinite;z-index:2}
 .cn-prism-pin{position:absolute;bottom:30px;transform:translateX(-50%);width:2.5px;background:linear-gradient(180deg,var(--c),transparent 95%);box-shadow:0 0 6px var(--c);z-index:2}
-.cn-prism-card{position:absolute;bottom:calc(30px + var(--h) - 2px);transform:translateX(-50%) translateZ(14px);width:148px;padding:9px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(2,5,20,.96),rgba(8,12,28,.96));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 6px 18px rgba(0,0,0,.55);transform-style:preserve-3d;z-index:4}
-.cn-prism-card .when{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--c);letter-spacing:.08em;font-weight:700}
-.cn-prism-card .what{font-family:'Space Grotesk',sans-serif;font-size:11.5px;color:#e2e8f0;margin-top:3px;line-height:1.25;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cn-prism-card{position:absolute;bottom:calc(30px + var(--h) - 2px);transform:translateX(-50%) translateZ(14px);width:148px;padding:9px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(var(--cj-panelrgb),.96),rgba(var(--cj-panelrgb),.96));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 6px 18px rgba(0,0,0,.55);transform-style:preserve-3d;z-index:4}
+.cn-prism-card .when{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--c);letter-spacing:.08em;font-weight:700}
+.cn-prism-card .what{font-family:'Space Grotesk',sans-serif;font-size:12px;color:#e2e8f0;margin-top:3px;line-height:1.25;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* ═══ TIMELINE-PRISM v41.3 · TECNOLOGICO 3D ═══ */
 @keyframes cn-p2-trackPulse{0%{left:-10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:110%;opacity:0}}
 @keyframes cn-p2-grid{0%{background-position:0 0,0 0}100%{background-position:80px 0,0 80px}}
@@ -183,59 +192,59 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 @keyframes cn-p2-cardScan{0%{top:-50%}100%{top:120%}}
 @keyframes cn-p2-nowRing{0%{transform:translate(-50%,-50%) scale(.6);opacity:1}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
 @keyframes cn-p2-bezelGlow{0%,100%{opacity:.6}50%{opacity:1}}
-.cn-prism2-stage{position:relative;border-radius:22px;background:linear-gradient(135deg,rgba(8,12,28,.92),rgba(2,5,15,.96));border:1px solid rgba(0,229,255,.18);overflow:hidden;padding:18px 18px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(0,229,255,.08) inset}
-.cn-prism2-stage::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,229,255,.10),transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(184,77,255,.08),transparent 60%);pointer-events:none}
-.cn-prism2-hd{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:6px 4px 14px;border-bottom:1px solid rgba(0,229,255,.12);margin-bottom:14px;z-index:5}
-.cn-prism2-meta{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--cn-ac);letter-spacing:.28em;text-transform:uppercase;display:flex;align-items:center;gap:9px;padding:6px 12px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.3);border-radius:6px;font-weight:700}
+.cn-prism2-stage{position:relative;border-radius:22px;background:linear-gradient(135deg,rgba(var(--cj-panelrgb),.92),rgba(var(--cj-panelrgb),.96));border:1px solid rgba(var(--cj-acrgb),.18);overflow:hidden;padding:18px 18px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(var(--cj-acrgb),.08) inset}
+.cn-prism2-stage::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(var(--cj-acrgb),.10),transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(var(--cj-purgb),.08),transparent 60%);pointer-events:none}
+.cn-prism2-hd{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:6px 4px 14px;border-bottom:1px solid rgba(var(--cj-acrgb),.12);margin-bottom:14px;z-index:5}
+.cn-prism2-meta{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.28em;text-transform:uppercase;display:flex;align-items:center;gap:9px;padding:6px 12px;background:rgba(var(--cj-acrgb),.06);border:1px solid rgba(var(--cj-acrgb),.3);border-radius:6px;font-weight:700}
 .cn-prism2-dot{width:7px;height:7px;border-radius:50%;background:var(--cn-ac);box-shadow:0 0 10px var(--cn-ac);animation:cn-dot 1.2s infinite}
 .cn-prism2-stats-bar{display:flex;gap:8px}
-.cn-prism2-stat{display:flex;flex-direction:column;align-items:center;padding:4px 14px;background:color-mix(in srgb,var(--c) 8%,rgba(2,5,15,.6));border:1px solid color-mix(in srgb,var(--c) 35%,transparent);border-radius:8px;min-width:70px;box-shadow:0 0 12px color-mix(in srgb,var(--c) 18%,transparent) inset}
+.cn-prism2-stat{display:flex;flex-direction:column;align-items:center;padding:4px 14px;background:color-mix(in srgb,var(--c) 8%,rgba(var(--cj-panelrgb),.6));border:1px solid color-mix(in srgb,var(--c) 35%,transparent);border-radius:8px;min-width:70px;box-shadow:0 0 12px color-mix(in srgb,var(--c) 18%,transparent) inset}
 .cn-prism2-stat b{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:var(--c);text-shadow:0 0 12px var(--c);line-height:1}
-.cn-prism2-stat span{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700;margin-top:2px}
+.cn-prism2-stat span{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700;margin-top:2px}
 .cn-prism2-filtros{display:flex;gap:5px}
-.cn-prism2-filtro{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.6);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;font-weight:700;text-transform:uppercase}
+.cn-prism2-filtro{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:rgba(var(--cj-panelrgb),.6);border:1px solid rgba(var(--cj-fgrgb),.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;font-weight:700;text-transform:uppercase}
 .cn-prism2-filtro .d{width:7px;height:7px;border-radius:50%;background:var(--c);opacity:.3;transition:opacity .2s,box-shadow .2s}
-.cn-prism2-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 15%,rgba(2,5,15,.6))}
+.cn-prism2-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 15%,rgba(var(--cj-panelrgb),.6))}
 .cn-prism2-filtro.on .d{opacity:1;box-shadow:0 0 8px var(--c)}
 .cn-prism2-filtro:hover{transform:translateY(-1px)}
 .cn-prism2-deck{position:relative;height:380px;perspective:1100px;perspective-origin:50% 70%;overflow:hidden;border-radius:14px}
-.cn-prism2-grid3d{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(0,229,255,.18) 79px,rgba(0,229,255,.18) 80px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);transform-origin:center bottom;animation:cn-p2-grid 9s linear infinite;-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);pointer-events:none;opacity:.55}
-.cn-prism2-grid3d.horiz{background:repeating-linear-gradient(0deg,transparent 0,transparent 39px,rgba(184,77,255,.15) 39px,rgba(184,77,255,.15) 40px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);animation-direction:reverse;animation-duration:14s;opacity:.4}
+.cn-prism2-grid3d{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 79px,rgba(var(--cj-acrgb),.18) 79px,rgba(var(--cj-acrgb),.18) 80px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);transform-origin:center bottom;animation:cn-p2-grid 9s linear infinite;-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0%,black 30%,black 90%,transparent 100%);pointer-events:none;opacity:.55}
+.cn-prism2-grid3d.horiz{background:repeating-linear-gradient(0deg,transparent 0,transparent 39px,rgba(var(--cj-purgb),.15) 39px,rgba(var(--cj-purgb),.15) 40px);transform:rotateX(60deg) translateZ(-100px) translateY(60px);animation-direction:reverse;animation-duration:14s;opacity:.4}
 .cn-prism2-bezel{position:absolute;width:36px;height:36px;border:2px solid var(--cn-ac);box-shadow:0 0 12px var(--cn-ac);z-index:6;pointer-events:none;animation:cn-p2-bezelGlow 2.4s ease-in-out infinite}
 .cn-prism2-bezel.tl{top:8px;left:8px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
 .cn-prism2-bezel.tr{top:8px;right:8px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
 .cn-prism2-bezel.bl{bottom:8px;left:8px;border-right:none;border-top:none;border-radius:0 0 0 8px}
 .cn-prism2-bezel.br{bottom:8px;right:8px;border-left:none;border-top:none;border-radius:0 0 8px 0}
 .cn-prism2-track-wrap{position:absolute;left:60px;right:60px;bottom:36px;height:2px;z-index:4}
-.cn-prism2-track{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,229,255,.15),rgba(0,229,255,.6) 40%,rgba(184,77,255,.6) 60%,rgba(0,229,255,.15));border-radius:2px;box-shadow:0 0 12px rgba(0,229,255,.5),0 0 22px rgba(0,229,255,.25);overflow:visible}
+.cn-prism2-track{position:absolute;inset:0;background:linear-gradient(90deg,rgba(var(--cj-acrgb),.15),rgba(var(--cj-acrgb),.6) 40%,rgba(var(--cj-purgb),.6) 60%,rgba(var(--cj-acrgb),.15));border-radius:2px;box-shadow:0 0 12px rgba(var(--cj-acrgb),.5),0 0 22px rgba(var(--cj-acrgb),.25);overflow:visible}
 .cn-prism2-track-pulse{position:absolute;top:-2px;width:60px;height:6px;background:linear-gradient(90deg,transparent,#fff,transparent);box-shadow:0 0 14px #fff,0 0 28px var(--cn-ac);border-radius:6px;animation:cn-p2-trackPulse 3.4s linear infinite;opacity:0}
 .cn-prism2-track-pulse.delay{animation-delay:1.7s}
 .cn-prism2-marker{position:absolute;top:0;transform:translateX(-50%)}
-.cn-prism2-marker .tick{width:1px;height:14px;background:rgba(0,229,255,.6);box-shadow:0 0 4px rgba(0,229,255,.6);margin:auto;transform:translateY(2px)}
-.cn-prism2-marker .lbl{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);letter-spacing:.12em;white-space:nowrap;font-weight:700}
+.cn-prism2-marker .tick{width:1px;height:14px;background:rgba(var(--cj-acrgb),.6);box-shadow:0 0 4px rgba(var(--cj-acrgb),.6);margin:auto;transform:translateY(2px)}
+.cn-prism2-marker .lbl{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim2);letter-spacing:.12em;white-space:nowrap;font-weight:700}
 .cn-prism2-now{position:absolute;top:50%;transform:translate(-50%,-50%);width:0;height:0;z-index:5}
 .cn-prism2-now .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#fff,var(--cn-ac) 60%,transparent);box-shadow:0 0 18px var(--cn-ac),0 0 36px var(--cn-ac)}
-.cn-prism2-now .ring{position:absolute;left:50%;top:50%;width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,229,255,.7);transform:translate(-50%,-50%);animation:cn-p2-nowRing 1.8s ease-out infinite}
+.cn-prism2-now .ring{position:absolute;left:50%;top:50%;width:30px;height:30px;border-radius:50%;border:2px solid rgba(var(--cj-acrgb),.7);transform:translate(-50%,-50%);animation:cn-p2-nowRing 1.8s ease-out infinite}
 .cn-prism2-now .ring.r2{animation-delay:.6s}
-.cn-prism2-now .lbl{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--cn-ac);letter-spacing:.2em;white-space:nowrap;font-weight:800;text-shadow:0 0 8px var(--cn-ac)}
+.cn-prism2-now .lbl{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.2em;white-space:nowrap;font-weight:800;text-shadow:0 0 8px var(--cn-ac)}
 .cn-prism2-events{position:absolute;left:60px;right:60px;bottom:36px;top:30px;pointer-events:none}
 .cn-prism2-pin{position:absolute;bottom:0;width:2px;background:linear-gradient(180deg,var(--c) 0%,var(--c) 60%,transparent);box-shadow:0 0 8px var(--c),0 0 16px color-mix(in srgb,var(--c) 50%,transparent);transform:translateX(-50%);transition:filter .2s,box-shadow .2s;z-index:3}
 .cn-prism2-pin.hover{filter:brightness(1.5)}
 .cn-prism2-pin .orb{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:radial-gradient(circle,#fff,var(--c) 60%,transparent);box-shadow:0 0 12px var(--c),0 0 22px var(--c);animation:cn-p2-orbFloat 2.4s ease-in-out infinite}
-.cn-prism2-card{position:absolute;bottom:calc(var(--h) + 6px);transform:translateX(-50%) perspective(800px) rotateX(8deg);width:160px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(2,5,20,.95),rgba(8,12,28,.95));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 8px 24px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04) inset;cursor:pointer;pointer-events:auto;overflow:hidden;transition:transform .25s cubic-bezier(.2,.8,.3,1),box-shadow .25s,border-color .25s;z-index:4;transform-style:preserve-3d}
+.cn-prism2-card{position:absolute;bottom:calc(var(--h) + 6px);transform:translateX(-50%) perspective(800px) rotateX(8deg);width:160px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(var(--cj-panelrgb),.95),rgba(var(--cj-panelrgb),.95));border:1px solid var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 35%,transparent),0 8px 24px rgba(0,0,0,.65),0 0 0 1px rgba(var(--cj-fgrgb),.04) inset;cursor:pointer;pointer-events:auto;overflow:hidden;transition:transform .25s cubic-bezier(.2,.8,.3,1),box-shadow .25s,border-color .25s;z-index:4;transform-style:preserve-3d}
 .cn-prism2-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 8px var(--c)}
 .cn-prism2-card.hover{transform:translateX(-50%) perspective(800px) rotateX(2deg) translateY(-6px) scale(1.06);box-shadow:0 0 26px color-mix(in srgb,var(--c) 60%,transparent),0 16px 36px rgba(0,0,0,.7),0 0 0 1px var(--c) inset;z-index:8}
 .cn-prism2-card-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 0%,color-mix(in srgb,var(--c) 18%,transparent),transparent 60%);pointer-events:none}
 .cn-prism2-card-scan{position:absolute;left:0;right:0;height:80%;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--c) 35%,transparent),transparent);animation:cn-p2-cardScan 3.6s linear infinite;pointer-events:none;opacity:.4;mix-blend-mode:screen}
-.cn-prism2-card .when{position:relative;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c);letter-spacing:.14em;font-weight:800;display:flex;align-items:center;gap:6px;text-shadow:0 0 6px var(--c);z-index:2}
+.cn-prism2-card .when{position:relative;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--c);letter-spacing:.14em;font-weight:800;display:flex;align-items:center;gap:6px;text-shadow:0 0 6px var(--c);z-index:2}
 .cn-prism2-card .when .dot{width:5px;height:5px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
-.cn-prism2-card .what{position:relative;font-family:'Space Grotesk',sans-serif;font-size:12px;color:#fff;margin-top:5px;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 0 10px rgba(0,0,0,.5);z-index:2}
-.cn-prism2-card .meta{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cn-dim2);z-index:2}
-.cn-prism2-card .meta b{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:800}
-.cn-prism2-foot{display:flex;align-items:center;gap:14px;padding:8px 6px 0;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--cn-dim);flex-wrap:wrap;border-top:1px solid rgba(0,229,255,.08);margin-top:10px}
+.cn-prism2-card .what{position:relative;font-family:'Space Grotesk',sans-serif;font-size:13px;color:#fff;margin-top:5px;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 0 10px rgba(0,0,0,.5);z-index:2}
+.cn-prism2-card .meta{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(var(--cj-fgrgb),.06);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim2);z-index:2}
+.cn-prism2-card .meta b{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:800}
+.cn-prism2-foot{display:flex;align-items:center;gap:14px;padding:8px 6px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim);flex-wrap:wrap;border-top:1px solid rgba(var(--cj-acrgb),.08);margin-top:10px}
 .cn-prism2-foot span{display:flex;align-items:center;gap:6px}
 .cn-prism2-foot i{width:7px;height:7px;border-radius:50%;display:inline-block;box-shadow:0 0 6px currentColor}
-.cn-chassis-corner{position:fixed;width:32px;height:32px;border:2px solid var(--cn-ac);box-shadow:0 0 12px rgba(0,229,255,.5);z-index:50;pointer-events:none}
+.cn-chassis-corner{position:fixed;width:32px;height:32px;border:2px solid var(--cn-ac);box-shadow:0 0 12px rgba(var(--cj-acrgb),.5);z-index:50;pointer-events:none}
 .cn-chassis-corner.tl{top:14px;left:14px;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
 .cn-chassis-corner.tr{top:14px;right:14px;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
 .cn-chassis-corner.bl{bottom:14px;left:14px;border-right:none;border-top:none;border-radius:0 0 0 8px}
@@ -244,11 +253,11 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 @keyframes cn-dnaScan{0%{top:-10%}100%{top:110%}}
 @keyframes cn-dnaPulseCrit{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.6);opacity:.2}}
 @keyframes cn-inspIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-.cn-dna-scanner{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.7),rgba(184,77,255,.7),transparent);box-shadow:0 0 20px rgba(0,229,255,.7);animation:cn-dnaScan 4.5s linear infinite;z-index:3;pointer-events:none;border-radius:2px}
+.cn-dna-scanner{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,rgba(var(--cj-acrgb),.7),rgba(var(--cj-purgb),.7),transparent);box-shadow:0 0 20px rgba(var(--cj-acrgb),.7);animation:cn-dnaScan 4.5s linear infinite;z-index:3;pointer-events:none;border-radius:2px}
 .cn-dna-filtros{position:absolute;top:62px;left:24px;display:flex;flex-direction:column;gap:5px;z-index:6}
-.cn-dna-filtro{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:rgba(2,5,15,.8);border:1px solid rgba(255,255,255,.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-weight:700;text-transform:uppercase}
+.cn-dna-filtro{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:rgba(var(--cj-panelrgb),.8);border:1px solid rgba(var(--cj-fgrgb),.08);color:var(--cn-dim2);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;cursor:pointer;transition:all .2s ease;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-weight:700;text-transform:uppercase}
 .cn-dna-filtro .dot{width:7px;height:7px;border-radius:50%;background:var(--c);opacity:.3;transition:opacity .2s,box-shadow .2s}
-.cn-dna-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,rgba(2,5,15,.8))}
+.cn-dna-filtro.on{color:#fff;border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,rgba(var(--cj-panelrgb),.8))}
 .cn-dna-filtro.on .dot{opacity:1;box-shadow:0 0 8px var(--c)}
 .cn-dna-filtro:hover{transform:translateX(2px)}
 .cn-dna-base{cursor:pointer;transition:filter .2s ease}
@@ -256,29 +265,29 @@ const CN_UPGRADE_CSS = `/* v42: @import de Space Grotesk/Inter removido. Fontes 
 .cn-dna-base.hover .cn-dna-strand,.cn-dna-base.hover .cn-dna-strand.s2{transform:scale(1.5)}
 .cn-dna-base.crit .cn-dna-strand.s2{animation:cn-pulseCr 1.4s ease infinite}
 .cn-dna-pulse{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;border:2px solid var(--c);transform:translate(-50%,-50%);animation:cn-dnaPulseCrit 1.6s ease-out infinite;pointer-events:none}
-.cn-dna-inspector{position:absolute;right:24px;top:50%;transform:translateY(-50%);width:280px;background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(8,12,28,.97));border:1px solid var(--c);border-radius:14px;padding:18px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent),0 18px 50px rgba(0,0,0,.7);z-index:7;font-family:'Space Grotesk',sans-serif;animation:cn-inspIn .25s cubic-bezier(.2,.8,.3,1) forwards;pointer-events:auto}
+.cn-dna-inspector{position:absolute;right:24px;top:50%;transform:translateY(-50%);width:280px;background:linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.97));border:1px solid var(--c);border-radius:14px;padding:18px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent),0 18px 50px rgba(0,0,0,.7);z-index:7;font-family:'Space Grotesk',sans-serif;animation:cn-inspIn .25s cubic-bezier(.2,.8,.3,1) forwards;pointer-events:auto}
 .cn-dna-inspector::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);box-shadow:0 0 12px var(--c);border-radius:14px 14px 0 0}
-.cn-dna-inspector-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;font-weight:700}
-.cn-dna-inspector-tag{padding:3px 8px;border-radius:4px;color:#020208;font-size:9px;font-weight:800}
-.cn-dna-inspector-urg{font-size:10px}
-.cn-dna-inspector-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);margin-bottom:6px;letter-spacing:.05em}
-.cn-dna-inspector-tit{font-size:14px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:14px;text-shadow:0 0 12px rgba(0,229,255,.3)}
+.cn-dna-inspector-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;font-weight:700}
+.cn-dna-inspector-tag{padding:3px 8px;border-radius:4px;color:#020208;font-size:11px;font-weight:800}
+.cn-dna-inspector-urg{font-size:12px}
+.cn-dna-inspector-num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);margin-bottom:6px;letter-spacing:.05em}
+.cn-dna-inspector-tit{font-size:14px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:14px;text-shadow:0 0 12px rgba(var(--cj-acrgb),.3)}
 .cn-dna-inspector-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:14px}
-.cn-dna-inspector-grid div{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-.cn-dna-inspector-grid span{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700}
-.cn-dna-inspector-grid b{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0}
-.cn-dna-inspector-cta{width:100%;padding:9px 12px;border-radius:8px;background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid var(--c);color:var(--c);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;font-weight:800;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.cn-dna-inspector-grid div{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid rgba(var(--cj-fgrgb),.04)}
+.cn-dna-inspector-grid span{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-dim2);letter-spacing:.18em;font-weight:700}
+.cn-dna-inspector-grid b{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#e2e8f0}
+.cn-dna-inspector-cta{width:100%;padding:9px 12px;border-radius:8px;background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid var(--c);color:var(--c);font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;font-weight:800;cursor:pointer;transition:all .2s;text-transform:uppercase}
 .cn-dna-inspector-cta:hover{background:color-mix(in srgb,var(--c) 25%,transparent);box-shadow:0 0 14px color-mix(in srgb,var(--c) 50%,transparent)}
 /* ═══ ENHANCEMENTS PACK v41.1 ═══ */
 .cn-heatmap{display:grid;grid-template-columns:repeat(var(--cols,14),1fr);grid-auto-rows:14px;gap:3px}
-.cn-heatmap-cell{border-radius:3px;background:color-mix(in srgb,var(--c,var(--cn-ac)) calc(var(--intensity,0)*100%),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.04);transition:transform .15s ease,box-shadow .15s ease;cursor:default}
+.cn-heatmap-cell{border-radius:3px;background:color-mix(in srgb,var(--c,var(--cn-ac)) calc(var(--intensity,0)*100%),rgba(var(--cj-fgrgb),.03));border:1px solid rgba(var(--cj-fgrgb),.04);transition:transform .15s ease,box-shadow .15s ease;cursor:default}
 .cn-heatmap-cell:hover{transform:scale(1.4);box-shadow:0 0 10px var(--c,var(--cn-ac));z-index:2;position:relative}
-.cn-noise-css{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.18;z-index:2;background-image:repeating-radial-gradient(circle at 30% 30%,rgba(0,229,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 70% 60%,rgba(184,77,255,.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 50% 80%,rgba(0,229,255,.08) 0,transparent 1.4px);background-size:5px 5px,7px 7px,4px 4px;animation:cn-flicker 1.4s ease-in-out infinite}
-.cn-fg-overlay{position:fixed;inset:0;z-index:9998;background:rgba(2,3,12,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;place-items:center}
-.cn-fg-modal{width:min(820px,94vw);background:radial-gradient(ellipse at 30% 0%,rgba(0,229,255,.08),transparent 50%),#020208;border:1px solid rgba(0,229,255,.35);border-radius:18px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(0,229,255,.18)}
-.cn-fg-hd{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cn-ac);letter-spacing:.3em;margin-bottom:12px;text-transform:uppercase}
-.cn-fg-close{width:28px;height:28px;border-radius:6px;background:rgba(255,46,91,.15);border:1px solid rgba(255,46,91,.4);color:var(--cn-cr);cursor:pointer;font-weight:700}
-.cn-fg-legend{margin-top:10px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cn-dim);flex-wrap:wrap}
+.cn-noise-css{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.18;z-index:2;background-image:repeating-radial-gradient(circle at 30% 30%,rgba(var(--cj-acrgb),.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 70% 60%,rgba(var(--cj-purgb),.10) 0,transparent 1.6px),repeating-radial-gradient(circle at 50% 80%,rgba(var(--cj-acrgb),.08) 0,transparent 1.4px);background-size:5px 5px,7px 7px,4px 4px;animation:cn-flicker 1.4s ease-in-out infinite}
+.cn-fg-overlay{position:fixed;inset:0;z-index:9998;background:rgba(var(--cj-panelrgb),.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;place-items:center}
+.cn-fg-modal{width:min(820px,94vw);background:radial-gradient(ellipse at 30% 0%,rgba(var(--cj-acrgb),.08),transparent 50%),#020208;border:1px solid rgba(var(--cj-acrgb),.35);border-radius:18px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(var(--cj-acrgb),.18)}
+.cn-fg-hd{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-ac);letter-spacing:.3em;margin-bottom:12px;text-transform:uppercase}
+.cn-fg-close{width:28px;height:28px;border-radius:6px;background:rgba(var(--cj-crrgb),.15);border:1px solid rgba(var(--cj-crrgb),.4);color:var(--cn-cr);cursor:pointer;font-weight:700}
+.cn-fg-legend{margin-top:10px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cn-dim);flex-wrap:wrap}
 .cn-fg-legend .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
 /* cursor HUD nos paineis NEXUS */
 .cn-tok,.cn-dna-stage,.cn-holo-stage,.cn-towers-stage,.cn-prism-stage,.cn-prism2-stage{cursor:crosshair}
@@ -305,12 +314,12 @@ function CnVersionBadge() {
     <div style={{
       position: "fixed", bottom: 16, right: 56, zIndex: 51,
       padding: "5px 11px", borderRadius: 6,
-      background: "rgba(0,229,255,.12)", border: "1px solid rgba(0,229,255,.45)",
-      color: "#00e5ff", fontFamily: "'JetBrains Mono',monospace",
-      fontSize: 9, letterSpacing: ".22em", fontWeight: 700,
-      boxShadow: "0 0 14px rgba(0,229,255,.35)", pointerEvents: "none",
+      background: "rgba(var(--cj-acrgb),.12)", border: "1px solid rgba(var(--cj-acrgb),.45)",
+      color: "var(--cj-ac)", fontFamily: "'JetBrains Mono',monospace",
+      fontSize:11, letterSpacing: ".22em", fontWeight: 700,
+      boxShadow: "0 0 14px rgba(var(--cj-acrgb),.35)", pointerEvents: "none",
       textTransform: "uppercase",
-    }}>● COJUR NEXUS · v42.7 · ON</div>
+    }}>● COJUR NEXUS · v44 · ON</div>
   );
 }
 
@@ -354,13 +363,13 @@ function HoloHero({ titulo, num, prazo = "—", responsavel = "—", fase = "—
       <div className="cn-holo-ghost g2" />
       <div className="cn-holo-ghost g1">RE 1.234.561 · STF · Próximo</div>
       <div className="cn-holo-card">
-        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: accent, letterSpacing: ".22em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize:12, color: accent, letterSpacing: ".22em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 6, height: 6, background: accent, borderRadius: "50%", boxShadow: `0 0 10px ${accent}`, animation: "cn-dot 1.5s infinite" }} />
           {crit ? "EM FOCO · CRÍTICO" : "EM FOCO · PRIORIDADE 1"}
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)", marginTop: 8 }}>{num}</div>
-        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginTop: 10, textShadow: "0 0 18px rgba(0,229,255,.5)" }}>{titulo}</div>
-        <div style={{ display: "flex", gap: 22, marginTop: 22, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)" }}>
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize:12, color: "var(--cn-dim)", marginTop: 8 }}>{num}</div>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginTop: 10, textShadow: "0 0 18px rgba(var(--cj-acrgb),.5)" }}>{titulo}</div>
+        <div style={{ display: "flex", gap: 22, marginTop: 22, fontFamily: "'JetBrains Mono',monospace", fontSize:12, color: "var(--cn-dim)" }}>
           <div>RESP. <b style={{ color: "#fff" }}>{responsavel}</b></div>
           <div>PRAZO <span style={{ color: crit ? "var(--cn-cr)" : "#fff", fontSize: 14, fontWeight: 800, textShadow: crit ? "0 0 12px var(--cn-cr)" : "none" }}>{prazo}</span></div>
           <div>FASE <b style={{ color: "#fff" }}>{fase}</b></div>
@@ -569,7 +578,7 @@ function RingProgress({ value = 75, size = 90, color = "var(--cn-su)", label }) 
   return (
     <div className="cn-ring-progress" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={6} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(var(--cj-fgrgb),.06)" strokeWidth={6} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={6} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: "stroke-dashoffset .6s ease" }} />
       </svg>
       <div className="cn-ring-v" style={{ fontSize: size * 0.26 }}>{label || value + "%"}</div>
@@ -599,8 +608,8 @@ function KPIFlip({ frente, verso, w = 180, h = 90, style }) {
   return (
     <div className="cn-flip" style={{ width: w, height: h, ...style }}>
       <div className="cn-flip-inner" style={{ borderRadius: 12 }}>
-        <div className="cn-flip-face" style={{ background: "rgba(0,229,255,.06)", border: "1px solid rgba(0,229,255,.3)", borderRadius: 12, color: "#fff" }}>{frente}</div>
-        <div className="cn-flip-face cn-flip-back" style={{ background: "rgba(0,229,255,.14)", border: "1px solid rgba(0,229,255,.5)", borderRadius: 12, color: "var(--cn-ac)", boxShadow: "0 0 24px rgba(0,229,255,.3)" }}>{verso}</div>
+        <div className="cn-flip-face" style={{ background: "rgba(var(--cj-acrgb),.06)", border: "1px solid rgba(var(--cj-acrgb),.3)", borderRadius: 12, color: "#fff" }}>{frente}</div>
+        <div className="cn-flip-face cn-flip-back" style={{ background: "rgba(var(--cj-acrgb),.14)", border: "1px solid rgba(var(--cj-acrgb),.5)", borderRadius: 12, color: "var(--cn-ac)", boxShadow: "0 0 24px rgba(var(--cj-acrgb),.3)" }}>{verso}</div>
       </div>
     </div>
   );
@@ -669,52 +678,52 @@ function AmbientParticles({ count = 18 }) {
 /* ───── 11. Modo Comando ───── */
 function ModoComando({ open, onClose, total = 147, criticos = 8, jud = 23, adm = 47 }) {
   if (!open) return null;
-  const pTtl = { color: "var(--cn-ac)", letterSpacing: ".18em", fontSize: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6, fontWeight: 700 };
-  const hudPanel = (col, row) => ({ gridColumn: col, gridRow: row, background: "linear-gradient(135deg,rgba(8,12,28,.7),rgba(2,5,15,.85))", border: "1px solid rgba(0,229,255,.25)", borderRadius: 10, padding: 18, backdropFilter: "blur(8px)", boxShadow: "0 0 24px rgba(0,229,255,.08)", fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-dim)" });
+  const pTtl = { color: "var(--cn-ac)", letterSpacing: ".18em", fontSize:12, marginBottom: 12, display: "flex", alignItems: "center", gap: 6, fontWeight: 700 };
+  const hudPanel = (col, row) => ({ gridColumn: col, gridRow: row, background: "linear-gradient(135deg,rgba(var(--cj-panelrgb),.7),rgba(var(--cj-panelrgb),.85))", border: "1px solid rgba(var(--cj-acrgb),.25)", borderRadius: 10, padding: 18, backdropFilter: "blur(8px)", boxShadow: "0 0 24px rgba(var(--cj-acrgb),.08)", fontFamily: "'JetBrains Mono',monospace", fontSize:12, color: "var(--cn-dim)" });
   const Row = ({ label, value, color }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(var(--cj-fgrgb),.04)" }}>
       <span>{label}</span>
       <b style={{ color: color || "#e2e8f0", fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 600 }}>{value}</b>
     </div>
   );
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(2,3,12,.94)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center" }}
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(var(--cj-panelrgb),.94)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose && onClose(); }}>
-      <div style={{ width: "min(1180px,94vw)", height: "min(680px,90vh)", position: "relative", borderRadius: 20, background: "radial-gradient(ellipse at 30% 0%,rgba(0,229,255,.1),transparent 50%),radial-gradient(ellipse at 100% 100%,rgba(184,77,255,.08),transparent 50%),#020208", border: "1px solid rgba(0,229,255,.3)", overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.7),0 0 80px rgba(0,229,255,.2)" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px)", backgroundSize: "30px 30px", maskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)" }} />
-        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: "rgba(255,46,91,.15)", border: "1px solid rgba(255,46,91,.4)", color: "var(--cn-cr)", cursor: "pointer", fontSize: 18, fontWeight: 700, zIndex: 10 }}>✕</button>
-        <div style={{ position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)", fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "var(--cn-ac)", letterSpacing: ".3em", padding: "5px 14px", background: "rgba(0,229,255,.1)", border: "1px solid rgba(0,229,255,.4)", borderRadius: 4 }}>● COJUR · NEXUS · MODO COMANDO</div>
+      <div style={{ width: "min(1180px,94vw)", height: "min(680px,90vh)", position: "relative", borderRadius: 20, background: "radial-gradient(ellipse at 30% 0%,rgba(var(--cj-acrgb),.1),transparent 50%),radial-gradient(ellipse at 100% 100%,rgba(var(--cj-purgb),.08),transparent 50%),#020208", border: "1px solid rgba(var(--cj-acrgb),.3)", overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.7),0 0 80px rgba(var(--cj-acrgb),.2)" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(var(--cj-acrgb),.04) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--cj-acrgb),.04) 1px,transparent 1px)", backgroundSize: "30px 30px", maskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse at center,black 30%,transparent 80%)" }} />
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: "rgba(var(--cj-crrgb),.15)", border: "1px solid rgba(var(--cj-crrgb),.4)", color: "var(--cn-cr)", cursor: "pointer", fontSize: 18, fontWeight: 700, zIndex: 10 }}>✕</button>
+        <div style={{ position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)", fontFamily: "'JetBrains Mono',monospace", fontSize:12, color: "var(--cn-ac)", letterSpacing: ".3em", padding: "5px 14px", background: "rgba(var(--cj-acrgb),.1)", border: "1px solid rgba(var(--cj-acrgb),.4)", borderRadius: 4 }}>● COJUR · NEXUS · MODO COMANDO</div>
         <div style={{ position: "absolute", inset: "60px 40px 40px", display: "grid", gridTemplateColumns: "240px 1fr 240px", gridTemplateRows: "1fr 1fr", gap: 18 }}>
           <div style={hudPanel(1, 1)}><div style={pTtl}>ACERVO</div><Row label="Judicial" value={jud} /><Row label="Adm." value={adm} /><Row label="Sustent." value={4} /><Row label="Pareceres" value={64} /></div>
           <div style={hudPanel(1, 2)}><div style={pTtl}>DELTA · 7D</div><Row label="Concluídos" value="+12" color="var(--cn-su)" /><Row label="Críticos" value={criticos} color="var(--cn-cr)" /><Row label="Pendentes" value={34} />
-            <div style={{ padding: 10, marginTop: 10, borderRadius: 6, background: "rgba(255,46,91,.1)", border: "1px solid rgba(255,46,91,.3)", color: "var(--cn-cr)", fontSize: 10, fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.4, animation: "cn-pulseCr 2.4s ease infinite" }}>{`⚠ ${criticos} PRAZOS < 48H, REVISAR JÁ`}</div>
+            <div style={{ padding: 10, marginTop: 10, borderRadius: 6, background: "rgba(var(--cj-crrgb),.1)", border: "1px solid rgba(var(--cj-crrgb),.3)", color: "var(--cn-cr)", fontSize:12, fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.4, animation: "cn-pulseCr 2.4s ease infinite" }}>{`⚠ ${criticos} PRAZOS < 48H, REVISAR JÁ`}</div>
           </div>
-          <div style={{ ...hudPanel(2, "1/span 2"), display: "flex", alignItems: "center", justifyContent: "center", perspective: 900, borderColor: "rgba(0,229,255,.4)" }}>
+          <div style={{ ...hudPanel(2, "1/span 2"), display: "flex", alignItems: "center", justifyContent: "center", perspective: 900, borderColor: "rgba(var(--cj-acrgb),.4)" }}>
             <div style={{ width: 280, height: 280, position: "relative", transformStyle: "preserve-3d", animation: "cn-spinTilt 20s linear infinite" }}>
-              {[0, 45, 90, 135].map((deg) => <div key={deg} style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${deg % 90 === 0 ? "rgba(0,229,255,.5)" : "rgba(184,77,255,.4)"}`, transform: `rotateY(${deg}deg)`, boxShadow: "0 0 16px rgba(0,229,255,.15) inset" }} />)}
-              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(0,255,136,.4)", transform: "rotateX(90deg)" }} />
-              <div style={{ position: "absolute", inset: "50% auto auto 50%", transform: "translate(-50%,-50%)", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle,rgba(0,229,255,.8),rgba(0,229,255,.1) 70%,transparent)", boxShadow: "0 0 50px rgba(0,229,255,.7),0 0 100px rgba(0,229,255,.3)", display: "grid", placeItems: "center" }}>
+              {[0, 45, 90, 135].map((deg) => <div key={deg} style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${deg % 90 === 0 ? "rgba(var(--cj-acrgb),.5)" : "rgba(var(--cj-purgb),.4)"}`, transform: `rotateY(${deg}deg)`, boxShadow: "0 0 16px rgba(var(--cj-acrgb),.15) inset" }} />)}
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid rgba(var(--cj-surgb),.4)", transform: "rotateX(90deg)" }} />
+              <div style={{ position: "absolute", inset: "50% auto auto 50%", transform: "translate(-50%,-50%)", width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle,rgba(var(--cj-acrgb),.8),rgba(var(--cj-acrgb),.1) 70%,transparent)", boxShadow: "0 0 50px rgba(var(--cj-acrgb),.7),0 0 100px rgba(var(--cj-acrgb),.3)", display: "grid", placeItems: "center" }}>
                 <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", textShadow: "0 0 12px #fff" }}>{total}</span>
               </div>
             </div>
           </div>
           <div style={hudPanel(3, 1)}><div style={pTtl}>PRÓXIMOS</div>
-            <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.7 }}>
+            <div style={{ fontSize:12, color: "#cbd5e1", lineHeight: 1.7 }}>
               {["02 MAI · CREMESP|var(--cn-cr)","09 MAI · OAB-RJ|var(--cn-wa)","17 MAI · AgInt|var(--cn-ac)","24 MAI · Sustent.|var(--cn-pu)","05 JUN · Parecer|var(--cn-su)"].map((s, i) => {
                 const [t, c] = s.split("|"); const [d, label] = t.split(" · ");
-                return <div key={i} style={{ padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,.05)" }}><b style={{ color: c, fontFamily: "'JetBrains Mono',monospace", marginRight: 6 }}>{d}</b>· {label}</div>;
+                return <div key={i} style={{ padding: "5px 0", borderBottom: "1px solid rgba(var(--cj-fgrgb),.05)" }}><b style={{ color: c, fontFamily: "'JetBrains Mono',monospace", marginRight: 6 }}>{d}</b>· {label}</div>;
               })}
             </div>
           </div>
           <div style={hudPanel(3, 2)}><div style={pTtl}>URGÊNCIA</div>
             <svg viewBox="0 0 100 100" style={{ width: "100%", height: 100 }}>
-              <circle cx={50} cy={50} r={35} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={10} />
+              <circle cx={50} cy={50} r={35} fill="none" stroke="rgba(var(--cj-fgrgb),.05)" strokeWidth={10} />
               <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-cr)" strokeWidth={10} strokeDasharray="35 220" transform="rotate(-90 50 50)" />
               <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-wa)" strokeWidth={10} strokeDasharray="55 220" strokeDashoffset={-35} transform="rotate(-90 50 50)" />
               <circle cx={50} cy={50} r={35} fill="none" stroke="var(--cn-ac)" strokeWidth={10} strokeDasharray="80 220" strokeDashoffset={-90} transform="rotate(-90 50 50)" />
               <text x={50} y={55} fontSize={14} fill="#fff" textAnchor="middle" fontFamily="Space Grotesk" fontWeight={700}>{total}</text>
             </svg>
-            <div style={{ fontSize: 9, color: "var(--cn-dim2)", textAlign: "center", letterSpacing: ".1em", fontFamily: "'JetBrains Mono',monospace" }}>POR FAIXA DE PRAZO</div>
+            <div style={{ fontSize:11, color: "var(--cn-dim2)", textAlign: "center", letterSpacing: ".1em", fontFamily: "'JetBrains Mono',monospace" }}>POR FAIXA DE PRAZO</div>
           </div>
         </div>
       </div>
@@ -733,7 +742,7 @@ function TorresPrazo({ data, hMin = 60, hMax = 280 }) {
       { l: "12du", t: "Sustent.", s: "STJ", v: 12 },
     ];
   }, [data]);
-  const colorFor = (v) => v <= 5 ? "#ff2e5b" : v <= 14 ? "#ffb800" : v <= 28 ? "#00e5ff" : "#00ff88";
+  const colorFor = (v) => v <= 5 ? "var(--cj-cr)" : v <= 14 ? "var(--cj-wa)" : v <= 28 ? "var(--cj-ac)" : "var(--cj-su)";
   const max = Math.max(...torres.map((t) => t.v), 40);
   const heightFor = (v) => hMin + (v / max) * (hMax - hMin);
   return (
@@ -770,12 +779,12 @@ function TimelinePrism({ events, onSelect, range = 60 }) {
   const ev = useMemo(function(){
     if (events && events.length) return events;
     return [
-      { x: 8, c: "#ff2e5b", d: "02 MAI", t: "Tutela CREMESP", h: 90, tipo: "jud" },
-      { x: 22, c: "#ffb800", d: "09 MAI", t: "OAB-RJ Lei 9.696", h: 140, tipo: "adm" },
-      { x: 38, c: "#00e5ff", d: "17 MAI", t: "AgInt TRF1", h: 70, tipo: "jud" },
-      { x: 54, c: "#b84dff", d: "24 MAI", t: "Sustentação STJ", h: 160, tipo: "sust" },
-      { x: 72, c: "#00ff88", d: "05 JUN", t: "Parecer 2024.882", h: 100, tipo: "adm" },
-      { x: 90, c: "#00e5ff", d: "20 JUN", t: "Embargos TST", h: 80, tipo: "jud" },
+      { x: 8, c: "var(--cj-cr)", d: "02 MAI", t: "Tutela CREMESP", h: 90, tipo: "jud" },
+      { x: 22, c: "var(--cj-wa)", d: "09 MAI", t: "OAB-RJ Lei 9.696", h: 140, tipo: "adm" },
+      { x: 38, c: "var(--cj-ac)", d: "17 MAI", t: "AgInt TRF1", h: 70, tipo: "jud" },
+      { x: 54, c: "var(--cj-pu)", d: "24 MAI", t: "Sustentação STJ", h: 160, tipo: "sust" },
+      { x: 72, c: "var(--cj-su)", d: "05 JUN", t: "Parecer 2024.882", h: 100, tipo: "adm" },
+      { x: 90, c: "var(--cj-ac)", d: "20 JUN", t: "Embargos TST", h: 80, tipo: "jud" },
     ];
   }, [events]);
 
@@ -789,13 +798,16 @@ function TimelinePrism({ events, onSelect, range = 60 }) {
       jud: ev.filter(function(e){return e.tipo==="jud";}).length,
       adm: ev.filter(function(e){return e.tipo==="adm";}).length,
       sust: ev.filter(function(e){return e.tipo==="sust";}).length,
-      crit: ev.filter(function(e){return e.c === "#ff2e5b";}).length,
+      crit: ev.filter(function(e){return e.c === "var(--cj-cr)";}).length,
     };
   }, [ev]);
 
   const markers = useMemo(function(){
-    var stops = [0, 7, 14, 30, range];
-    return stops.filter(function(s){return s <= range;}).map(function(s){
+    /* v44 FIX: quando range era 14 ou 30, [0,7,14,30,range] gerava marca
+       duplicada (mesma posicao/label). Deduplicamos. */
+    var seen = {};
+    var stops = [0, 7, 14, 30, range].filter(function(s){ if(s>range||seen[s])return false; seen[s]=true; return true; });
+    return stops.map(function(s){
       return { p: (s/range)*100, label: "T+" + s + "du" };
     });
   }, [range]);
@@ -898,10 +910,10 @@ function TimelinePrism({ events, onSelect, range = 60 }) {
 
       {/* Legenda inferior */}
       <div className="cn-prism2-foot">
-        <span><i style={{background:"#ff2e5b"}}/>≤5du · CRÍTICO</span>
-        <span><i style={{background:"#ffb800"}}/>≤14du · ATENÇÃO</span>
-        <span><i style={{background:"#00e5ff"}}/>≤28du · ACOMPANHAR</span>
-        <span><i style={{background:"#00ff88"}}/>+28du · FOLGADO</span>
+        <span><i style={{background:"var(--cj-cr)"}}/>≤5du · CRÍTICO</span>
+        <span><i style={{background:"var(--cj-wa)"}}/>≤14du · ATENÇÃO</span>
+        <span><i style={{background:"var(--cj-ac)"}}/>≤28du · ACOMPANHAR</span>
+        <span><i style={{background:"var(--cj-su)"}}/>+28du · FOLGADO</span>
         <span style={{marginLeft:"auto",color:"var(--cn-dim2)"}}>{visible.length}/{ev.length} visíveis · clique no card abre o processo</span>
       </div>
     </div>
@@ -1257,7 +1269,7 @@ var _copyToastEl = null;
 var showCopyToast = function(txt) {
   if(_copyToastEl) { document.body.removeChild(_copyToastEl); }
   var el = document.createElement("div");
-  el.style.cssText = "position:fixed;bottom:90px;right:24px;z-index:9999;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.08));border:1px solid rgba(0,255,136,.55);color:#00ff88;font-size:13px;font-weight:700;font-family:Orbitron,monospace;box-shadow:0 0 24px rgba(0,255,136,.35),0 12px 32px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity .4s;pointer-events:none;letter-spacing:.5px;";
+  el.style.cssText = "position:fixed;bottom:90px;right:24px;z-index:9999;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(var(--cj-surgb),.18),rgba(var(--cj-surgb),.08));border:1px solid rgba(var(--cj-surgb),.55);color:#00ff88;font-size:14px;font-weight:700;font-family:Orbitron,monospace;box-shadow:0 0 24px rgba(var(--cj-surgb),.35),0 12px 32px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:opacity .4s;pointer-events:none;letter-spacing:.5px;";
   el.innerText = "✅ Nº copiado: " + txt;
   document.body.appendChild(el);
   _copyToastEl = el;
@@ -1273,6 +1285,12 @@ const injectCSS = () => {
   s.id = "cj3";
   s.textContent = `
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+/* ═══ v43 · DESIGN TOKENS DE TEMA — escuro é o default, claro redefine a raiz ═══ */
+:root{--cj-fgrgb:255,255,255;--cj-panelrgb:3,6,18;--cj-acrgb:0,229,255;--cj-crrgb:255,46,91;--cj-wargb:255,184,0;--cj-surgb:0,255,136;--cj-purgb:184,77,255;--cj-inforgb:125,211,252;--cj-ac:#00e5ff;--cj-cr:#ff2e5b;--cj-wa:#ffb800;--cj-su:#00ff88;--cj-pu:#b84dff;--cj-info:#7dd3fc;--cj-wa-soft:#fde68a;--cj-tx0:#fff}
+body.cj-light{--cj-fgrgb:15,23,42;--cj-panelrgb:255,255,255;--cj-acrgb:2,132,199;--cj-crrgb:220,38,38;--cj-wargb:180,98,5;--cj-surgb:4,120,87;--cj-purgb:109,40,217;--cj-inforgb:3,105,161;--cj-ac:#0369a1;--cj-cr:#dc2626;--cj-wa:#b45309;--cj-su:#047857;--cj-pu:#6d28d9;--cj-info:#0369a1;--cj-wa-soft:#92400e;--cj-tx0:#0f172a;
+  --cn-ac:#0369a1;--cn-pu:#6d28d9;--cn-su:#047857;--cn-cr:#dc2626;--cn-wa:#b45309;--cn-bg:#eef2f7;--cn-txt:#0f172a;--cn-dim:#475569;--cn-dim2:#64748b}
+body.cj-light .cn-boot{--cn-ac:#00e5ff;--cn-su:#00ff88;--cn-cr:#ff2e5b;--cn-pu:#b84dff;--cn-dim:#94a3b8;--cn-dim2:#64748b}
 
 /* ═══ KEYFRAMES ═══ */
 /* v42.5 FIX RAIZ: estados finais sem 'transform' (so opacity). Antes terminavam
@@ -1291,13 +1309,13 @@ const injectCSS = () => {
 @keyframes tabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
 @keyframes scanLine{0%{top:-2%}100%{top:102%}}
 @keyframes shimmerSlide{0%{transform:translateX(-120%) skewX(-18deg)}100%{transform:translateX(220%) skewX(-18deg)}}
-@keyframes neonPulse{0%,100%{box-shadow:0 0 14px rgba(0,229,255,.18),inset 0 0 14px rgba(0,229,255,.03)}50%{box-shadow:0 0 36px rgba(0,229,255,.38),inset 0 0 28px rgba(0,229,255,.07)}}
-@keyframes neonPulseCr{0%,100%{box-shadow:0 0 12px rgba(255,46,91,.4)}50%{box-shadow:0 0 28px rgba(255,46,91,.9),0 0 55px rgba(255,46,91,.35)}}
-@keyframes neonPulseWa{0%,100%{box-shadow:0 0 12px rgba(255,184,0,.35)}50%{box-shadow:0 0 28px rgba(255,184,0,.8),0 0 50px rgba(255,184,0,.3)}}
-@keyframes borderGlow{0%{border-color:rgba(0,255,136,.18)}33%{border-color:rgba(0,229,255,.22)}66%{border-color:rgba(184,77,255,.18)}100%{border-color:rgba(0,255,136,.18)}}
-@keyframes gaugeGlow{0%,100%{filter:drop-shadow(0 0 5px rgba(0,229,255,.7))}50%{filter:drop-shadow(0 0 14px rgba(0,229,255,1)) drop-shadow(0 0 28px rgba(0,229,255,.5))}}
+@keyframes neonPulse{0%,100%{box-shadow:0 0 14px rgba(var(--cj-acrgb),.18),inset 0 0 14px rgba(var(--cj-acrgb),.03)}50%{box-shadow:0 0 36px rgba(var(--cj-acrgb),.38),inset 0 0 28px rgba(var(--cj-acrgb),.07)}}
+@keyframes neonPulseCr{0%,100%{box-shadow:0 0 12px rgba(var(--cj-crrgb),.4)}50%{box-shadow:0 0 28px rgba(var(--cj-crrgb),.9),0 0 55px rgba(var(--cj-crrgb),.35)}}
+@keyframes neonPulseWa{0%,100%{box-shadow:0 0 12px rgba(var(--cj-wargb),.35)}50%{box-shadow:0 0 28px rgba(var(--cj-wargb),.8),0 0 50px rgba(var(--cj-wargb),.3)}}
+@keyframes borderGlow{0%{border-color:rgba(var(--cj-surgb),.18)}33%{border-color:rgba(var(--cj-acrgb),.22)}66%{border-color:rgba(var(--cj-purgb),.18)}100%{border-color:rgba(var(--cj-surgb),.18)}}
+@keyframes gaugeGlow{0%,100%{filter:drop-shadow(0 0 5px rgba(var(--cj-acrgb),.7))}50%{filter:drop-shadow(0 0 14px rgba(var(--cj-acrgb),1)) drop-shadow(0 0 28px rgba(var(--cj-acrgb),.5))}}
 @keyframes textGlow{0%,100%{text-shadow:0 0 8px currentColor}50%{text-shadow:0 0 18px currentColor,0 0 35px currentColor}}
-@keyframes cjNeonAc{0%,100%{box-shadow:0 0 8px rgba(0,229,255,.35)}50%{box-shadow:0 0 22px rgba(0,229,255,.8),0 0 44px rgba(0,229,255,.3)}}
+@keyframes cjNeonAc{0%,100%{box-shadow:0 0 8px rgba(var(--cj-acrgb),.35)}50%{box-shadow:0 0 22px rgba(var(--cj-acrgb),.8),0 0 44px rgba(var(--cj-acrgb),.3)}}
 @keyframes cornerPulse{0%,100%{opacity:.55}50%{opacity:1}}
 
 /* ═══ BASE ═══ */
@@ -1313,30 +1331,30 @@ const injectCSS = () => {
 
 /* ═══ SCROLLBAR ═══ */
 ::-webkit-scrollbar{width:3px;height:3px}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(0,229,255,.4),rgba(184,77,255,.4));border-radius:999px}
-::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(0,229,255,.7),rgba(184,77,255,.7))}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(var(--cj-acrgb),.4),rgba(var(--cj-purgb),.4));border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(var(--cj-acrgb),.7),rgba(var(--cj-purgb),.7))}
 /* v42.3: scrollbar visivel dentro de modais (precisa ser largo para o usuario
    perceber que ha conteudo abaixo do que esta visivel). */
 .cj-modal-body::-webkit-scrollbar{width:10px;height:10px}
-.cj-modal-body::-webkit-scrollbar-track{background:rgba(255,255,255,.03);border-radius:999px}
-.cj-modal-body::-webkit-scrollbar-thumb{background:rgba(0,229,255,.35);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
-.cj-modal-body::-webkit-scrollbar-thumb:hover{background:rgba(0,229,255,.6);background-clip:padding-box}
-.cj-modal-body{scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.35) rgba(255,255,255,.03)}
+.cj-modal-body::-webkit-scrollbar-track{background:rgba(var(--cj-fgrgb),.03);border-radius:999px}
+.cj-modal-body::-webkit-scrollbar-thumb{background:rgba(var(--cj-acrgb),.35);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+.cj-modal-body::-webkit-scrollbar-thumb:hover{background:rgba(var(--cj-acrgb),.6);background-clip:padding-box}
+.cj-modal-body{scrollbar-width:thin;scrollbar-color:rgba(var(--cj-acrgb),.35) rgba(var(--cj-fgrgb),.03)}
 /* v42.7: backdrop nativo do <dialog> HTML5 (renderiza na top layer, imune a
    transform/filter/contain de qualquer ancestral). Substitui o overlay
    manual que falhava em ambientes com containing-block exotico. */
 dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 dialog[open]{animation:cjSc .22s ease both}
 dialog::-webkit-scrollbar{width:10px}
-dialog::-webkit-scrollbar-thumb{background:rgba(0,229,255,.35);border-radius:999px}
+dialog::-webkit-scrollbar-thumb{background:rgba(var(--cj-acrgb),.35);border-radius:999px}
 ::-webkit-scrollbar-track{background:transparent}
-@keyframes cjProtocolar{0%,100%{box-shadow:0 0 12px rgba(0,255,136,.4),0 0 30px rgba(0,255,136,.15)}50%{box-shadow:0 0 28px rgba(0,255,136,.9),0 0 60px rgba(0,255,136,.35),inset 0 0 10px rgba(0,255,136,.1)}}
-@keyframes cjCorrecao{0%,100%{box-shadow:0 0 12px rgba(255,184,0,.45),0 0 28px rgba(255,184,0,.18)}50%{box-shadow:0 0 26px rgba(255,184,0,.95),0 0 55px rgba(255,184,0,.38),inset 0 0 10px rgba(255,184,0,.1)}}
-.cj-protocolar{animation:cjProtocolar 1.8s ease-in-out infinite!important;border-color:rgba(0,255,136,.5)!important}
-.cj-correcao{animation:cjCorrecao 1.8s ease-in-out infinite!important;border-color:rgba(255,184,0,.5)!important}
+@keyframes cjProtocolar{0%,100%{box-shadow:0 0 12px rgba(var(--cj-surgb),.4),0 0 30px rgba(var(--cj-surgb),.15)}50%{box-shadow:0 0 28px rgba(var(--cj-surgb),.9),0 0 60px rgba(var(--cj-surgb),.35),inset 0 0 10px rgba(var(--cj-surgb),.1)}}
+@keyframes cjCorrecao{0%,100%{box-shadow:0 0 12px rgba(var(--cj-wargb),.45),0 0 28px rgba(var(--cj-wargb),.18)}50%{box-shadow:0 0 26px rgba(var(--cj-wargb),.95),0 0 55px rgba(var(--cj-wargb),.38),inset 0 0 10px rgba(var(--cj-wargb),.1)}}
+.cj-protocolar{animation:cjProtocolar 1.8s ease-in-out infinite!important;border-color:rgba(var(--cj-surgb),.5)!important}
+.cj-correcao{animation:cjCorrecao 1.8s ease-in-out infinite!important;border-color:rgba(var(--cj-wargb),.5)!important}
 button:hover{filter:brightness(1.1)}
 button:active{transform:scale(.97)}
-input:focus,select:focus{border-color:rgba(0,229,255,.35)!important;box-shadow:0 0 0 2px rgba(0,229,255,.1),0 0 20px rgba(0,229,255,.06)!important}
+input:focus,select:focus{border-color:rgba(var(--cj-acrgb),.35)!important;box-shadow:0 0 0 2px rgba(var(--cj-acrgb),.1),0 0 20px rgba(var(--cj-acrgb),.06)!important}
 
 /* ═══ LINKS ═══ */
 a.cj-link,.cj-link{color:#67e8f9;text-decoration:none}
@@ -1352,49 +1370,49 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 
 /* ═══ HUD CORNERS ═══ */
 .cj-hud-tl{position:relative}
-.cj-hud-tl::before{content:"";position:absolute;top:0;left:0;width:16px;height:16px;border-top:2px solid rgba(0,229,255,.6);border-left:2px solid rgba(0,229,255,.6);border-radius:4px 0 0 0;pointer-events:none;z-index:1;animation:cornerPulse 3s ease-in-out infinite}
+.cj-hud-tl::before{content:"";position:absolute;top:0;left:0;width:16px;height:16px;border-top:2px solid rgba(var(--cj-acrgb),.6);border-left:2px solid rgba(var(--cj-acrgb),.6);border-radius:4px 0 0 0;pointer-events:none;z-index:1;animation:cornerPulse 3s ease-in-out infinite}
 .cj-hud-br{position:relative}
-.cj-hud-br::after{content:"";position:absolute;bottom:0;right:0;width:16px;height:16px;border-bottom:2px solid rgba(184,77,255,.6);border-right:2px solid rgba(184,77,255,.6);border-radius:0 0 4px 0;pointer-events:none;z-index:1;animation:cornerPulse 3s ease-in-out .8s infinite}
+.cj-hud-br::after{content:"";position:absolute;bottom:0;right:0;width:16px;height:16px;border-bottom:2px solid rgba(var(--cj-purgb),.6);border-right:2px solid rgba(var(--cj-purgb),.6);border-radius:0 0 4px 0;pointer-events:none;z-index:1;animation:cornerPulse 3s ease-in-out .8s infinite}
 
 /* ═══ SCAN SHIMMER ON CARDS ═══ */
 .cj-shimmer{position:relative;overflow:hidden}
-.cj-shimmer::before{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 30%,rgba(0,229,255,.04) 50%,transparent 70%);transform:translateX(-120%) skewX(-18deg);pointer-events:none;animation:shimmerSlide 5s ease-in-out infinite;z-index:0}
+.cj-shimmer::before{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 30%,rgba(var(--cj-acrgb),.04) 50%,transparent 70%);transform:translateX(-120%) skewX(-18deg);pointer-events:none;animation:shimmerSlide 5s ease-in-out infinite;z-index:0}
 
 /* ═══ NAV ═══ */
-.cj-nav-active{box-shadow:inset 3px 0 0 #00e5ff,0 0 20px rgba(0,229,255,.12)!important;background:linear-gradient(90deg,rgba(0,229,255,.12),rgba(0,229,255,.03))!important}
+.cj-nav-active{box-shadow:inset 3px 0 0 #00e5ff,0 0 20px rgba(var(--cj-acrgb),.12)!important;background:linear-gradient(90deg,rgba(var(--cj-acrgb),.12),rgba(var(--cj-acrgb),.03))!important}
 
 /* ═══ TABLE ═══ */
-.cj-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
-.cj-table thead th{position:sticky;top:0;z-index:2;background:rgba(2,2,12,.98);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,229,255,.15)}
-.cj-table tbody tr:nth-child(even){background:rgba(0,229,255,.018)}
-.cj-table tbody tr:hover{background:rgba(0,229,255,.06);box-shadow:inset 3px 0 0 rgba(0,229,255,.5)}
+.cj-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.cj-table thead th{position:sticky;top:0;z-index:2;background:rgba(var(--cj-panelrgb),.98);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid rgba(var(--cj-acrgb),.15)}
+.cj-table tbody tr:nth-child(even){background:rgba(var(--cj-acrgb),.018)}
+.cj-table tbody tr:hover{background:rgba(var(--cj-acrgb),.06);box-shadow:inset 3px 0 0 rgba(var(--cj-acrgb),.5)}
 
 /* ═══ CAL CELL ═══ */
 .cj-cal-cell{transition:all .15s;cursor:pointer}
-.cj-cal-cell:hover{background:rgba(0,229,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(0,229,255,.3)}
+.cj-cal-cell:hover{background:rgba(var(--cj-acrgb),.1)!important;box-shadow:inset 0 0 0 1px rgba(var(--cj-acrgb),.3)}
 
 /* ═══ IA CARDS ═══ */
-.cj-ia-card{background:linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(0,229,255,.12);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02),inset 0 1px 0 rgba(0,229,255,.06);animation:neonPulse 4s ease-in-out infinite}
-.cj-ia-card::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.8),rgba(184,77,255,.4),transparent)}
-.cj-ia-card::after{content:"";position:absolute;inset:auto 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,77,255,.3),transparent)}
+.cj-ia-card{background:linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(var(--cj-acrgb),.12);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(var(--cj-fgrgb),.02),inset 0 1px 0 rgba(var(--cj-acrgb),.06);animation:neonPulse 4s ease-in-out infinite}
+.cj-ia-card::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--cj-acrgb),.8),rgba(var(--cj-purgb),.4),transparent)}
+.cj-ia-card::after{content:"";position:absolute;inset:auto 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--cj-purgb),.3),transparent)}
 
 /* ═══ RANK ═══ */
 .cj-rank-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .22s;border:1px solid transparent}
-.cj-rank-item:hover{background:rgba(0,229,255,.07);border-color:rgba(0,229,255,.22);transform:translateX(4px);box-shadow:0 0 20px rgba(0,229,255,.08),-4px 0 0 rgba(0,229,255,.4)}
+.cj-rank-item:hover{background:rgba(var(--cj-acrgb),.07);border-color:rgba(var(--cj-acrgb),.22);transform:translateX(4px);box-shadow:0 0 20px rgba(var(--cj-acrgb),.08),-4px 0 0 rgba(var(--cj-acrgb),.4)}
 
 /* ═══ BADGES ═══ */
-.cj-badge-fire{background:linear-gradient(135deg,#ff2e5b,#b91c1c);color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;letter-spacing:.3px;box-shadow:0 0 14px rgba(255,46,91,.55),0 0 32px rgba(255,46,91,.25),inset 0 1px 0 rgba(255,255,255,.2)}
-.cj-badge-zap{background:linear-gradient(135deg,#ffb800,#d97706);color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;box-shadow:0 0 14px rgba(255,184,0,.5),inset 0 1px 0 rgba(255,255,255,.2)}
-.cj-badge-ok{background:linear-gradient(135deg,#00e5ff,#0891b2);color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;box-shadow:0 0 14px rgba(0,229,255,.55),inset 0 1px 0 rgba(255,255,255,.2)}
-.cj-badge-ice{background:rgba(255,255,255,.08);color:#94a3b8;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;border:1px solid rgba(255,255,255,.08)}
+.cj-badge-fire{background:linear-gradient(135deg,#ff2e5b,#b91c1c);color:#fff;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;letter-spacing:.3px;box-shadow:0 0 14px rgba(var(--cj-crrgb),.55),0 0 32px rgba(var(--cj-crrgb),.25),inset 0 1px 0 rgba(var(--cj-fgrgb),.2)}
+.cj-badge-zap{background:linear-gradient(135deg,#ffb800,#d97706);color:#fff;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;box-shadow:0 0 14px rgba(var(--cj-wargb),.5),inset 0 1px 0 rgba(var(--cj-fgrgb),.2)}
+.cj-badge-ok{background:linear-gradient(135deg,#00e5ff,#0891b2);color:#fff;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;box-shadow:0 0 14px rgba(var(--cj-acrgb),.55),inset 0 1px 0 rgba(var(--cj-fgrgb),.2)}
+.cj-badge-ice{background:rgba(var(--cj-fgrgb),.08);color:#94a3b8;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;border:1px solid rgba(var(--cj-fgrgb),.08)}
 
 /* ═══ SUGGESTION ═══ */
-.cj-suggestion{padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(0,229,255,.02);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8}
-.cj-suggestion:hover{background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.3);color:#e2e8f0;box-shadow:0 0 20px rgba(0,229,255,.08)}
+.cj-suggestion{padding:10px 14px;border-radius:12px;border:1px solid rgba(var(--cj-fgrgb),.06);background:rgba(var(--cj-acrgb),.02);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;font-size:13px;color:#94a3b8}
+.cj-suggestion:hover{background:rgba(var(--cj-acrgb),.08);border-color:rgba(var(--cj-acrgb),.3);color:#e2e8f0;box-shadow:0 0 20px rgba(var(--cj-acrgb),.08)}
 
 /* ═══ POSTIT ═══ */
 .cj-postit{transition:all .22s ease;cursor:grab}
-.cj-postit:hover{transform:scale(1.05) rotate(0deg)!important;z-index:10;box-shadow:8px 16px 40px rgba(0,0,0,.6),0 0 20px rgba(0,229,255,.08)!important}
+.cj-postit:hover{transform:scale(1.05) rotate(0deg)!important;z-index:10;box-shadow:8px 16px 40px rgba(0,0,0,.6),0 0 20px rgba(var(--cj-acrgb),.08)!important}
 
 /* ═══ CUSTAS ═══ */
 .cj-custas-blink{animation:neonPulseWa 2.2s ease-in-out infinite}
@@ -1402,7 +1420,7 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 /* ═══ SOFT ═══ */
 /* ═══ SKELETON SHIMMER ═══ */
 @keyframes cjShimmer{0%{background-position:-200px 0}100%{background-position:calc(200px + 100%) 0}}
-.cj-skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(0,229,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200px 100%;animation:cjShimmer 1.5s ease infinite;border-radius:8px}
+.cj-skel{background:linear-gradient(90deg,rgba(var(--cj-fgrgb),.04) 25%,rgba(var(--cj-acrgb),.08) 50%,rgba(var(--cj-fgrgb),.04) 75%);background-size:200px 100%;animation:cjShimmer 1.5s ease infinite;border-radius:8px}
 .cj-skel-line{height:12px;margin-bottom:8px;border-radius:6px}
 .cj-skel-block{height:60px;border-radius:12px;margin-bottom:10px}
 
@@ -1424,22 +1442,22 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
 
 /* ═══ STEPPER ═══ */
 .cj-stepper{display:flex;align-items:center;gap:0;padding:12px 0}
-.cj-step-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(0,229,255,.3);background:transparent;flex-shrink:0;transition:all .2s;cursor:pointer;position:relative;z-index:1}
-.cj-step-dot.active{background:#00e5ff;border-color:#00e5ff;box-shadow:0 0 10px rgba(0,229,255,.6)}
-.cj-step-dot.done{background:rgba(0,255,136,.8);border-color:#00ff88;box-shadow:0 0 6px rgba(0,255,136,.4)}
-.cj-step-line{height:2px;flex:1;background:rgba(0,229,255,.15);min-width:8px}
-.cj-step-line.done{background:rgba(0,255,136,.5)}
+.cj-step-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(var(--cj-acrgb),.3);background:transparent;flex-shrink:0;transition:all .2s;cursor:pointer;position:relative;z-index:1}
+.cj-step-dot.active{background:#00e5ff;border-color:#00e5ff;box-shadow:0 0 10px rgba(var(--cj-acrgb),.6)}
+.cj-step-dot.done{background:rgba(var(--cj-surgb),.8);border-color:#00ff88;box-shadow:0 0 6px rgba(var(--cj-surgb),.4)}
+.cj-step-line{height:2px;flex:1;background:rgba(var(--cj-acrgb),.15);min-width:8px}
+.cj-step-line.done{background:rgba(var(--cj-surgb),.5)}
 
 /* ═══ NOTIFICATION PANEL ═══ */
 @keyframes cjSlideDown{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .cj-notif-panel{animation:cjSlideDown .2s ease both}
 
-.cj-soft{box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04)}
+.cj-soft{box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(var(--cj-fgrgb),.04)}
 .cj-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.cj-kd{outline:2px dashed rgba(0,229,255,.45);background:rgba(0,229,255,.06)!important}
+.cj-kd{outline:2px dashed rgba(var(--cj-acrgb),.45);background:rgba(var(--cj-acrgb),.06)!important}
 
 /* ═══ MISC ═══ */
-.cj-glass{background:rgba(0,229,255,.04);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(0,229,255,.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(255,46,91,.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(255,46,91,.3)}}
+.cj-glass{background:rgba(var(--cj-acrgb),.04);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(var(--cj-acrgb),.12);border-radius:16px;padding:14px 16px}@keyframes neonBlink{0%,100%{box-shadow:0 0 6px #ff2e5b,0 0 18px #ff2e5b,0 0 36px #ff2e5b;border-color:rgba(var(--cj-crrgb),.8)}50%{box-shadow:0 0 2px #ff2e5b;border-color:rgba(var(--cj-crrgb),.3)}}
 @keyframes textBlink{0%,100%{opacity:1}50%{opacity:.35}}
 .cj-sust-pulse{animation:neonBlink .9s ease-in-out infinite!important}
 
@@ -1477,6 +1495,44 @@ a.cj-link:hover,.cj-link:hover{text-decoration:underline}
   .cj-side{width:0!important;overflow:hidden!important;border:none!important}
   .cj-pg{margin-left:0!important}
 }
+
+/* ═══ v43 · CARD ENXUTO — detalhes expandem no hover ═══ */
+.cj-pc-more{max-height:0;opacity:0;overflow:hidden;margin-top:0;transition:max-height .4s ease,opacity .25s ease,margin-top .25s ease}
+.cj-pc:hover .cj-pc-more,.cj-pc:focus-within .cj-pc-more{max-height:1400px;opacity:1;margin-top:12px}
+.cj-pc-hint{transition:opacity .2s}
+.cj-pc:hover .cj-pc-hint{opacity:0}
+@media(hover:none){.cj-pc-more{display:none}.cj-pc-hint{display:none}}
+
+/* ═══ v43 · RESPONSIVO — grids assimétricos colapsam ═══ */
+@media(max-width:1280px){.cj-rgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:1100px){.cj-rgrid{grid-template-columns:minmax(0,1fr)!important}.cj-pg{padding:16px 12px!important}}
+
+/* ═══ v43 · TEMA CLARO REAL — transformação completa ═══ */
+body.cj-light *{text-shadow:none!important}
+body.cj-light button{box-shadow:none!important}
+body.cj-light .cn-particles,body.cj-light .cn-noise-css,body.cj-light .cn-scanH{display:none!important}
+body.cj-light .cj-shimmer,body.cj-light .cj-pulse,body.cj-light .cj-custas-blink,body.cj-light .cj-ub-crit,body.cj-light .cj-sust-pulse{animation:none!important}
+body.cj-light .cj-soft,body.cj-light .cj-hud-tl,body.cj-light .cj-hud-br{box-shadow:0 1px 2px rgba(15,23,42,.06),0 6px 24px rgba(15,23,42,.08)!important}
+body.cj-light .cj-glass{background:rgba(2,132,199,.05);border-color:rgba(2,132,199,.18)}
+body.cj-light .cj-table thead th.cj-sortable:hover,body.cj-light .cj-table thead th.cj-sorted{color:#0369a1}
+body.cj-light .cj-step-dot.active{background:#0369a1;border-color:#0369a1;box-shadow:none}
+body.cj-light .cj-step-dot.done{background:#047857;border-color:#047857;box-shadow:none}
+body.cj-light .cj-blob-a,body.cj-light .cj-blob-b,body.cj-light .cj-blob-c,body.cj-light .cj-blob-d{opacity:.25;filter:saturate(.7)}
+body.cj-light ::selection{background:rgba(2,132,199,.18)}
+body.cj-light ::-webkit-scrollbar-thumb{background:rgba(15,23,42,.22)!important}
+body.cj-light ::-webkit-scrollbar-track{background:rgba(15,23,42,.05)!important}
+body.cj-light input::placeholder,body.cj-light textarea::placeholder{color:#7b8a9c!important}
+body.cj-light img,body.cj-light svg{filter:none}
+body.cj-light .cn-term{background:rgba(4,120,87,.05);border-color:rgba(4,120,87,.3);box-shadow:none}
+body.cj-light .cn-section-tag{background:rgba(2,132,199,.07)}
+body.cj-light .cn-holo-card,body.cj-light .cn-holo-ghost{background:#ffffff;border-color:rgba(2,132,199,.3);box-shadow:0 10px 40px rgba(15,23,42,.12)}
+body.cj-light .cn-holo-floor{opacity:.35}
+body.cj-light .cn-tok,body.cj-light .cn-dna-stage,body.cj-light .cn-holo-stage,body.cj-light .cn-towers-stage{background:#fbfcfe;border-color:rgba(15,23,42,.1)}
+body.cj-light .cn-dna-label,body.cj-light .cn-dna-legend,body.cj-light .cn-dna-stat,body.cj-light .cn-dna-meta{background:rgba(255,255,255,.92);color:#0f172a;border-color:rgba(15,23,42,.14)}
+body.cj-light .cn-dna-stat b{color:#0f172a}
+body.cj-light .cn-tok-core{box-shadow:0 0 40px rgba(2,132,199,.25)}
+body.cj-light .cn-tok-pip{background:#ffffff}
+body.cj-light .cj-kd{outline-color:rgba(2,132,199,.55)}
 `;
   document.head.appendChild(s);
 };
@@ -1497,17 +1553,45 @@ var FERIADOS_NAC = [
 ];
 /* Recesso forense: 20/dez a 20/jan (art. 220 CPC) */
 var isRecessoForense=function(d){var m=d.getMonth(),day=d.getDate();return(m===11&&day>=20)||(m===0&&day<=20);};
-var isDU = function(d) {
+var __isoLocal=function(d){var p=function(n){return (n<10?"0":"")+n;};return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());};
+/* v43.1 C2: Pascoa (Meeus/Jones/Butcher) => feriados moveis de QUALQUER ano.
+   A lista manual FERIADOS_NAC segue valendo ate 2027 (revisada manualmente);
+   de 2028 em diante os feriados sao gerados por algoritmo: fixos nacionais,
+   30/11 (DF) e moveis (Carnaval, Sexta-feira Santa, Corpus Christi). Antes,
+   a partir de 2028 NENHUM feriado era reconhecido e os prazos inflavam. */
+var __pascoa=function(y){var a=y%19,b=Math.floor(y/100),c=y%100,d2=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d2-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);};
+var __ferCache={};
+var feriadosDoAno=function(y){
+  if(__ferCache[y])return __ferCache[y];
+  var P=__pascoa(y);
+  var off=function(n){var d=new Date(P);d.setDate(d.getDate()+n);return __isoLocal(d);};
+  __ferCache[y]=["01-01","04-21","05-01","09-07","10-12","11-02","11-15","11-20","11-30","12-25"].map(function(md){return y+"-"+md;}).concat([off(-47),off(-2),off(60)]);
+  return __ferCache[y];
+};
+var isFeriado=function(d){
+  /* v43.1 M1: ISO LOCAL (toISOString e UTC e deslocava o dia em fusos UTC+) */
+  var iso=__isoLocal(d);
+  if(FERIADOS_NAC.indexOf(iso)!==-1)return true;
+  var y=d.getFullYear();
+  /* v44 FIX: antes so reconhecia feriados gerados para y>2027; anos <=2024
+     ficavam SEM nenhum feriado (contagem de dias uteis inflava). Agora o
+     gerador por algoritmo cobre QUALQUER ano fora da lista manual (2025-2027). */
+  return feriadosDoAno(y).indexOf(iso)!==-1;
+};
+/* v43.1 A4: recesso forense (art. 220 CPC) suspende prazos JUDICIAIS; prazos
+   administrativos (SEI/CFM) continuam correndo. Default true preserva o
+   comportamento dos call sites judiciais/genericos. */
+var isDU = function(d, aplicarRecesso) {
   var dow = d.getDay();
   if (dow === 0 || dow === 6) return false;
-  if (isRecessoForense(d)) return false;
-  var iso=d.toISOString().split("T")[0];
-  return FERIADOS_NAC.indexOf(iso)===-1;
+  if (aplicarRecesso!==false && isRecessoForense(d)) return false;
+  return !isFeriado(d);
 };
-var subDU = function(date, n) {
+var subDU = function(date, n, aplicarRecesso) {
   // go back n business days from date
-  var d = new Date(date); var count = 0;
-  while (count < n) { d.setDate(d.getDate() - 1); if (isDU(d)) count++; }
+  var d = new Date(date); var count = 0; var guard = 0;
+  if (!(n > 0)) return d; /* v44: protege contra n NaN/negativo (loop infinito) */
+  while (count < n && guard < 3650) { guard++; d.setDate(d.getDate() - 1); if (isDU(d, aplicarRecesso)) count++; }
   return d;
 };
 var isSustAlerta = function(p) {
@@ -1563,8 +1647,15 @@ var getSustCountdown = function(p) {
 };
 
 const KD={bg:"#020208",card:"rgba(4,6,20,.92)",cardH:"rgba(6,10,28,.95)",side:"rgba(2,3,14,.99)",modal:"rgba(2,4,16,.99)",brd:"rgba(0,229,255,.1)",txt:"#e2e8f0",dim:"#4e6a8a",dim2:"#3a5070",ac:"#00e5ff",acG:"rgba(0,229,255,.14)",cr:"#ff2e5b",crG:"rgba(255,46,91,.15)",wa:"#ffb800",waG:"rgba(255,184,0,.15)",su:"#00ff88",suG:"rgba(0,255,136,.15)",pu:"#b84dff",puG:"rgba(184,77,255,.15)"};
-const KL={bg:"#f0f4f8",card:"rgba(255,255,255,.95)",cardH:"rgba(248,252,255,.98)",side:"rgba(240,245,255,.98)",modal:"rgba(255,255,255,.99)",brd:"rgba(0,150,200,.2)",txt:"#0f172a",dim:"#475569",dim2:"#64748b",ac:"#0284c7",acG:"rgba(2,132,199,.12)",cr:"#dc2626",crG:"rgba(220,38,38,.12)",wa:"#d97706",waG:"rgba(217,119,6,.12)",su:"#059669",suG:"rgba(5,150,105,.12)",pu:"#7c3aed",puG:"rgba(124,58,237,.12)"};
+const KL={bg:"#eef2f7",card:"#ffffff",cardH:"#f8fafd",side:"rgba(255,255,255,.98)",modal:"#ffffff",brd:"rgba(15,23,42,.13)",txt:"#0f172a",dim:"#3f5468",dim2:"#5a6c80",ac:"#0369a1",acG:"rgba(2,132,199,.1)",cr:"#dc2626",crG:"rgba(220,38,38,.1)",wa:"#b45309",waG:"rgba(180,98,5,.12)",su:"#047857",suG:"rgba(4,120,87,.1)",pu:"#6d28d9",puG:"rgba(109,40,217,.1)"};
 let K=KD;
+let __setMinutaProc=null;
+/* v43.1 A1: tipo de componente ESTAVEL para blocos inline com hooks. Antes,
+   React.createElement(function(){...}) criava um tipo novo a cada render =>
+   remount => estado interno zerado a cada tick de 60s (inputs perdiam texto,
+   painel de notificacoes fechava sozinho). fn executa no render de CjInline,
+   entao os hooks pertencem a uma fiber estavel e o estado sobrevive. */
+const CjInline=({fn})=>fn(); /* v43: ponte p/ botão Gerar Minuta dentro de PC */
 
 /* ═══ MODELOS DE DESPACHO ═══ */
 var DESPACHO_PROTOCOLO = "Prezado Evandro,\n\nEncaminho em anexo protocolo de peça judicial elaborada para conferência, registro na planilha e baixa no SEI.\n\nAtenciosamente,\nJoão Gabriel Albuquerque Araújo\nAdvogado do CFM";
@@ -1581,13 +1672,13 @@ function copyText(txt, onDone) {
   }
 }
 
-const uC=d=>d<=10?K.cr:d<30?K.wa:K.su;
-const uL=d=>d<=10?"Crítico":d<30?"Intermediário":"Normal";
-const uG=d=>d<=10?K.crG:d<30?K.waG:K.suG;
-const getInpSt=()=>({width:"100%",padding:"10px 12px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.txt,fontSize:13,outline:"none",fontFamily:"inherit",transition:"border-color .2s"});
-const getLblSt=()=>({display:"block",fontSize:11,fontWeight:600,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4});
-const getBtnPrim=()=>({padding:"9px 18px",borderRadius:12,border:`1px solid ${K.ac}55`,background:`linear-gradient(135deg,${K.acG},${K.puG})`,boxShadow:`0 0 22px ${K.ac}44,0 12px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)`,color:K.ac,fontSize:13,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit",textShadow:`0 0 8px ${K.ac}aa`});
-const getBtnGhost=()=>({padding:"8px 14px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.dim,fontSize:13,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,transition:"all .18s",fontFamily:"inherit"});
+const uC=d=>d>=900?K.dim:d<=10?K.cr:d<30?K.wa:K.su;
+const uL=d=>d>=900?"Sem prazo":d<=10?"Crítico":d<30?"Intermediário":"Normal";
+const uG=d=>d>=900?"rgba(var(--cj-fgrgb),.06)":d<=10?K.crG:d<30?K.waG:K.suG;
+const getInpSt=()=>({width:"100%",padding:"10px 12px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.txt,fontSize:14,outline:"none",fontFamily:"inherit",transition:"border-color .2s"});
+const getLblSt=()=>({display:"block",fontSize:12,fontWeight:600,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4});
+const getBtnPrim=()=>({padding:"9px 18px",borderRadius:12,border:`1px solid ${K.ac}55`,background:`linear-gradient(135deg,${K.acG},${K.puG})`,boxShadow:`0 0 22px ${K.ac}44,0 12px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(var(--cj-fgrgb),.1)`,color:K.ac,fontSize:14,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit",textShadow:`0 0 8px ${K.ac}aa`});
+const getBtnGhost=()=>({padding:"8px 14px",borderRadius:12,border:`1px solid ${K.brd}`,background:K.acG,color:K.dim,fontSize:14,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,transition:"all .18s",fontFamily:"inherit"});
 /* Legacy aliases — recriados como getters simples (sem Proxy) para compatibilidade com React style spread */
 const inpSt=getInpSt();
 const lblSt=getLblSt();
@@ -1608,7 +1699,7 @@ const isBiz=d=>{const w=curDate(d).getDay();return w!==0&&w!==6};
 /* v42 FIX: bizDiff agora conta REAL dias uteis (skip weekend + feriado + recesso forense).
    Antes apenas delegava p/ diffD, gerando diasRestantes errados quando prazo caia em
    sabado/domingo/feriado/recesso. Isso afetava UI critica de prazos. */
-const bizDiff=(a,b)=>{
+const bizDiff=(a,b,aplicarRecesso)=>{
   var da=curDate(a),db=curDate(b);
   if(!da||!db||isNaN(da.getTime())||isNaN(db.getTime()))return 999;
   if(da.getTime()===db.getTime())return 0;
@@ -1619,7 +1710,7 @@ const bizDiff=(a,b)=>{
   var safety=0;
   while(cur<end && safety<1825){
     cur.setDate(cur.getDate()+1);
-    if(isDU(cur))count++;
+    if(isDU(cur,aplicarRecesso))count++;
     safety++;
   }
   return count*sign;
@@ -1629,10 +1720,14 @@ const fmtS=d=>(d instanceof Date?d.toLocaleDateString("pt-BR",{day:"2-digit",mon
 const toD=v=>{
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
   if (!v) return null;
-  const d = new Date(v);
+  /* v44 FIX: string "YYYY-MM-DD" pura era parseada como meia-noite UTC e, em
+     fusos negativos (Brasil UTC-3), voltava 1 dia. Ancoramos ao meio-dia LOCAL. */
+  var d;
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) d = new Date(v + "T12:00:00");
+  else d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
 };
-const toISO=d=>{try{return d instanceof Date?d.toISOString().slice(0,10):(d||"")}catch(e){return ""}};
+const toISO=d=>{try{if(!(d instanceof Date))return d||"";var p=n=>(n<10?"0":"")+n;return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());}catch(e){return ""}};
 
 const STS=["Ativo","Em Execução","Em Acompanhamento","Pronto p/ Protocolo","Em Correção","Aguardando Resposta","Aguardando Decisão","Concluído","Suspenso","Arquivado"];
 const isProtocolar=p=>p.status==="Pronto p/ Protocolo";
@@ -1731,7 +1826,7 @@ const buildChecklist=(tipo,p)=>{
 
 /* ═══ SCORE ═══ */
 const calcScore=p=>{let s=0,dr=p.diasRestantes||0;if(isProtocolar(p)||isCorrecao(p))return 100;if(dr<=3)s+=40;else if(dr<=5)s+=34;else if(dr<=10)s+=26;else if(dr<=20)s+=16;else if(dr<30)s+=8;s+=(p.impacto||3)*5+(p.complexidade||3)*3;if(p.reuniao)s+=10;if(p.sustentacao)s+=15;if((p.semMov||0)>10)s+=10;if(p.depTerc)s+=8;if(!p.proxProv)s+=8;if(!p.responsavel)s+=6;return Math.min(100,s)};
-const recalc=p=>{const pf=toD(p.prazoFinal);const dr=pf?bizDiff(pf,NOW):999;const tipoPeca=inferTipoPeca(p);return{...p,prazoFinal:pf,diasRestantes:dr,tipoPeca,checklist:(p.checklist&&p.checklist.length?p.checklist:buildChecklist(tipoPeca,p)),score:calcScore({...p,diasRestantes:dr,tipoPeca})}};
+const recalc=p=>{const pf=toD(p.prazoFinal);const dr=pf?bizDiff(pf,NOW,p.tipo!=="adm"):999;const tipoPeca=inferTipoPeca(p);return{...p,prazoFinal:pf,diasRestantes:dr,tipoPeca,checklist:(p.checklist&&p.checklist.length?p.checklist:buildChecklist(tipoPeca,p)),score:calcScore({...p,diasRestantes:dr,tipoPeca})}};
 
 /* ═══ DATA ═══ */
 let _nid=100;const nid=()=>"N"+(++_nid);
@@ -1820,18 +1915,28 @@ const syncJudicialLinks=(st,p)=>{
 };
 
 const D_ADM=[
-  mkA({id:"A1",num:"26.0.000001826-0",numeroSEI:"26.0.000001826-0",assunto:"Tutela Cautelar Administrativa - PAF 005/2025 - CREMESP",interessado:"Maria Camila Lunardi (CREMESP nº 112.691)",orgao:"CFM",prazoFinal:addD(NOW,15),fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Parecer Jurídico",obs:"Pedido de providências c/ tutela cautelar administrativa. Nulidades estruturais, irregularidades graves no PAF 005/2025 do CREMESP. Adv. Marco Aurelio Souza (OAB/SP 193.035). Recebido via Presidência em 23/02/2026.",proxProv:"Analisar inicial e emitir parecer",dataProv:addD(NOW,5),estTempo:"6h",tags:["CREMESP","cautelar","PAF"],semMov:0,hist:[{d:addD(NOW,-45),e:"Recebido via e-mail Presidência 23/02/2026"},{d:addD(NOW,-45),e:"Abertura SEI e encaminhamento à COJUR"}]}),
-  mkA({id:"A2",num:"25.0.000011329-0",numeroSEI:"25.0.000011329-0",assunto:"Indícios de fraude em Diploma Digital (XML) validado pelo MEC",interessado:"CREMEC (CRM-CE)",orgao:"CFM",prazoFinal:addD(NOW,10),status:"Aguardando Resposta",fase:"Aguardando Retorno Externo",impacto:4,complexidade:4,tipoPeca:"Despacho",obs:"Falsificação documental de diploma digital. XML fraudulento validado pelo portal do MEC. Encaminhado à COADM e COINF para análise técnica dos mecanismos de segurança. Denúncia PF e SERES/MEC já realizadas pelo CREMEC. Despacho Coordenador José Alejandro Bullon Silva em 02/12/2025.",proxProv:"Cobrar retorno COADM/COINF",dataProv:addD(NOW,3),estTempo:"1h",depTerc:true,tags:["fraude","diploma","MEC","CREMEC"],semMov:0,hist:[{d:addD(NOW,-130),e:"Despacho Supervisor Evandro Junior 01/12/2025"},{d:addD(NOW,-129),e:"Encaminhado COADM/COINF por Coordenador 02/12/2025"}]}),
-  mkA({id:"A3",num:"26.0.000003358-7",numeroSEI:"26.0.000003358-7",assunto:"Consulta OAB/RJ - Exclusividade prescrição atividade física (Lei 9.696/98)",interessado:"Renata Campos Falcão Baalbaki (OAB/RJ - Comissão Direito Desportivo)",orgao:"CFM",prazoFinal:addD(NOW,20),fase:"Triagem",impacto:3,complexidade:3,tipoPeca:"Parecer Jurídico",obs:"Consulta institucional da Comissão de Direito Desportivo da OAB/RJ sobre inexistência de exclusividade do profissional de educação física na prescrição de atividade física na área da saúde. Ofício nº 001/2026 de 26/03/2026. Endereçado à Presidência CFM A/C Dr. João Gabriel.",proxProv:"Analisar consulta e elaborar parecer",dataProv:addD(NOW,10),estTempo:"8h",tags:["OAB","atividade física","CONFEF","Lei 9.696"],semMov:0,hist:[{d:addD(NOW,-9),e:"Recebido via e-mail Presidência 31/03/2026"},{d:addD(NOW,-9),e:"Abertura SEI 26.0.000003358-7"}]}),
+  mkA({id:"A1",num:"26.0.000000043-3",numeroSEI:"26.0.000000043-3",assunto:"Processo administrativo (a detalhar)",prazoFinal:new Date(2026,7,7),fase:"Triagem"}),
+  mkA({id:"A2",num:"26.0.000007332-5",numeroSEI:"26.0.000007332-5",assunto:"Resource",prazoFinal:null,status:"Acompanhamento",fase:"Acompanhamento",obs:"Sem prazo definido."}),
+  mkA({id:"A3",num:"26.0.000006973-5",numeroSEI:"26.0.000006973-5",assunto:"Processo administrativo (a detalhar)",prazoFinal:new Date(2026,7,1),fase:"Triagem"}),
+  mkA({id:"A4",num:"26.0.000006912-3",numeroSEI:"26.0.000006912-3",assunto:"Processo administrativo (a detalhar)",prazoFinal:new Date(2026,7,1),fase:"Triagem"}),
+  mkA({id:"A5",num:"26.0.000003611-0",numeroSEI:"26.0.000003611-0",assunto:"Sessao no CREMESP",prazoFinal:new Date(2026,6,31),fase:"Triagem",obs:"Sessao no CREMESP em 31/07/2026."}),
+  mkA({id:"A6",num:"26.0.000002641-6",numeroSEI:"26.0.000002641-6",assunto:"Instalacao de cameras em ambulancias do SAMU",prazoFinal:new Date(2026,6,29),fase:"Triagem"}),
+  mkA({id:"A7",num:"26.0.000002236-4",numeroSEI:"26.0.000002236-4",assunto:"Solicitacao de reuniao e de visita institucional ao CFM (CAMed UnB)",prazoFinal:new Date(2026,6,16),reuniao:true,fase:"Triagem",obs:"Reuniao dia 16/07/2026, as 16h, na sede do CFM."}),
+  mkA({id:"A8",num:"26.0.000006518-7",numeroSEI:"26.0.000006518-7",assunto:"Processo administrativo (a detalhar)",prazoFinal:new Date(2026,6,19),fase:"Triagem"}),
 ];
 const D_JUD=[
-  mkJ({id:"J1",num:"1033410-78.2021.4.01.3800",numeroSEI:"26.0.000002275-5",tribunal:"TRF-6",tipoAcao:"Apelação",parteContraria:"João Floresta Neto",prazoFinal:addD(NOW,20),assunto:"Apelação - Registro especialidade medicina do trabalho",fase:"Análise",impacto:4,complexidade:4,tipoPeca:"Contrarrazões de Apelação",obs:"Sentença 1º grau julgou improcedente o pedido do autor (8ª Vara Cível/JEF BH). Autor apelou ao TRF-6. Alega direito a registro de especialista em medicina do trabalho por pós-graduação (Portaria DSST 11/1990). CRM-MG e CFM são apelados.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,10),estTempo:"10h",tags:["especialidade","medicina do trabalho","apelação"],semMov:0,hist:[{d:addD(NOW,-30),e:"Recurso de apelação interposto pelo autor em 04/03/2026"}]}),
-  mkJ({id:"J2",num:"1063185-38.2025.4.01.3400",numeroSEI:"26.0.000002922-9",tribunal:"TRF-1",tipoAcao:"Ação Civil Pública",parteContraria:"Assoc. Brasileira de Médicos c/ Expertise de Pós-Graduação",prazoFinal:addD(NOW,15),assunto:"ACP - Exercício profissional - publicização de pós-graduação",fase:"Análise",impacto:5,complexidade:5,tipoPeca:"Contrarrazões de Apelação",obs:"20ª Vara Federal Cível da SJDF. Sentença julgou improcedente. Autor (associação) apelou em 10/02/2026. Pretensão: direito de publicizar curso pós-graduação sem termo 'NÃO ESPECIALISTA'. CFM é réu. MPF é fiscal da lei. Pedido de tutela antecipada: SIM.",proxProv:"Elaborar contrarrazões de apelação",dataProv:addD(NOW,7),estTempo:"12h",reuniao:false,tags:["ACP","pós-graduação","especialidade","apelação"],semMov:0,hist:[{d:addD(NOW,-60),e:"Sentença improcedente para o autor"},{d:addD(NOW,-58),e:"Apelação interposta pelo autor em 10/02/2026"}]}),
-  mkJ({id:"J3",num:"1008186-77.2021.4.01.3400",numeroSEI:"26.0.000003115-0",tribunal:"TRF-1",tipoAcao:"Cumprimento de Sentença",parteContraria:"Isabel Cristina Jimenez Lobelle",prazoFinal:addD(NOW,10),assunto:"Cumprimento de sentença - Registro profissional - exercício profissional",fase:"Análise",impacto:3,complexidade:3,tipoPeca:"Manifestação em Execução",obs:"22ª Vara Federal Cível da SJDF. Exequentes: CFM e CRM-MA. Executada: Isabel Cristina Jimenez Lobelle. Última movimentação: Juntada de certidão e ato ordinatório em 23/03/2026. Intimação recebida via SEI.",proxProv:"Elaborar manifestação em execução",dataProv:addD(NOW,5),estTempo:"3h",tags:["cumprimento","registro profissional","CRM-MA"],semMov:0,hist:[{d:addD(NOW,-17),e:"Ato ordinatório praticado 23/03/2026"},{d:addD(NOW,-17),e:"Juntada de certidão 23/03/2026"}]}),
-  mkJ({id:"J4",num:"5022793-46.2025.4.03.0000",numeroSEI:"26.0.000002536-3",tribunal:"TRF-3",tipoAcao:"Agravo de Instrumento",parteContraria:"Chrysser Ferreira Alves",prazoFinal:addD(NOW,14),assunto:"Agravo de instrumento - Exercício profissional - Honorários advocatícios",fase:"Minuta Pendente",impacto:4,complexidade:4,tipoPeca:"Memoriais",obs:"3ª Turma do TRF-3. Ref. processo 5006699-80.2021.4.03.6105. Agravante: CFM. Agravado: Chrysser Ferreira Alves. SESSÃO DE JULGAMENTO: 23/04/2026 às 14:00 - Ordinária presencial. Local: Plenário 3ª Turma, Av. Paulista 1.842, São Paulo. Intimação de pauta recebida em 10/03/2026.",proxProv:"Elaborar memoriais para sessão de julgamento 23/04",dataProv:addD(NOW,10),estTempo:"8h",tags:["agravo","honorários","TRF-3","sessão 23/04","memoriais"],semMov:0,hist:[{d:addD(NOW,-30),e:"Intimação de pauta recebida 10/03/2026"},{d:addD(NOW,-30),e:"Sessão designada para 23/04/2026"}]}),
-  mkJ({id:"J5",num:"5037864-24.2025.4.03.6100",numeroSEI:"26.0.000003378-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",parteContraria:"Andre Lanconi da Costa",prazoFinal:addD(NOW,10),assunto:"Exercício profissional - Multas e demais sanções",fase:"Minuta Pendente",impacto:4,complexidade:3,tipoPeca:"Especificação de Provas",obs:"12ª Vara Cível Federal de São Paulo. Autor: Andre Lanconi da Costa. Réu: CREMESP e CFM. SEGREDO DE JUSTIÇA. Despacho de 25/03/2026: manifestar sobre contestação em 15 dias (arts. 350 e 351 CPC) e especificar provas justificando pertinência. Pedido de liminar: SIM.",proxProv:"Elaborar especificação de provas e manifestação sobre contestação",dataProv:addD(NOW,5),estTempo:"6h",tags:["sigilo","multas","CREMESP","especificação de provas"],semMov:0,hist:[{d:addD(NOW,-9),e:"Despacho judicial 25/03/2026 - prazo 15 dias"},{d:addD(NOW,-9),e:"Intimação recebida via SEI"}]}),
-  mkJ({id:"J6",num:"1130316-30.2025.4.01.3400",numeroSEI:"26.0.000002129-5",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",parteContraria:"Médicos estrangeiros (16 autores)",prazoFinal:addD(NOW,30),assunto:"Registro profissional - Médicos estrangeiros vs CFM e União",fase:"Acompanhamento",impacto:4,complexidade:4,tipoPeca:"Petição Simples",obs:"21ª Vara Federal Cível da SJDF. 16 autores (médicos estrangeiros). Réu: CFM e União Federal. Contestação já apresentada em 27/02/2026. Peça já elaborada. Orientação Dr. João Paulo: verificar intimação antes de peticionar; se for apenas contestação, seguir com protocolo.",proxProv:"Acompanhar movimentação processual",dataProv:addD(NOW,15),estTempo:"1h",tags:["registro profissional","médicos estrangeiros","petição simples"],semMov:0,progresso:100,hist:[{d:addD(NOW,-37),e:"Notificação SEI - Pet. Simples atribuída 03/03/2026"},{d:addD(NOW,-36),e:"Peça enviada ao Dr. João Paulo para revisão 04/03/2026"},{d:addD(NOW,-34),e:"Orientação Dr. JP: verificar intimação 06/03/2026"},{d:addD(NOW,-41),e:"Contestação juntada aos autos 27/02/2026"}]}),
-  mkJ({id:"J7",num:"0036173-62.2008.4.01.3400",numeroSEI:"26.0.000003347-1",tribunal:"TRF-1",tipoAcao:"Apelação",parteContraria:"Cândido Pinheiro Koren de Lima",prazoFinal:addD(NOW,13),assunto:"Apelação cível - Multas e demais sanções - Memoriais",fase:"Acompanhamento",impacto:4,complexidade:3,tipoPeca:"Memoriais",obs:"TRF-1 2º grau. Gab. 21 - Des. Fed. José Amilcar de Queiroz Machado. Sessão virtual 22/04 a 28/04/2026. Memoriais já distribuídos conforme orientação do Dr. João Paulo. Habilitação nos autos da Procuradoria do CFM requerida. Peça já elaborada. Acompanhar julgamento.",proxProv:"Acompanhar sessão de julgamento 22/04 a 28/04",dataProv:addD(NOW,13),estTempo:"1h",tags:["memoriais","apelação","multas","sessão 22/04"],semMov:0,progresso:100,hist:[{d:addD(NOW,-9),e:"Atribuição ao Dr. João Gabriel via SEI 31/03/2026"},{d:addD(NOW,-9),e:"Memoriais elaborados e distribuídos"}]}),
+  mkJ({id:"J1",num:"0000853-31.2026.5.10.0022",numeroSEI:"26.0.000007152-7",tribunal:"TRT-10",tipoAcao:"Execução Trabalhista",tipoPeca:"Manifestação em Execução",parteContraria:"Resource Americana LTDA",assunto:"Manifestação em execução - Vitória Maria Soares Svizzero x Resource Americana LTDA (CFM terceiro)",prazoFinal:new Date(2026,6,20),fase:"Análise"}),
+  mkJ({id:"J2",num:"5002550-27.2019.4.03.6100",numeroSEI:"26.0.000007192-6",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Memoriais",parteContraria:"William Cabrera Viana",assunto:"Memoriais - CFM x William Cabrera Viana",prazoFinal:new Date(2026,7,6),fase:"Análise"}),
+  mkJ({id:"J3",num:"1016212-25.2025.4.01.3400",numeroSEI:"26.0.000007284-1",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Petição Simples",parteContraria:"Lady Ana do Rego Silva",assunto:"Petição simples - Lady Ana do Rego Silva x CFM",prazoFinal:addD(NOW,30),fase:"Análise"}),
+  mkJ({id:"J4",num:"1070187-25.2026.4.01.3400",numeroSEI:"26.0.000007190-0",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Contestação",parteContraria:"Tatiana Fagnani Machado",assunto:"Contestação - Tatiana Fagnani Machado x CFM",prazoFinal:new Date(2026,7,26),fase:"Análise"}),
+  mkJ({id:"J5",num:"5128158-42.2025.4.02.5101",numeroSEI:"26.0.000007343-0",tribunal:"TRF-2",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Memoriais",parteContraria:"Luiz Fernando Nunes",assunto:"Memoriais - Luiz Fernando Nunes x CFM",prazoFinal:new Date(2026,6,20),fase:"Análise"}),
+  mkJ({id:"J6",num:"1023698-42.2026.4.01.0000",numeroSEI:"26.0.000007022-9",tribunal:"TRF-1",tipoAcao:"Agravo Interno",tipoPeca:"Contrarrazões de Agravo Interno",parteContraria:"Sergio Fernando da Cunha Cordeiro",assunto:"Contrarrazões de agravo interno - Sergio Fernando da Cunha Cordeiro x CFM",prazoFinal:addD(NOW,30),fase:"Análise"}),
+  mkJ({id:"J7",num:"5080467-32.2025.4.02.5101",numeroSEI:"26.0.000006895-0",tribunal:"TRF-2",tipoAcao:"Embargos de Declaração",tipoPeca:"Embargos de Declaração",parteContraria:"Top Trânsito Jacarepaguá",assunto:"Embargos de declaração - CFM x Top Trânsito Jacarepaguá",prazoFinal:new Date(2026,6,20),fase:"Análise"}),
+  mkJ({id:"J8",num:"5008904-24.2026.4.03.6100",numeroSEI:"26.0.000006689-2",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Contestação",parteContraria:"Tiago Gil",assunto:"Contestação - Tiago Gil x CFM",prazoFinal:new Date(2026,7,12),fase:"Análise"}),
+  mkJ({id:"J9",num:"1005605-60.2019.4.01.3400",numeroSEI:"26.0.000006679-5",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Impugnação aos Embargos",parteContraria:"Angelo Massaud Pedretti",assunto:"Impugnação aos embargos de declaração - Angelo Massaud Pedretti x CFM",prazoFinal:new Date(2026,6,16),fase:"Análise"}),
+  mkJ({id:"J10",num:"0051866-13.2013.4.01.3400",numeroSEI:"26.0.000006676-0",tribunal:"TRF-1",tipoAcao:"Cumprimento de Sentença",tipoPeca:"Manifestação em Execução",parteContraria:"Josélia Lima Nunes Carvalhes",assunto:"Cumprimento de sentença - Josélia Lima Nunes Carvalhes x CFM",prazoFinal:new Date(2026,7,17),fase:"Análise"}),
+  mkJ({id:"J11",num:"5010361-37.2025.4.03.6000",numeroSEI:"26.0.000006586-1",tribunal:"TRF-3",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Petição Simples",parteContraria:"Studio SHES Harmonização Facial, Estética e Bem-Estar",assunto:"Manifestação nos autos - MPE/MS x Studio SHES Harmonização Facial (CFM interessado)",prazoFinal:new Date(2026,6,16),fase:"Análise"}),
+  mkJ({id:"J12",num:"1063725-52.2026.4.01.3400",numeroSEI:"26.0.000006553-5",tribunal:"TRF-1",tipoAcao:"Procedimento Comum Cível",tipoPeca:"Contestação",parteContraria:"Flegon Lopes David",assunto:"Contestação - Flegon Lopes David x CFM",prazoFinal:new Date(2026,7,19),fase:"Análise"}),
 ];
 const D_REUN=[];
 const D_SUST=[];
@@ -1877,7 +1982,12 @@ var setSyncStatus = function(s){__lastSyncStatus=s;if(s===SYNC_STATUS.synced)__l
 const serialize = st => JSON.stringify(st, (k, v) => v instanceof Date ? { _dt: v.toISOString() } : v);
 const reviveDates = obj => {
   if (!obj || typeof obj !== "object") return obj;
-  if (obj._dt) return new Date(obj._dt);
+  /* v44 FIX: so revive como Date se _dt for string/number E resultar em data
+     valida; antes qualquer objeto com chave _dt virava Date (possivel Invalid). */
+  if (obj._dt && (typeof obj._dt === "string" || typeof obj._dt === "number")) {
+    var __d = new Date(obj._dt);
+    if (!isNaN(__d.getTime())) return __d;
+  }
   if (Array.isArray(obj)) return obj.map(reviveDates);
   const out = {};
   for (const k of Object.keys(obj)) out[k] = reviveDates(obj[k]);
@@ -1887,6 +1997,19 @@ const rehydrate = raw => {
   var parsed;
   try { parsed = reviveDates(JSON.parse(raw)); } catch(e) { logErr("[rehydrate] JSON parse falhou:", e); return null; }
   if (!parsed || typeof parsed !== "object") { logErr("[rehydrate] shape invalido", typeof parsed); return null; }
+  /* v44 FIX (CRITICO): _nid reseta para 100 a cada reload, mas ids "N###" ja
+     persistidos eram mantidos. O proximo "Novo" regerava N101 e COLIDIA com um
+     id antigo -> editar/excluir afetava DOIS processos. Aqui re-semeamos _nid
+     com o maior id N### existente em qualquer lista antes de qualquer nid(). */
+  try {
+    var __maxN = _nid;
+    Object.keys(parsed).forEach(function(k){
+      if (Array.isArray(parsed[k])) parsed[k].forEach(function(it){
+        if (it && typeof it.id === "string") { var m=/^N(\d+)$/.exec(it.id); if(m){ var v=parseInt(m[1],10); if(v>__maxN) __maxN=v; } }
+      });
+    });
+    if (__maxN > _nid) _nid = __maxN;
+  } catch(e){ logErr("[rehydrate] seed _nid falhou:", e); }
   /* v42 FIX: shape completo com defaults explicitos. Antes auditLog era perdido
      em todo reload (nao estava no return), e qualquer campo futuro sumiria
      silenciosamente. Agora cada campo tem fallback seguro. */
@@ -1952,6 +2075,7 @@ var supaDeleteState = function() {
    30s. Enquanto um save esta pendente, o poll nao aplica versao remota
    (que esta prestes a ser sobrescrita). */
 var __saveInFlight = false;
+var __dirty = false; /* v43.1 A3: ha alteracao local nao confirmada na nuvem */
 const storage = {
   async get(key){
     setSyncStatus(SYNC_STATUS.syncing);
@@ -1962,6 +2086,14 @@ const storage = {
         new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("timeout")); }, 4000); })
       ]);
       if (cloudResult && cloudResult.value) {
+        /* v43.1 A2: se o cache local for MAIS NOVO que a nuvem (flush de
+           unload ou edicao offline), ele vence e fica agendado para subir. */
+        var localTs0=0;try{localTs0=parseInt(localStorage.getItem(key+":ts"),10)||0;}catch(e){}
+        var cloudTs0=cloudResult.updated_at?new Date(cloudResult.updated_at).getTime():0;
+        if(localTs0>cloudTs0+1000){
+          var lv0=null;try{lv0=localStorage.getItem(key);}catch(e){}
+          if(lv0){__dirty=true;setSyncStatus(SYNC_STATUS.synced);return {value:lv0};}
+        }
         /* Atualiza cache local com dado da nuvem */
         try {
           localStorage.setItem(key, cloudResult.value);
@@ -1989,7 +2121,7 @@ const storage = {
     try { localStorage.setItem(key, value); } catch(e){}
     /* 2. v42 FIX: gravar :ts ANTES do upsert para bloquear poll concorrente */
     try { localStorage.setItem(key+":ts", String(Date.now())); } catch(e){}
-    /* 3. Sync para Supabase em background (com retry automatico) */
+    /* 3. Sync para Supabase em background (falha => flag dirty; reenvio no poll de 30s ou no evento online) */
     setSyncStatus(SYNC_STATUS.syncing);
     __saveInFlight = true;
     try {
@@ -1998,11 +2130,23 @@ const storage = {
       return true;
     } catch(e) {
       logErr("[COJUR sync] upsert falhou:", e);
+      __dirty = true; /* v43.1 A3: reenvio no proximo poll de 30s ou evento online */
       setSyncStatus(SYNC_STATUS.offline);
       return false;
     } finally {
       __saveInFlight = false;
     }
+  },
+  async pushLocal(key){
+    /* v43.1 A3: reenvia o cache local pendente para a nuvem */
+    if(!__dirty) return false;
+    var lv=null;try{lv=localStorage.getItem(key);}catch(e){}
+    if(!lv){__dirty=false;return false;}
+    setSyncStatus(SYNC_STATUS.syncing);
+    __saveInFlight=true;
+    try{ await supaUpsertState(lv); __dirty=false; setSyncStatus(SYNC_STATUS.synced); return true; }
+    catch(e){ setSyncStatus(SYNC_STATUS.offline); return false; }
+    finally{ __saveInFlight=false; }
   },
   async delete(key){
     try { localStorage.removeItem(key); } catch(e){}
@@ -2038,13 +2182,18 @@ const exportState = function(st) {
 const exportCSV = function(st) {
   try {
     var all = [...st.adm, ...st.jud];
+    /* v43.1 B1: celulas iniciando com = + - @ executariam como formula no
+       Excel/Sheets (CSV injection). Prefixo com apostrofo neutraliza. */
+    /* v44 FIX: alem de =,+,-,@, neutraliza TAB/CR iniciais que alguns importadores
+       removem antes de avaliar a formula (reexpondo a injecao). */
+    var csafe = function(v){ v=String(v==null?"":v); if(/^[\t\r=+\-@]/.test(v)) v="'"+v; return '"'+v.replace(/"/g,'""')+'"'; };
     var headers = ["Tipo","Nº Processo","Nº SEI","Assunto","Status","Fase","Tipo de Peça","Tribunal/Órgão","Responsável","Prazo Final","Dias Úteis","Score","Parte Contrária/Interessado","Próxima Providência","Tags","Observações"];
     var rows = all.map(function(p){
       return [
         p.tipo==="jud"?"Judicial":"Administrativo",
-        '"'+(p.num||"").replace(/"/g,'""')+'"',
-        '"'+(p.numeroSEI||"").replace(/"/g,'""')+'"',
-        '"'+(p.assunto||"").replace(/"/g,'""')+'"',
+        csafe(p.num||""),
+        csafe(p.numeroSEI||""),
+        csafe(p.assunto||""),
         p.status||"",
         p.fase||"",
         p.tipoPeca||"",
@@ -2053,10 +2202,10 @@ const exportCSV = function(st) {
         p.prazoFinal?fmt(toD(p.prazoFinal)):"",
         p.diasRestantes||0,
         p.score||0,
-        '"'+((p.parteContraria||p.interessado||"").replace(/"/g,'""'))+'"',
-        '"'+((p.proxProv||"").replace(/"/g,'""'))+'"',
-        '"'+((p.tags||[]).join(", "))+'"',
-        '"'+((p.obs||"").replace(/"/g,'""').replace(/\n/g," "))+'"'
+        csafe(p.parteContraria||p.interessado||""),
+        csafe(p.proxProv||""),
+        csafe((p.tags||[]).join(", ")),
+        csafe((p.obs||"").replace(/\n/g," "))
       ].join(";");
     });
     var bom = "\uFEFF";
@@ -2077,6 +2226,12 @@ const importState = function(file, dp, onDone) {
   reader.onload = function(e) {
     try {
       var restored = rehydrate(e.target.result);
+      /* v43.1 C1: arquivo invalido NAO pode virar LOAD. Antes, rehydrate
+         retornava null, o reducer caia nos defaults (dados MOCK) e o autosave
+         subia os mocks para a nuvem por cima dos dados reais. */
+      var parsedOk=false;
+      try{var probe=JSON.parse(e.target.result);parsedOk=!!probe&&typeof probe==="object"&&(Array.isArray(probe.adm)||Array.isArray(probe.jud));}catch(e2){parsedOk=false;}
+      if(!restored||!parsedOk){ if(onDone) onDone("err"); return; }
       dp({ type: "LOAD", state: restored });
       if (onDone) onDone("ok");
     } catch (err) {
@@ -2088,7 +2243,7 @@ const importState = function(file, dp, onDone) {
 };
 
 /* ═══ REDUCER ═══ */
-const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:D_REUN,sust:D_SUST,viag:D_VIAG,inbox:D_INBOX,realizados:[],notas:[],lembretes:[],auditLog:[]});
+const mkInit=()=>({adm:D_ADM,jud:D_JUD,reun:[],sust:[],viag:[],inbox:[],realizados:[],notas:[],lembretes:[],auditLog:[]});
 /* ═══ AUDIT LOG HELPER ═══ */
 var auditEntry=function(action,detail){return{ts:new Date().toISOString(),action:action,detail:detail};};
 function reducerCore(st,a){
@@ -2097,11 +2252,16 @@ function reducerCore(st,a){
        realizados/notas/lembretes tinham fallback. auditLog/viag/inbox
        podiam virar undefined apos LOAD se nao estivessem no a.state. */
     case "LOAD": {
+      /* v43.1 C1: LOAD sem estado valido nao pode regredir para os mocks */
+      if(!a.state||typeof a.state!=="object") return st;
       var base=mkInit();
-      var s=a.state||{};
+      var s=a.state;
+      /* v44 FIX: LOAD nao recalculava adm/jud. Um snapshot com data em string
+         (ex.: undo logo apos import) chegava cru ao Parecer e podia lancar
+         TypeError em prazoFinal.toLocaleDateString. recalc normaliza datas/score. */
       return {
-        adm: Array.isArray(s.adm) ? s.adm : base.adm,
-        jud: Array.isArray(s.jud) ? s.jud : base.jud,
+        adm: Array.isArray(s.adm) ? s.adm.map(p=>recalc(p)) : base.adm,
+        jud: Array.isArray(s.jud) ? s.jud.map(p=>recalc(p)) : base.jud,
         reun: Array.isArray(s.reun) ? s.reun : base.reun,
         sust: Array.isArray(s.sust) ? s.sust : base.sust,
         viag: Array.isArray(s.viag) ? s.viag : base.viag,
@@ -2182,7 +2342,7 @@ function reducerCore(st,a){
       /* fire confetti (color depends on urgency) */
       try {
         const dr = proc.diasRestantes;
-        const color = (dr <= 2) ? "#ff6680" : (dr <= 7 ? "#ffb800" : "#5fb260");
+        const color = (dr <= 2) ? "#ff6680" : (dr <= 7 ? "var(--cj-wa)" : "#5fb260");
         if (typeof triggerConfetti === "function") triggerConfetti(color);
       } catch(e) {}
       const realizadoEm = curDate();
@@ -2258,7 +2418,13 @@ function reducerCore(st,a){
       return{...st,[uk1]:rem(st[uk1],a.id1,a.id2),[uk2]:rem(st[uk2],a.id2,a.id1)};
     }
     case "RECALC_ALL": return {...st, adm: (st.adm||[]).map(recalc), jud: (st.jud||[]).map(recalc)};
-    case "RST":return mkInit();
+    case "RST":{
+      /* v44 FIX: RST apagava tudo (inclusive o audit log) SEM registrar a acao
+         destrutiva. Mantemos uma entrada inicial documentando o reset. */
+      var __fresh=mkInit();
+      __fresh.auditLog=[auditEntry("RST","Reset total do sistema (todos os dados apagados)")];
+      return __fresh;
+    }
     default:return st;
   }
 }
@@ -2294,33 +2460,33 @@ const CFMMark=({size=40})=>(
     </defs>
     <rect x="4" y="4" width="56" height="56" rx="18" fill="#08111f" stroke="url(#cfmG)" strokeWidth="2.5"/>
     <path d="M32 15l3.6 9.4 9.4 3.6-9.4 3.6-3.6 9.4-3.6-9.4-9.4-3.6 9.4-3.6L32 15z" fill="url(#cfmG)" opacity=".95"/>
-    <rect x="16" y="43" width="32" height="10" rx="5" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.08)"/>
+    <rect x="16" y="43" width="32" height="10" rx="5" fill="rgba(var(--cj-fgrgb),.06)" stroke="rgba(var(--cj-fgrgb),.08)"/>
     <text x="32" y="50" textAnchor="middle" fill="#dbeafe" fontSize="11" fontWeight="700" fontFamily="Arial, sans-serif">CFM</text>
   </svg>
 );
-const Bd=({children,color:c,glow:g,style:sx})=><span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:999,fontSize:11,fontWeight:700,background:g||"linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))",color:c||K.txt,border:`1px solid ${(c||K.brd)}33`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",textTransform:"uppercase",letterSpacing:".35px",...sx}}>{children}</span>;
+const Bd=({children,color:c,glow:g,style:sx})=><span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:999,fontSize:12,fontWeight:700,background:g||"linear-gradient(180deg,rgba(var(--cj-fgrgb),.05),rgba(var(--cj-fgrgb),.02))",color:c||K.txt,border:`1px solid ${(c||K.brd)}33`,boxShadow:"inset 0 1px 0 rgba(var(--cj-fgrgb),.04)",textTransform:"uppercase",letterSpacing:".35px",...sx}}>{children}</span>;
 const UB=({d,prazoFinal})=>{
   var c=uC(d);
-  var bg=d<=10?"rgba(255,46,91,.15)":d<30?"rgba(255,184,0,.12)":"rgba(0,229,255,.08)";
-  var bd=d<=10?"rgba(255,46,91,.4)":d<30?"rgba(255,184,0,.35)":"rgba(0,229,255,.25)";
+  var bg=d>=900?"rgba(var(--cj-fgrgb),.05)":d<=10?"rgba(var(--cj-crrgb),.15)":d<30?"rgba(var(--cj-wargb),.12)":"rgba(var(--cj-acrgb),.08)";
+  var bd=d>=900?"rgba(var(--cj-fgrgb),.18)":d<=10?"rgba(var(--cj-crrgb),.4)":d<30?"rgba(var(--cj-wargb),.35)":"rgba(var(--cj-acrgb),.25)";
   var showCountdown=d>=0&&d<=1&&prazoFinal;
   var countdownStr="";
   if(showCountdown){try{var pf=prazoFinal instanceof Date?prazoFinal:new Date(prazoFinal);var agora=new Date();var diff=pf.getTime()+18*3600000-agora.getTime();if(diff>0&&diff<48*3600000){var h=Math.floor(diff/3600000);var m=Math.floor((diff%3600000)/60000);countdownStr=h+"h"+String(m).padStart(2,"0");}else{showCountdown=false;}}catch(e){showCountdown=false;}}
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 12px",borderRadius:12,background:bg,border:"1px solid "+bd,minWidth:64,boxShadow:"0 0 12px "+c+"22"}}>
       {showCountdown&&countdownStr?(
-        <div style={{fontSize:13,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:"-.3px",animation:"cjPulse 1.8s ease infinite"}}>{countdownStr}</div>
+        <div style={{fontSize:14,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:"-.3px",animation:"cjPulse 1.8s ease infinite"}}>{countdownStr}</div>
       ):(
         /* v41 · numero limpo, com pulse neon nos criticos (sem glitch overlay) */
         <div
           className={d<=1?"cj-ub-crit":""}
           style={{fontSize:d===0?11:20,fontWeight:900,color:c,fontFamily:"Orbitron,monospace",lineHeight:1,letterSpacing:d===0?".5px":"-.5px"}}
         >
-          {d===0?"HOJE":d<0?Math.abs(d):d}
+          {d>=900?"—":d===0?"HOJE":d<0?Math.abs(d):d}
         </div>
       )}
-      {d!==0&&!showCountdown&&<div style={{fontSize:8,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".4px"}}>{d<0?"ATRASO":"dias úteis"}</div>}
-      {showCountdown&&countdownStr&&<div style={{fontSize:7,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".3px"}}>restante</div>}
+      {d!==0&&!showCountdown&&<div style={{fontSize:11,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".4px"}}>{d>=900?"sem prazo":d<0?"ATRASO":"dias úteis"}</div>}
+      {showCountdown&&countdownStr&&<div style={{fontSize:11,fontWeight:700,color:c,opacity:.85,textTransform:"uppercase",letterSpacing:".3px"}}>restante</div>}
       {d===0&&!showCountdown&&null}
     </div>
   );
@@ -2335,12 +2501,12 @@ const SB=({s})=>{const c=s>=70?K.cr:s>=45?K.wa:K.ac;const pct=Math.min(100,Math.
 const SC=React.memo(({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
   const col=c||K.ac;
   return(
-  <div className="cj-hud-tl cj-hud-br" role={onClick?"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(4,8,22,.97), rgba(2,5,14,.99))",border:"1px solid "+col+"28",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",boxShadow:"0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.borderColor=col+"50";e.currentTarget.style.boxShadow="0 0 24px "+col+"14, 0 0 0 1px "+col+"22, 0 22px 50px rgba(0,0,0,.5), inset 0 1px 0 "+col+"18";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=col+"28";e.currentTarget.style.boxShadow="0 0 0 1px rgba(255,255,255,.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10";}}>
+  <div className="cj-hud-tl cj-hud-br" role={onClick?"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:K.card,border:"1px solid "+col+"28",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",boxShadow:"0 0 0 1px rgba(var(--cj-fgrgb),.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.borderColor=col+"50";e.currentTarget.style.boxShadow="0 0 24px "+col+"14, 0 0 0 1px "+col+"22, 0 22px 50px rgba(0,0,0,.5), inset 0 1px 0 "+col+"18";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=col+"28";e.currentTarget.style.boxShadow="0 0 0 1px rgba(var(--cj-fgrgb),.02), 0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 "+col+"10";}}>
     <div style={{position:"absolute",inset:"0 0 auto 0",height:1,background:"linear-gradient(90deg, transparent, "+col+", transparent)",opacity:.7,pointerEvents:"none"}}/>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg, "+col+"22, rgba(255,255,255,.03))",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 14px "+col+"30, inset 0 1px 0 rgba(255,255,255,.07)"}}><I size={18} color={col}/></div>
-        <span style={{fontSize:10,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".7px"}}>{l}</span>
+        <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg, "+col+"22, rgba(var(--cj-fgrgb),.03))",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 14px "+col+"30, inset 0 1px 0 rgba(var(--cj-fgrgb),.07)"}}><I size={18} color={col}/></div>
+        <span style={{fontSize:12,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".7px"}}>{l}</span>
       </div>
       <div className="cj-dot cj-pulse" style={{background:col,boxShadow:"0 0 10px "+col+", 0 0 20px "+col+"88"}}/>
     </div>
@@ -2348,27 +2514,27 @@ const SC=React.memo(({icon:I,label:l,value:v,color:c,sub,onClick,sparkData})=>{
       <div style={{fontSize:33,fontWeight:800,color:col,fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,textShadow:"0 0 18px "+col+"70, 0 0 40px "+col+"30",animation:"textGlow 2.5s ease-in-out infinite"}}>{typeof v === "number" ? <AnimatedCounter value={v}/> : v}</div>
       {sparkData&&sparkData.length>1&&<Sparkline data={sparkData} color={col} w={64} h={22}/>}
     </div>
-    {sub&&<span style={{fontSize:10,color:K.dim2,fontFamily:"'JetBrains Mono',monospace"}}>{sub}</span>}
+    {sub&&<span style={{fontSize:12,color:K.dim2,fontFamily:"'JetBrains Mono',monospace"}}>{sub}</span>}
   </div>
 );});
 /* SectionHeader */
 const SH=React.memo(({icon:I,title:t,right})=>(
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:10}}>
     <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-      {I&&<div style={{width:32,height:32,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.25)",boxShadow:"0 0 14px rgba(0,229,255,.22)",animation:"neonPulse 4s ease-in-out infinite"}}><I size={16} color="#00e5ff" style={{filter:"drop-shadow(0 0 6px rgba(0,229,255,.9))"}}/></div>}
+      {I&&<div style={{width:32,height:32,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(var(--cj-acrgb),.08)",border:"1px solid rgba(var(--cj-acrgb),.25)",boxShadow:"0 0 14px rgba(var(--cj-acrgb),.22)",animation:"neonPulse 4s ease-in-out infinite"}}><I size={16} color="var(--cj-ac)" style={{filter:"drop-shadow(0 0 6px rgba(var(--cj-acrgb),.9))"}}/></div>}
       <h3 style={{margin:0,fontSize:14,fontWeight:700,color:K.txt,letterSpacing:".2px"}}>{t}</h3>
     </div>
     {right}
   </div>
 ));
 /* CardBox */
-const Bx=React.memo(({children,style:sx,className:cn,onClick,role,title})=><div className={"cj-shimmer cj-hud-tl cj-hud-br "+(cn||"")} title={title} role={onClick?role||"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:"linear-gradient(135deg, rgba(2,5,20,.97), rgba(1,3,12,.99))",backdropFilter:"blur(24px)",border:"1px solid rgba(0,229,255,.1)",boxShadow:"0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)",borderRadius:20,padding:20,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",animation:onClick?"neonPulse 5s ease-in-out infinite":"none",...sx}} onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";e.currentTarget.style.boxShadow="0 0 36px rgba(0,229,255,.1), 0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(0,229,255,.12)";}}} onMouseLeave={e=>{if(onClick){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor="rgba(0,229,255,.1)";e.currentTarget.style.boxShadow="0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(0,229,255,.06)";}}}>{children}</div>);
+const Bx=React.memo(({children,style:sx,className:cn,onClick,role,title})=><div className={"cj-shimmer cj-hud-tl cj-hud-br "+(cn||"")} title={title} role={onClick?role||"button":undefined} tabIndex={onClick?0:undefined} onClick={onClick} onKeyDown={e=>{if(onClick&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick();}}} style={{background:K.card,backdropFilter:"blur(24px)",border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(var(--cj-fgrgb),.02), inset 0 1px 0 rgba(var(--cj-acrgb),.06)",borderRadius:20,padding:20,position:"relative",overflow:"hidden",transition:"all .28s",cursor:onClick?"pointer":"default",animation:onClick?"neonPulse 5s ease-in-out infinite":"none",...sx}} onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.borderColor="rgba(var(--cj-acrgb),.3)";e.currentTarget.style.boxShadow="0 0 36px rgba(var(--cj-acrgb),.1), 0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(var(--cj-acrgb),.12)";}}} onMouseLeave={e=>{if(onClick){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor="rgba(var(--cj-acrgb),.1)";e.currentTarget.style.boxShadow="0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(var(--cj-fgrgb),.02), inset 0 1px 0 rgba(var(--cj-acrgb),.06)";}}}>{children}</div>);
 /* AlertCard */
-const AC=React.memo(({icon:I,color:c,title:t,desc})=><div className="cj-soft" style={{background:`linear-gradient(180deg,${c}10,rgba(255,255,255,.02))`,border:`1px solid ${c}22`,borderRadius:14,padding:"12px 14px",display:"flex",gap:10}}><I size={16} color={c} style={{marginTop:2,flexShrink:0}}/><div><div style={{fontSize:12,fontWeight:700,color:c}}>{t}</div><div style={{fontSize:11,color:K.dim,marginTop:2,lineHeight:1.5}}>{desc}</div></div></div>);
+const AC=React.memo(({icon:I,color:c,title:t,desc})=><div className="cj-soft" style={{background:`linear-gradient(180deg,${c}10,rgba(var(--cj-fgrgb),.02))`,border:`1px solid ${c}22`,borderRadius:14,padding:"12px 14px",display:"flex",gap:10}}><I size={16} color={c} style={{marginTop:2,flexShrink:0}}/><div><div style={{fontSize:13,fontWeight:700,color:c}}>{t}</div><div style={{fontSize:12,color:K.dim,marginTop:2,lineHeight:1.5}}>{desc}</div></div></div>);
 /* ProgressBar */
-const PB=React.memo(({value:v,max:m,color:c})=><div style={{height:8,borderRadius:999,background:"rgba(255,255,255,.05)",overflow:"hidden",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"}}><div style={{height:"100%",borderRadius:999,background:`linear-gradient(90deg,${c},${c}aa)`,boxShadow:`0 0 22px ${c}55`,width:`${Math.min(100,(v/m)*100)}%`,transition:"width .6s ease"}}/></div>);
+const PB=React.memo(({value:v,max:m,color:c})=><div style={{height:8,borderRadius:999,background:"rgba(var(--cj-fgrgb),.05)",overflow:"hidden",boxShadow:"inset 0 1px 0 rgba(var(--cj-fgrgb),.03)"}}><div style={{height:"100%",borderRadius:999,background:`linear-gradient(90deg,${c},${c}aa)`,boxShadow:`0 0 22px ${c}55`,width:`${Math.min(100,(v/m)*100)}%`,transition:"width .6s ease"}}/></div>);
 /* DoneButton */
-const DoneBtn=React.memo(({onClick,small})=><button onClick={e=>{e.stopPropagation();onClick?.()}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:small?"6px 9px":"8px 12px",borderRadius:12,border:`1px solid ${K.su}33`,background:`linear-gradient(180deg,${K.suG},rgba(16,185,129,.08))`,boxShadow:"inset 0 1px 0 rgba(255,255,255,.04)",color:K.su,fontSize:small?11:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}><CheckCircle size={small?12:14}/>Feito</button>);
+const DoneBtn=React.memo(({onClick,small})=><button onClick={e=>{e.stopPropagation();onClick?.()}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:small?"6px 9px":"8px 12px",borderRadius:12,border:`1px solid ${K.su}33`,background:`linear-gradient(180deg,${K.suG},rgba(16,185,129,.08))`,boxShadow:"inset 0 1px 0 rgba(var(--cj-fgrgb),.04)",color:K.su,fontSize:small?11:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}><CheckCircle size={small?12:14}/>Feito</button>);
 
 /* ═══ SKELETON LOADING ═══ */
 const SkeletonBlock=({lines=3,h})=>(
@@ -2390,7 +2556,7 @@ const EmptyState=({icon,color,title,sub})=>{
     <div style={{textAlign:"center",padding:"36px 20px"}}>
       <div style={{display:"inline-block",marginBottom:12,opacity:.8}}>{illust}</div>
       <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{title}</div>
-      {sub&&<div style={{fontSize:12,color:K.dim,lineHeight:1.5}}>{sub}</div>}
+      {sub&&<div style={{fontSize:13,color:K.dim,lineHeight:1.5}}>{sub}</div>}
     </div>
   );
 };
@@ -2405,7 +2571,7 @@ const StatusStepper=({current,onSet})=>{
         <React.Fragment key={st}>
           {i>0&&<div className={"cj-step-line"+(isDone?" done":"")}/>}
           <div title={st} onClick={function(){if(onSet)onSet(st);}} className={"cj-step-dot"+(isAct?" active":"")+(isDone?" done":"")} style={{position:"relative"}}>
-            {(isAct||isDone)&&<div style={{position:"absolute",top:16,left:"50%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontSize:8,fontWeight:700,color:isAct?K.ac:K.su,fontFamily:"Orbitron,monospace",letterSpacing:".3px"}}>{st.length>12?st.slice(0,10)+"…":st}</div>}
+            {(isAct||isDone)&&<div style={{position:"absolute",top:16,left:"50%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:isAct?K.ac:K.su,fontFamily:"Orbitron,monospace",letterSpacing:".3px"}}>{st.length>12?st.slice(0,10)+"…":st}</div>}
           </div>
         </React.Fragment>
       );})}
@@ -2417,16 +2583,16 @@ const StatusStepper=({current,onSet})=>{
 const NotifPanel=({alerts,onClose,onSelect})=>(
   <div className="cj-notif-panel" style={{position:"absolute",top:52,right:0,width:360,maxHeight:440,overflowY:"auto",background:K.modal,border:"1px solid "+K.brd,borderRadius:16,boxShadow:"0 24px 60px rgba(0,0,0,.7)",zIndex:200,padding:8}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginBottom:4}}>
-      <span style={{fontSize:13,fontWeight:700,color:K.txt}}>Notificações</span>
-      <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",fontSize:11}}>Fechar</button>
+      <span style={{fontSize:14,fontWeight:700,color:K.txt}}>Notificações</span>
+      <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",fontSize:12}}>Fechar</button>
     </div>
-    {alerts.length===0&&<div style={{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma notificação pendente</div>}
+    {alerts.length===0&&<div style={{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:13}}>Nenhuma notificação pendente</div>}
     {alerts.slice(0,12).map(function(a,i){var I=a.icon;return(
-      <div key={i} onClick={function(){if(a.proc&&onSelect)onSelect(a.proc);}} style={{display:"flex",gap:10,padding:"10px 12px",borderRadius:10,cursor:a.proc?"pointer":"default",transition:"background .15s"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(255,255,255,.04)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+      <div key={i} onClick={function(){if(a.proc&&onSelect)onSelect(a.proc);}} style={{display:"flex",gap:10,padding:"10px 12px",borderRadius:10,cursor:a.proc?"pointer":"default",transition:"background .15s"}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(var(--cj-fgrgb),.04)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
         <div style={{width:28,height:28,borderRadius:8,background:a.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><I size={13} color={a.color}/></div>
         <div style={{minWidth:0}}>
-          <div style={{fontSize:12,fontWeight:600,color:a.color}}>{a.title}</div>
-          <div title={a.desc} style={{fontSize:11,color:K.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:260}}>{a.desc}</div>
+          <div style={{fontSize:13,fontWeight:600,color:a.color}}>{a.title}</div>
+          <div title={a.desc} style={{fontSize:12,color:K.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:260}}>{a.desc}</div>
         </div>
       </div>
     );})}
@@ -2441,23 +2607,26 @@ const PrazoHeatmap=({items})=>{
   return(
     <div style={{display:"flex",flexDirection:"column",gap:3}}>
       <div style={{display:"flex",gap:2,marginBottom:4}}>
-        {["D","S","T","Q","Q","S","S"].map(function(l,i){return <div key={i} style={{width:18,height:12,fontSize:8,color:K.dim2,textAlign:"center",fontWeight:600}}>{l}</div>;})}
+        {/* v44 FIX: o grid comeca HOJE (addD(NOW,...)), mas os rotulos eram fixos
+            Dom..Sab e so batiam se hoje fosse domingo. Geramos a letra pelo dia
+            da semana real de cada coluna. */}
+        {Array.from({length:days},function(_,i){var l=["D","S","T","Q","Q","S","S"][addD(NOW,i).getDay()];return <div key={i} style={{width:18,height:12,fontSize:11,color:K.dim2,textAlign:"center",fontWeight:600}}>{l}</div>;})}
       </div>
       {Array.from({length:weeks},function(_,w){return(
         <div key={w} style={{display:"flex",gap:2}}>
           {Array.from({length:days},function(__,d){
             var cell=cells[w*7+d];
             var c=cell.count;
-            var bg=c===0?"rgba(255,255,255,.03)":c===1?K.su+"30":c<=3?K.wa+"40":K.cr+"50";
+            var bg=c===0?"rgba(var(--cj-fgrgb),.03)":c===1?K.su+"30":c<=3?K.wa+"40":K.cr+"50";
             var isToday=diffD(cell.dt,NOW)===0;
-            return <div key={d} title={fmt(cell.dt)+": "+c+" prazo"+(c!==1?"s":"")} style={{width:18,height:18,borderRadius:3,background:bg,border:isToday?"1.5px solid "+K.ac:"1px solid rgba(255,255,255,.04)",cursor:"default",transition:"all .15s"}}/>;
+            return <div key={d} title={fmt(cell.dt)+": "+c+" prazo"+(c!==1?"s":"")} style={{width:18,height:18,borderRadius:3,background:bg,border:isToday?"1.5px solid "+K.ac:"1px solid rgba(var(--cj-fgrgb),.04)",cursor:"default",transition:"all .15s"}}/>;
           })}
         </div>
       );})}
       <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
-        <span style={{fontSize:8,color:K.dim2}}>Menos</span>
-        {[0,1,2,4].map(function(v){return <div key={v} style={{width:10,height:10,borderRadius:2,background:v===0?"rgba(255,255,255,.03)":v===1?K.su+"30":v<=3?K.wa+"40":K.cr+"50"}}/>;})}
-        <span style={{fontSize:8,color:K.dim2}}>Mais</span>
+        <span style={{fontSize:11,color:K.dim2}}>Menos</span>
+        {[0,1,2,4].map(function(v){return <div key={v} style={{width:10,height:10,borderRadius:2,background:v===0?"rgba(var(--cj-fgrgb),.03)":v===1?K.su+"30":v<=3?K.wa+"40":K.cr+"50"}}/>;})}
+        <span style={{fontSize:11,color:K.dim2}}>Mais</span>
       </div>
     </div>
   );
@@ -2487,33 +2656,38 @@ const IS=({value:v,options:o,onChange:oc,color:c})=>{
   useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))sOp(false)};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h)},[]);
   return(
     <div ref={ref} style={{position:"relative",display:"inline-flex"}}>
-      <button onClick={e=>{e.stopPropagation();sOp(!op)}} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:"rgba(255,255,255,.05)",color:c||K.txt,border:`1px solid ${K.brd}`,cursor:"pointer"}}><Edit3 size={10}/>{v}<ChevronDown size={10}/></button>
+      <button onClick={e=>{e.stopPropagation();sOp(!op)}} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:12,fontWeight:600,background:"rgba(var(--cj-fgrgb),.05)",color:c||K.txt,border:`1px solid ${K.brd}`,cursor:"pointer"}}><Edit3 size={10}/>{v}<ChevronDown size={10}/></button>
       {op&&<div className="cj-sc" style={{position:"absolute",top:"100%",left:0,marginTop:4,background:K.modal,border:`1px solid ${K.brd}`,borderRadius:10,padding:4,zIndex:50,minWidth:180,boxShadow:"0 12px 32px rgba(0,0,0,.5)"}}>
-        {o.map(x=><div key={x} onClick={e=>{e.stopPropagation();oc(x);sOp(false)}} style={{padding:"7px 12px",borderRadius:6,fontSize:11,color:x===v?K.ac:K.txt,cursor:"pointer",fontWeight:x===v?600:400,background:x===v?K.acG:"transparent"}} onMouseEnter={e=>{if(x!==v)e.currentTarget.style.background="rgba(255,255,255,.04)"}} onMouseLeave={e=>{if(x!==v)e.currentTarget.style.background="transparent"}}>{x}</div>)}
+        {o.map(x=><div key={x} onClick={e=>{e.stopPropagation();oc(x);sOp(false)}} style={{padding:"7px 12px",borderRadius:6,fontSize:12,color:x===v?K.ac:K.txt,cursor:"pointer",fontWeight:x===v?600:400,background:x===v?K.acG:"transparent"}} onMouseEnter={e=>{if(x!==v)e.currentTarget.style.background="rgba(var(--cj-fgrgb),.04)"}} onMouseLeave={e=>{if(x!==v)e.currentTarget.style.background="transparent"}}>{x}</div>)}
       </div>}
     </div>
   );
 };
 
 /* CHECKLIST */
-const CL=({items,onToggle})=><div style={{display:"flex",flexDirection:"column",gap:4}}>{(items||[]).map((c,i)=>{const it=typeof c==="string"?{text:c,done:false}:c;return <div key={i} onClick={e=>{e.stopPropagation();onToggle(i)}} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:it.done?K.dim2:K.txt,cursor:"pointer",textDecoration:it.done?"line-through":"none"}}><div style={{width:14,height:14,borderRadius:3,border:`1.5px solid ${it.done?K.ac:K.brd}`,background:it.done?K.acG:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{it.done&&<CheckCircle size={10} color={K.ac}/>}</div>{it.text}</div>})}</div>;
+const CL=({items,onToggle})=><div style={{display:"flex",flexDirection:"column",gap:4}}>{(items||[]).map((c,i)=>{const it=typeof c==="string"?{text:c,done:false}:c;return <div key={i} onClick={e=>{e.stopPropagation();onToggle(i)}} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:it.done?K.dim2:K.txt,cursor:"pointer",textDecoration:it.done?"line-through":"none"}}><div style={{width:14,height:14,borderRadius:3,border:`1.5px solid ${it.done?K.ac:K.brd}`,background:it.done?K.acG:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{it.done&&<CheckCircle size={10} color={K.ac}/>}</div>{it.text}</div>})}</div>;
 
 
 /* ═══ DJe PRAZO CALC ═══ */
-const addBizDays = (date, n) => {
-  var d = new Date(date); var added = 0;
-  while(added < n) { d.setDate(d.getDate()+1); var wd=d.getDay(); if(wd!==0&&wd!==6) added++; }
+/* v44 FIX: addBizDays so pulava sabado/domingo e IGNORAVA feriados/recesso —
+   produzia um prazoFinal mais cedo que o real e INCONSISTENTE com diasRestantes
+   (que usa bizDiff/isDU, ciente de feriados). Agora usa isDU. aplicarRecesso
+   default true (prazo judicial suspende no recesso forense, art. 220 CPC). */
+const addBizDays = (date, n, aplicarRecesso) => {
+  var d = new Date(date); var added = 0; var guard = 0;
+  while(added < n && guard < 3650) { guard++; d.setDate(d.getDate()+1); if(isDU(d, aplicarRecesso)) added++; }
   return d;
 };
-const calcPrazoDJe = (pubDate, interst) => {
+const calcPrazoDJe = (pubDate, interst, aplicarRecesso) => {
   if(!pubDate) return null;
-  var d = pubDate instanceof Date ? pubDate : new Date(pubDate);
+  var d = pubDate instanceof Date ? pubDate : toD(pubDate);
+  if(!d) return null;
   // Intimação: dia útil seguinte à publicação
-  var intimacao = addBizDays(d, 1);
+  var intimacao = addBizDays(d, 1, aplicarRecesso);
   // Prazo começa no dia útil APÓS a intimação
-  var inicio = addBizDays(intimacao, 1);
+  var inicio = addBizDays(intimacao, 1, aplicarRecesso);
   // Conta os dias úteis do prazo
-  return addBizDays(inicio, interst||15);
+  return addBizDays(inicio, interst||15, aplicarRecesso);
 };
 
 /* ═══ TABELA DE PRAZOS POR TIPO DE PECA ═══ */
@@ -2576,28 +2750,28 @@ function ParecerModal(props) {
   };
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(12px)",zIndex:1300,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"32px 20px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,14,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:24,width:"100%",maxWidth:740,padding:28,position:"relative",boxShadow:"0 0 60px rgba(0,229,255,.07),0 32px 80px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.2)",borderRadius:24,width:"100%",maxWidth:740,padding:28,position:"relative",boxShadow:"0 0 60px rgba(var(--cj-acrgb),.07),0 32px 80px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:6}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
           <div style={{fontSize:26}}>📋</div>
           <div>
-            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 10px rgba(0,229,255,.5)"}}>Prompt Parecer CFM</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>Copie e cole na IA para elaborar o parecer</div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 10px rgba(var(--cj-acrgb),.5)"}}>Prompt Parecer CFM</h3>
+            <div style={{fontSize:12,color:K.dim,marginTop:2}}>Copie e cole na IA para elaborar o parecer</div>
           </div>
         </div>
-        <div style={{padding:"12px 16px",borderRadius:13,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.15)",marginBottom:14}}>
-          <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Processo</div>
-          <div style={{fontSize:13,fontWeight:700,color:K.txt}}>{proc.assunto}</div>
-          <div style={{fontSize:11,color:K.dim,marginTop:3}}>{proc.tipoPeca}{proc.numeroSEI?" · SEI "+proc.numeroSEI:""}{proc.interessado?" · "+proc.interessado:""}</div>
+        <div style={{padding:"12px 16px",borderRadius:13,background:"rgba(var(--cj-acrgb),.06)",border:"1px solid rgba(var(--cj-acrgb),.15)",marginBottom:14}}>
+          <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Processo</div>
+          <div style={{fontSize:14,fontWeight:700,color:K.txt}}>{proc.assunto}</div>
+          <div style={{fontSize:12,color:K.dim,marginTop:3}}>{proc.tipoPeca}{proc.numeroSEI?" · SEI "+proc.numeroSEI:""}{proc.interessado?" · "+proc.interessado:""}</div>
         </div>
-        <div style={{padding:"14px 16px",borderRadius:13,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.07)",maxHeight:340,overflowY:"auto",fontSize:11,color:"#94a3b8",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'JetBrains Mono',monospace",marginBottom:14}}>{prompt}</div>
+        <div style={{padding:"14px 16px",borderRadius:13,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-fgrgb),.07)",maxHeight:340,overflowY:"auto",fontSize:12,color:"#94a3b8",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'JetBrains Mono',monospace",marginBottom:14}}>{prompt}</div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <button onClick={copy} style={{flex:1,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,padding:"12px 20px",borderRadius:13,border:copied?"1px solid rgba(0,255,136,.5)":"1px solid rgba(0,229,255,.35)",background:copied?"linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.06))":"linear-gradient(135deg,rgba(0,229,255,.18),rgba(0,229,255,.06))",color:copied?"#00ff88":"#00e5ff",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:copied?"0 0 20px rgba(0,255,136,.25)":"0 0 20px rgba(0,229,255,.2)",textShadow:copied?"0 0 8px rgba(0,255,136,.7)":"0 0 8px rgba(0,229,255,.6)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",transition:"all .3s"}}>
+          <button onClick={copy} style={{flex:1,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,padding:"12px 20px",borderRadius:13,border:copied?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-acrgb),.35)",background:copied?"linear-gradient(135deg,rgba(var(--cj-surgb),.18),rgba(var(--cj-surgb),.06))":"linear-gradient(135deg,rgba(var(--cj-acrgb),.18),rgba(var(--cj-acrgb),.06))",color:copied?"var(--cj-su)":"var(--cj-ac)",fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:copied?"0 0 20px rgba(var(--cj-surgb),.25)":"0 0 20px rgba(var(--cj-acrgb),.2)",textShadow:copied?"0 0 8px rgba(var(--cj-surgb),.7)":"0 0 8px rgba(var(--cj-acrgb),.6)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",transition:"all .3s"}}>
             {copied?"✅ Copiado!":"📋 Copiar Prompt Completo"}
           </button>
-          <button onClick={onClose} style={{...btnGhost,padding:"12px 16px",fontSize:12}}>Fechar</button>
+          <button onClick={onClose} style={{...btnGhost,padding:"12px 16px",fontSize:13}}>Fechar</button>
         </div>
-        <div style={{marginTop:12,padding:"10px 14px",borderRadius:10,background:"rgba(184,77,255,.07)",border:"1px solid rgba(184,77,255,.2)",fontSize:11,color:"#a78bfa",lineHeight:1.6}}>
+        <div style={{marginTop:12,padding:"10px 14px",borderRadius:10,background:"rgba(var(--cj-purgb),.07)",border:"1px solid rgba(var(--cj-purgb),.2)",fontSize:12,color:"#a78bfa",lineHeight:1.6}}>
           💡 Cole o prompt copiado no <strong>Claude</strong> ou em outro modelo de IA. Os dados do processo já foram inseridos nas entradas. Complete os campos entre parênteses com informações adicionais dos autos.
         </div>
       </div>
@@ -2616,24 +2790,31 @@ function PdfAIModal(props) {
   var fileRef=useRef(null);
   var analyze=function(b64,mime,fn){
     sLoad(true);sErr("");sResult("");sFname(fn);
-    var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+proc.assunto+" | Tipo: "+proc.tipoPeca;
+    var ctx="Processo: "+(proc.num||"")+" | SEI: "+(proc.numeroSEI||"")+" | Assunto: "+(proc.assunto||"")+" | Tipo: "+(proc.tipoPeca||"");
     fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:"Voce e advogado senior da COJUR/CFM. Analise este documento e forneca:\n\n1. RESUMO: O que e este documento (2 frases)\n2. PROXIMA PROVIDENCIA: Acao concreta e imediata\n3. PRAZO: Se ha prazo no documento, qual e\n4. ARGUMENTOS: Se for peca da parte contraria, quais os pontos a rebater\n5. RISCO: Critico/Medio/Baixo e justificativa\n\nContexto: "+ctx+"\n\nSeja direto e tecnico. Sem travesSao."}]}]})})
     .then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("\n").trim();sResult(t||"Sem analise.");sLoad(false);}).catch(function(){sErr("Erro na analise.");sLoad(false);});
   };
-  var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){analyze(ev.target.result.split(",")[1],f.type||"application/pdf",f.name);};r.readAsDataURL(f);};
+  var onFile=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;
+    /* v44 FIX: validacao de tipo/tamanho + onerror (antes uma leitura que falhava
+       deixava o loading travado para sempre, sem mensagem). */
+    if(f.size>20*1024*1024){sErr("Arquivo muito grande (máx. 20 MB).");return;}
+    var r=new FileReader();
+    r.onerror=function(){sErr("Falha ao ler o arquivo.");sLoad(false);};
+    r.onload=function(ev){try{var parts=String(ev.target.result||"").split(",");analyze(parts[1]||"",f.type||"application/pdf",f.name);}catch(_){sErr("Falha ao processar o arquivo.");sLoad(false);}};
+    r.readAsDataURL(f);};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"32px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.25)",borderRadius:22,width:"100%",maxWidth:680,padding:26,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-purgb),.25)",borderRadius:22,width:"100%",maxWidth:680,padding:26,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
           <span style={{fontSize:22}}>📄</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Análise IA do Processo</h3><div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc.num||"—"} · {proc.tipoPeca}</div></div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif"}}>Análise IA do Processo</h3><div style={{fontSize:12,color:K.dim,marginTop:2}}>{proc.num||"—"} · {proc.tipoPeca}</div></div>
         </div>
         <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:"none"}} onChange={onFile}/>
-        {!result&&!loading&&<div style={{textAlign:"center",padding:"36px 0"}}><div style={{fontSize:44,marginBottom:14}}>📎</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:6}}>Anexe o PDF do processo</div><div style={{fontSize:12,color:K.dim,marginBottom:20}}>A IA analisa e indica próxima providência, prazo, argumentos e risco</div><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>📎 Selecionar PDF</button></div>}
+        {!result&&!loading&&<div style={{textAlign:"center",padding:"36px 0"}}><div style={{fontSize:44,marginBottom:14}}>📎</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:6}}>Anexe o PDF do processo</div><div style={{fontSize:13,color:K.dim,marginBottom:20}}>A IA analisa e indica próxima providência, prazo, argumentos e risco</div><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>📎 Selecionar PDF</button></div>}
         {loading&&<div style={{padding:"24px 0"}}><TerminalAI lines={["Lendo PDF · "+(fname||"arquivo")+"…","Extraindo metadados processuais…","Cruzando jurisprudência (CFM · STJ · STF)…","Identificando teses-mãe e contra-argumentos…","Compilando ficha técnica."]}/></div>}
-        {err&&<div style={{padding:"12px",borderRadius:12,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:12}}>{err}</div>}
-        {result&&<div><div style={{fontSize:10,color:"#b84dff",fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Análise gerada pela IA</div><div style={{padding:"14px",borderRadius:13,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.15)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto"}}>{result}</div><div style={{fontSize:10,color:K.dim,marginTop:6}}>📄 {fname}</div><div style={{marginTop:12,display:"flex",gap:8}}><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnGhost,padding:"8px 14px",fontSize:11}}>Analisar outro PDF</button></div></div>}
+        {err&&<div style={{padding:"12px",borderRadius:12,background:"rgba(var(--cj-crrgb),.1)",border:"1px solid rgba(var(--cj-crrgb),.3)",color:"var(--cj-cr)",fontSize:13,marginBottom:12}}>{err}</div>}
+        {result&&<div><div style={{fontSize:12,color:"var(--cj-pu)",fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Análise gerada pela IA</div><div style={{padding:"14px",borderRadius:13,background:"rgba(var(--cj-purgb),.06)",border:"1px solid rgba(var(--cj-purgb),.15)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto"}}>{result}</div><div style={{fontSize:12,color:K.dim,marginTop:6}}>📄 {fname}</div><div style={{marginTop:12,display:"flex",gap:8}}><button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{...btnGhost,padding:"8px 14px",fontSize:12}}>Analisar outro PDF</button></div></div>}
       </div>
     </div>
   );
@@ -2700,24 +2881,24 @@ function GmailSEIModal(props) {
 
   var importarObj=function(em){
     var isJ=em.tipo==="jud"||(em.numeroProcesso&&em.numeroProcesso.length>10);
-    if(isJ){dp({type:"ADD_J",proc:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
-    else{dp({type:"ADD_A",proc:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
+    if(isJ){dp({type:"ADD_J",d:{num:em.numeroProcesso||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo judicial via Gmail",tipoPeca:em.tipoPeca||"Manifestação",proxProv:"Verificar prazo e elaborar "+(em.tipoPeca||"peça")}});}
+    else{dp({type:"ADD_A",d:{num:em.numeroSEI||"",numeroSEI:em.numeroSEI||"",assunto:em.assunto||"Processo administrativo via Gmail",tipoPeca:"Parecer Jurídico",proxProv:"Verificar processo no SEI"}});}
     setAdded(function(p){var n=Object.assign({},p);n[em.assunto||"x"]=true;return n;});
   };
 
-  var tabStyle=function(t){return {flex:1,padding:"9px 8px",borderRadius:11,border:tab===t?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.12)",background:tab===t?"rgba(0,229,255,.12)":"rgba(0,229,255,.03)",color:tab===t?"#00e5ff":K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .2s"};};
+  var tabStyle=function(t){return {flex:1,padding:"9px 8px",borderRadius:11,border:tab===t?"1px solid rgba(var(--cj-acrgb),.5)":"1px solid rgba(var(--cj-acrgb),.12)",background:tab===t?"rgba(var(--cj-acrgb),.12)":"rgba(var(--cj-acrgb),.03)",color:tab===t?"var(--cj-ac)":K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .2s"};};
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:22,width:"100%",maxWidth:680,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.2)",borderRadius:22,width:"100%",maxWidth:680,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
 
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <span style={{fontSize:22}}>📧</span>
           <div>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Gmail SEI</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>Importe processos a partir de emails do SEI/tribunais</div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Gmail SEI</h3>
+            <div style={{fontSize:12,color:K.dim,marginTop:2}}>Importe processos a partir de emails do SEI/tribunais</div>
           </div>
         </div>
 
@@ -2728,48 +2909,48 @@ function GmailSEIModal(props) {
         </div>
 
         {/* Erro */}
-        {err&&<div style={{padding:"10px 14px",borderRadius:11,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:14,lineHeight:1.6}}>{err}</div>}
+        {err&&<div style={{padding:"10px 14px",borderRadius:11,background:"rgba(var(--cj-crrgb),.1)",border:"1px solid rgba(var(--cj-crrgb),.3)",color:"var(--cj-cr)",fontSize:13,marginBottom:14,lineHeight:1.6}}>{err}</div>}
 
         {/* ABA: Colar Email */}
         {tab==="colar"&&<div>
-          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",fontSize:11,color:K.dim,marginBottom:12,lineHeight:1.6}}>
-            <span style={{color:"#00e5ff",fontWeight:700}}>Como usar: </span>
+          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(var(--cj-acrgb),.05)",border:"1px solid rgba(var(--cj-acrgb),.12)",fontSize:12,color:K.dim,marginBottom:12,lineHeight:1.6}}>
+            <span style={{color:"var(--cj-ac)",fontWeight:700}}>Como usar: </span>
             Abra o email no Gmail, selecione todo o texto (Ctrl+A), copie (Ctrl+C) e cole aqui abaixo. A IA extrai os dados automaticamente.
           </div>
           <textarea
             value={texto}
             onChange={function(e){setTexto(e.target.value);}}
             placeholder={"Cole aqui o texto completo do email SEI ou do tribunal...\n\nExemplo:\nDe: sei@cfm.org.br\nAssunto: Comunico a atribuição de novo prazo...\n\nComunico que foi atribuído novo prazo..."}
-            style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}
+            style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:13}}
           />
-          {loading&&<div style={{padding:"12px 0"}}><SkeletonBlock lines={4} h={20}/><div style={{textAlign:"center",fontSize:11,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8}}>Extraindo informações...</div></div>}
+          {loading&&<div style={{padding:"12px 0"}}><SkeletonBlock lines={4} h={20}/><div style={{textAlign:"center",fontSize:12,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8}}>Extraindo informações...</div></div>}
           {!loading&&!extracted&&<button onClick={extrairEmail} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>🧠 Analisar email com IA</button>}
           {extracted&&!loading&&<div>
-            <div style={{padding:"14px 16px",borderRadius:14,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",marginBottom:12}}>
-              <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Dados extraídos pela IA</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div style={{padding:"14px 16px",borderRadius:14,background:"rgba(var(--cj-acrgb),.07)",border:"1px solid rgba(var(--cj-acrgb),.2)",marginBottom:12}}>
+              <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Dados extraídos pela IA</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:8}}>
                 {[["Assunto",extracted.assunto],["Remetente",extracted.remetente],["Data",extracted.data],["Tipo",extracted.tipo==="jud"?"Judicial":"Administrativo"],["Nº SEI",extracted.numeroSEI||"—"],["Nº Processo",extracted.numeroProcesso||"—"],["Tipo de Peça",extracted.tipoPeca||"—"],["Prazo",extracted.prazo||"—"]].map(function(item,i){return(
-                  <div key={i} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.025)"}}>
-                    <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{item[0]}</div>
-                    <div style={{fontSize:12,color:K.txt,fontWeight:600,wordBreak:"break-word"}}>{item[1]||"—"}</div>
+                  <div key={i} style={{padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.025)"}}>
+                    <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{item[0]}</div>
+                    <div style={{fontSize:13,color:K.txt,fontWeight:600,wordBreak:"break-word"}}>{item[1]||"—"}</div>
                   </div>
                 );})}
               </div>
-              {extracted.resumo&&<div style={{marginTop:10,padding:"8px 10px",borderRadius:8,background:"rgba(0,229,255,.06)",fontSize:11,color:"#94a3b8",fontStyle:"italic"}}>{extracted.resumo}</div>}
+              {extracted.resumo&&<div style={{marginTop:10,padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-acrgb),.06)",fontSize:12,color:"#94a3b8",fontStyle:"italic"}}>{extracted.resumo}</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={function(){importarObj(extracted);}} disabled={added[extracted.assunto||"x"]} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:added[extracted.assunto||"x"]?"#00ff88":"#00e5ff",borderColor:added[extracted.assunto||"x"]?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)",background:added[extracted.assunto||"x"]?"rgba(0,255,136,.1)":"rgba(0,229,255,.1)"}}>
+              <button onClick={function(){importarObj(extracted);}} disabled={added[extracted.assunto||"x"]} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:added[extracted.assunto||"x"]?"var(--cj-su)":"var(--cj-ac)",borderColor:added[extracted.assunto||"x"]?"rgba(var(--cj-surgb),.4)":"rgba(var(--cj-acrgb),.35)",background:added[extracted.assunto||"x"]?"rgba(var(--cj-surgb),.1)":"rgba(var(--cj-acrgb),.1)"}}>
                 {added[extracted.assunto||"x"]?"✅ Processo importado!":"➕ Importar processo"}
               </button>
-              <button onClick={function(){setExtracted(null);setTexto("");setErr("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Novo email</button>
+              <button onClick={function(){setExtracted(null);setTexto("");setErr("");}} style={{...btnGhost,padding:"10px 14px",fontSize:13}}>Novo email</button>
             </div>
           </div>}
         </div>}
 
         {/* ABA: Busca Automática */}
         {tab==="auto"&&<div>
-          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(255,184,0,.06)",border:"1px solid rgba(255,184,0,.2)",fontSize:11,color:K.dim,marginBottom:14,lineHeight:1.6}}>
-            <span style={{color:"#ffb800",fontWeight:700}}>Requer conector Gmail ativo: </span>
+          <div style={{padding:"9px 14px",borderRadius:10,background:"rgba(var(--cj-wargb),.06)",border:"1px solid rgba(var(--cj-wargb),.2)",fontSize:12,color:K.dim,marginBottom:14,lineHeight:1.6}}>
+            <span style={{color:"var(--cj-wa)",fontWeight:700}}>Requer conector Gmail ativo: </span>
             Acesse Configurações → Conectores no Claude.ai e confirme que o Gmail está conectado. Se não funcionar, use a aba "Colar Email".
           </div>
           {!loading&&!emails.length&&<div style={{textAlign:"center",padding:"24px 0"}}>
@@ -2786,7 +2967,7 @@ function GmailSEIModal(props) {
               var done=added[em.assunto||"x"]; var alta=em.urgencia==="alta";
               var canI=em.grupo===1||em.grupo==="1";
               return(
-                <div key={i} style={{padding:"11px 14px",borderRadius:12,background:done?"rgba(0,255,136,.04)":alta?"rgba(255,46,91,.04)":"rgba(255,255,255,.025)",border:done?"1px solid rgba(0,255,136,.25)":alta?"1px solid rgba(255,46,91,.3)":"1px solid rgba(255,255,255,.07)",display:"flex",gap:12,alignItems:"flex-start",marginBottom:8}}>
+                <div key={i} style={{padding:"11px 14px",borderRadius:12,background:done?"rgba(var(--cj-surgb),.04)":alta?"rgba(var(--cj-crrgb),.04)":"rgba(var(--cj-fgrgb),.025)",border:done?"1px solid rgba(var(--cj-surgb),.25)":alta?"1px solid rgba(var(--cj-crrgb),.3)":"1px solid rgba(var(--cj-fgrgb),.07)",display:"flex",gap:12,alignItems:"flex-start",marginBottom:8}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",gap:5,marginBottom:5,flexWrap:"wrap"}}>
                       <Bd color={isJ?K.pu:K.ac}>{isJ?"Judicial":"Adm"}</Bd>
@@ -2794,30 +2975,30 @@ function GmailSEIModal(props) {
                       {em.prazo&&<Bd color={K.wa}>{em.prazo}</Bd>}
                       {done&&<Bd color={K.su}>Importado</Bd>}
                     </div>
-                    <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:3}}>{em.assunto}</div>
-                    {em.resumo&&<div style={{fontSize:11,color:"#94a3b8",fontStyle:"italic",marginBottom:3}}>{em.resumo}</div>}
-                    {em.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>SEI: {em.numeroSEI}</div>}
-                    {em.numeroProcesso&&<div style={{fontSize:10,color:"#b84dff",fontFamily:"'JetBrains Mono',monospace"}}>Proc: {em.numeroProcesso}</div>}
-                    <div style={{fontSize:10,color:K.dim,marginTop:3}}>{em.remetente} · {em.data}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:3}}>{em.assunto}</div>
+                    {em.resumo&&<div style={{fontSize:12,color:"#94a3b8",fontStyle:"italic",marginBottom:3}}>{em.resumo}</div>}
+                    {em.numeroSEI&&<div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace"}}>SEI: {em.numeroSEI}</div>}
+                    {em.numeroProcesso&&<div style={{fontSize:12,color:"var(--cj-pu)",fontFamily:"'JetBrains Mono',monospace"}}>Proc: {em.numeroProcesso}</div>}
+                    <div style={{fontSize:12,color:K.dim,marginTop:3}}>{em.remetente} · {em.data}</div>
                   </div>
-                  {canI&&<button onClick={function(){importarObj(em);}} disabled={done} style={{padding:"7px 12px",borderRadius:10,border:done?"1px solid rgba(0,255,136,.3)":"1px solid rgba(0,229,255,.3)",background:done?"rgba(0,255,136,.06)":"rgba(0,229,255,.08)",color:done?"#00ff88":"#00e5ff",fontSize:11,fontWeight:700,cursor:done?"default":"pointer",flexShrink:0,fontFamily:"inherit"}}>{done?"Importado":"+ Importar"}</button>}
+                  {canI&&<button onClick={function(){importarObj(em);}} disabled={done} style={{padding:"7px 12px",borderRadius:10,border:done?"1px solid rgba(var(--cj-surgb),.3)":"1px solid rgba(var(--cj-acrgb),.3)",background:done?"rgba(var(--cj-surgb),.06)":"rgba(var(--cj-acrgb),.08)",color:done?"var(--cj-su)":"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:done?"default":"pointer",flexShrink:0,fontFamily:"inherit"}}>{done?"Importado":"+ Importar"}</button>}
                 </div>
               );
             };
             return(
               <div>
                 {g1.length>0&&<div style={{marginBottom:14}}>
-                  <div style={{fontSize:10,color:"#ff2e5b",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif",display:"flex",alignItems:"center",gap:8}}>
-                    <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"#ff2e5b",flexShrink:0}}/>
+                  <div style={{fontSize:12,color:"var(--cj-cr)",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif",display:"flex",alignItems:"center",gap:8}}>
+                    <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"var(--cj-cr)",flexShrink:0}}/>
                     Novos Prazos SEI ({g1.length})
                   </div>
                   {g1.map(EM)}
                 </div>}
                 {g2.length>0&&<div style={{marginBottom:10}}>
-                  <div style={{fontSize:10,color:"#ffb800",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif"}}>Emails Importantes ({g2.length})</div>
+                  <div style={{fontSize:12,color:"var(--cj-wa)",fontWeight:800,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif"}}>Emails Importantes ({g2.length})</div>
                   {g2.map(EM)}
                 </div>}
-                <button onClick={buscarGmail} style={{...btnGhost,marginTop:4,width:"100%",justifyContent:"center",fontSize:11}}>Atualizar</button>
+                <button onClick={buscarGmail} style={{...btnGhost,marginTop:4,width:"100%",justifyContent:"center",fontSize:12}}>Atualizar</button>
               </div>
             );
           })()}
@@ -2848,15 +3029,15 @@ function RelatorioModal(props) {
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){sCopied(true);setTimeout(function(){sCopied(false);},2500);});}catch(e){}};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.83)",backdropFilter:"blur(10px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"32px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:22,width:"100%",maxWidth:700,padding:26,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.2)",borderRadius:22,width:"100%",maxWidth:700,padding:26,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
           <span style={{fontSize:22}}>📊</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Relatório de Produção Mensal</h3><div style={{fontSize:11,color:K.dim,marginTop:2}}>Gerado por IA com base nos dados do COJUR Nexus</div></div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Relatório de Produção Mensal</h3><div style={{fontSize:12,color:K.dim,marginTop:2}}>Gerado por IA com base nos dados do COJUR Nexus</div></div>
         </div>
-        {!result&&!loading&&<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:42,marginBottom:12}}>📊</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:5}}>Gerar relatório do mês</div><div style={{fontSize:12,color:K.dim,marginBottom:20}}>{(st.realizados||[]).length} realizados · {[...st.adm,...st.jud].length} no acervo</div><button onClick={gerar} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>Gerar Relatório IA</button></div>}
+        {!result&&!loading&&<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:42,marginBottom:12}}>📊</div><div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:5}}>Gerar relatório do mês</div><div style={{fontSize:13,color:K.dim,marginBottom:20}}>{(st.realizados||[]).length} realizados · {[...st.adm,...st.jud].length} no acervo</div><button onClick={gerar} style={{...btnPrim,padding:"12px 24px",justifyContent:"center"}}>Gerar Relatório IA</button></div>}
         {loading&&<div style={{padding:"24px 0"}}><TerminalAI lines={["Agrupando processos por tipo, urgência e responsável…","Calculando KPIs e variações 7/30/90 dias…","Renderizando gráficos institucionais…","Pronto."]}/></div>}
-        {result&&<div><div style={{padding:"14px",borderRadius:13,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:400,overflowY:"auto",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:10}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00e5ff"}}>{copied?"Copiado!":"Copiar Relatório"}</button><button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Regenerar</button></div></div>}
+        {result&&<div><div style={{padding:"14px",borderRadius:13,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-acrgb),.1)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:400,overflowY:"auto",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:10}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"var(--cj-su)":"var(--cj-ac)"}}>{copied?"Copiado!":"Copiar Relatório"}</button><button onClick={gerar} style={{...btnGhost,padding:"10px 14px",fontSize:13}}>Regenerar</button></div></div>}
       </div>
     </div>
   );
@@ -2900,22 +3081,22 @@ function DecisaoModal({onClose}) {
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.25)",borderRadius:22,width:"100%",maxWidth:700,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-purgb),.25)",borderRadius:22,width:"100%",maxWidth:700,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <span style={{fontSize:22}}>⚖️</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Resumo de Decisão Judicial</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Cole o texto da decisão — IA extrai tipo, prazo, providência e risco</div></div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif"}}>Resumo de Decisão Judicial</h3>
+          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Cole o texto da decisão — IA extrai tipo, prazo, providência e risco</div></div>
         </div>
         <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da decisão judicial, acórdão ou despacho...\n\nExemplo: VISTOS. Trata-se de ação ordinária proposta..."}
-          style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
+          style={{...inpSt,minHeight:160,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:13}}/>
         {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Lendo a decisão judicial…","Extraindo tese, fundamentos e ratio…","Mapeando precedentes citados (STF · STJ · TRFs)…","Sintetizando para parecer interno."]}/></div>}
-        {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#b84dff",borderColor:"rgba(168,85,247,.4)",background:"rgba(168,85,247,.1)"}}>⚖️ Analisar Decisão com IA</button>}
+        {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"var(--cj-pu)",borderColor:"rgba(var(--cj-purgb),.4)",background:"rgba(var(--cj-purgb),.1)"}}>⚖️ Analisar Decisão com IA</button>}
         {result&&!loading&&<div>
-          <div style={{padding:"14px",borderRadius:13,background:"rgba(168,85,247,.06)",border:"1px solid rgba(168,85,247,.2)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",marginBottom:12}}>{result}</div>
+          <div style={{padding:"14px",borderRadius:13,background:"rgba(var(--cj-purgb),.06)",border:"1px solid rgba(var(--cj-purgb),.2)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",marginBottom:12}}>{result}</div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#b84dff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(168,85,247,.35)",background:copied?"rgba(0,255,136,.08)":"rgba(168,85,247,.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Análise"}</button>
-            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Nova decisão</button>
+            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"var(--cj-su)":"var(--cj-pu)",borderColor:copied?"rgba(var(--cj-surgb),.4)":"rgba(var(--cj-purgb),.35)",background:copied?"rgba(var(--cj-surgb),.08)":"rgba(var(--cj-purgb),.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Análise"}</button>
+            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:13}}>Nova decisão</button>
           </div>
         </div>}
       </div>
@@ -2943,22 +3124,22 @@ function RevisaoModal({onClose}) {
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.2)",borderRadius:22,width:"100%",maxWidth:760,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-surgb),.2)",borderRadius:22,width:"100%",maxWidth:760,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <span style={{fontSize:22}}>✏️</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Revisão de Peça Jurídica</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Cole o rascunho — IA revisa erros formais, técnicos e de linguagem</div></div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-su)",fontFamily:"Orbitron,sans-serif"}}>Revisão de Peça Jurídica</h3>
+          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Cole o rascunho — IA revisa erros formais, técnicos e de linguagem</div></div>
         </div>
         <textarea value={texto} onChange={function(e){setTexto(e.target.value);}} placeholder={"Cole aqui o texto da peça jurídica para revisão...\n\nExemplo: EXCELENTÍSSIMO SENHOR DESEMBARGADOR FEDERAL...\n\nVem respeitosamente à presença de Vossa Excelência o CONSELHO FEDERAL DE MEDICINA..."}
-          style={{...inpSt,minHeight:200,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
+          style={{...inpSt,minHeight:200,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:13}}/>
         {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Lendo a minuta…","Verificando coerência argumentativa e citações…","Sugerindo blindagens e pontos de elevação…","Compilando comentários de revisão."]}/></div>}
-        {!loading&&!result&&<button onClick={revisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"#00ff88",borderColor:"rgba(0,255,136,.4)",background:"rgba(0,255,136,.08)"}}>✏️ Revisar Peça com IA</button>}
+        {!loading&&!result&&<button onClick={revisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",color:"var(--cj-su)",borderColor:"rgba(var(--cj-surgb),.4)",background:"rgba(var(--cj-surgb),.08)"}}>✏️ Revisar Peça com IA</button>}
         {result&&!loading&&<div>
-          <div style={{padding:"14px",borderRadius:13,background:"rgba(0,255,136,.05)",border:"1px solid rgba(0,255,136,.15)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto",marginBottom:12}}>{result}</div>
+          <div style={{padding:"14px",borderRadius:13,background:"rgba(var(--cj-surgb),.05)",border:"1px solid rgba(var(--cj-surgb),.15)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:380,overflowY:"auto",marginBottom:12}}>{result}</div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"#00ff88":"#00ff88",borderColor:copied?"rgba(0,255,136,.5)":"rgba(0,255,136,.35)",background:"rgba(0,255,136,.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Revisão"}</button>
-            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Revisar outra peça</button>
+            <button onClick={function(){navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",color:copied?"var(--cj-su)":"var(--cj-su)",borderColor:copied?"rgba(var(--cj-surgb),.5)":"rgba(var(--cj-surgb),.35)",background:"rgba(var(--cj-surgb),.08)"}}>{copied?"✅ Copiado!":"📋 Copiar Revisão"}</button>
+            <button onClick={function(){setResult("");setTexto("");}} style={{...btnGhost,padding:"10px 14px",fontSize:13}}>Revisar outra peça</button>
           </div>
         </div>}
       </div>
@@ -2979,7 +3160,7 @@ function TimelinePg({st,ss}) {
     .slice(0,10)
     .map(function(p, i){
       var d = p.diasRestantes;
-      var cor = d<=5 ? "#ff2e5b" : d<=14 ? "#ffb800" : d<=28 ? "#00e5ff" : "#00ff88";
+      var cor = d<=5 ? "var(--cj-cr)" : d<=14 ? "var(--cj-wa)" : d<=28 ? "var(--cj-ac)" : "var(--cj-su)";
       var dt = new Date(p.prazoFinal);
       var dStr = isNaN(dt) ? (d+"du") : dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).toUpperCase().replace(".","");
       var tipo = (p.tipoPeca && /sustent/i.test(p.tipoPeca)) ? "sust" : (p.tipo || "adm");
@@ -3000,7 +3181,7 @@ function TimelinePg({st,ss}) {
         <span style={{fontSize:24}}>📅</span>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:K.txt,fontFamily:"Orbitron,sans-serif"}}>Timeline de Prazos</h2>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Próximos 30 dias úteis · {all.length} processo{all.length!==1?"s":""} com prazo</div>
+          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Próximos 30 dias úteis · {all.length} processo{all.length!==1?"s":""} com prazo</div>
         </div>
       </div>
       {/* v41.3 · TimelinePrism tecnologico · clique em card abre processo */}
@@ -3014,12 +3195,12 @@ function TimelinePg({st,ss}) {
         {/* Ruler */}
         <div style={{position:"relative",marginBottom:8,height:32,display:"flex",alignItems:"flex-end"}}>
           {[0,5,10,15,20,25,30].map(function(d){return(
-            <div key={d} style={{position:"absolute",left:(d/30*100)+"%",transform:"translateX(-50%)",fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{d===0?"Hoje":d+"du"}</div>
+            <div key={d} style={{position:"absolute",left:(d/30*100)+"%",transform:"translateX(-50%)",fontSize:12,color:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{d===0?"Hoje":d+"du"}</div>
           );})}
         </div>
         {/* Track */}
-        <div style={{position:"relative",height:8,borderRadius:999,background:"rgba(255,255,255,.06)",marginBottom:24,overflow:"visible"}}>
-          <div style={{position:"absolute",left:0,top:-2,bottom:-2,width:2,background:"#00e5ff",borderRadius:999,boxShadow:"0 0 8px #00e5ff"}}/>
+        <div style={{position:"relative",height:8,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",marginBottom:24,overflow:"visible"}}>
+          <div style={{position:"absolute",left:0,top:-2,bottom:-2,width:2,background:"var(--cj-ac)",borderRadius:999,boxShadow:"0 0 8px #00e5ff"}}/>
           {all.map(function(p,i){
             var left=(p.diasRestantes/30)*100;
             var cor=uC(p.diasRestantes);
@@ -3027,23 +3208,23 @@ function TimelinePg({st,ss}) {
           })}
         </div>
         {/* Cards por faixa */}
-        {[[0,0,"🚨","Vencidos/Hoje","#ff2e5b"],[1,5,"🔥","Próximos 5 dias úteis","#ff2e5b"],[6,10,"⚡","6 a 10 dias úteis","#ffb800"],[11,20,"📋","11 a 20 dias úteis","#00e5ff"],[21,30,"🗓","21 a 30 dias úteis","#94a3b8"]].map(function(faixa){
+        {[[0,0,"🚨","Vencidos/Hoje","var(--cj-cr)"],[1,5,"🔥","Próximos 5 dias úteis","var(--cj-cr)"],[6,10,"⚡","6 a 10 dias úteis","var(--cj-wa)"],[11,20,"📋","11 a 20 dias úteis","var(--cj-ac)"],[21,30,"🗓","21 a 30 dias úteis","#94a3b8"]].map(function(faixa){
           var emoji=faixa[2],label=faixa[3],cor=faixa[4];
           var procs=all.filter(function(p){return p.diasRestantes>=faixa[0]&&p.diasRestantes<=faixa[1];});
           if(!procs.length)return null;
           return(
             <div key={label} style={{marginBottom:16}}>
-              <div style={{fontSize:11,color:cor,fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>{emoji} {label} ({procs.length})</div>
+              <div style={{fontSize:12,color:cor,fontWeight:700,marginBottom:8,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>{emoji} {label} ({procs.length})</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
                 {procs.map(function(p){return(
-                  <div key={p.id} onClick={function(){ss(p);}} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+cor+"33",cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
+                  <div key={p.id} onClick={function(){ss(p);}} style={{padding:"12px 14px",borderRadius:14,background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99))",border:"1px solid "+cor+"33",cursor:"pointer",transition:"all .18s",position:"relative",overflow:"hidden"}} onMouseEnter={function(e){e.currentTarget.style.borderColor=cor+"77";}} onMouseLeave={function(e){e.currentTarget.style.borderColor=cor+"33";}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:cor,boxShadow:"0 0 6px "+cor}}/>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                      <div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Adm"}</div>
-                      <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
+                      <div style={{fontSize:12,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Adm"}</div>
+                      <div style={{fontSize:13,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
                     </div>
-                    <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
-                    <div style={{fontSize:10,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
+                    <div style={{fontSize:12,color:K.dim}}>{p.tipoPeca} · {p.tipo==="jud"?p.tribunal:"Adm"}</div>
                   </div>
                 );})}
               </div>
@@ -3140,26 +3321,26 @@ function ChecklistModal({proc,onConfirm,onClose}) {
   var ok_count=items.filter(function(it){return checks[it.id];}).length;
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,255,136,.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-surgb),.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
           <span style={{fontSize:22}}>📋</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif"}}>Checklist Pré-Protocolo</h3>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&(proc.num||proc.assunto)}</div></div>
-          <div style={{marginLeft:"auto",fontSize:14,fontWeight:800,color:all_ok?"#00ff88":"#ffb800",fontFamily:"Orbitron,monospace"}}>{ok_count}/{items.length}</div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-su)",fontFamily:"Orbitron,sans-serif"}}>Checklist Pré-Protocolo</h3>
+          <div style={{fontSize:12,color:K.dim,marginTop:2}}>{proc&&(proc.num||proc.assunto)}</div></div>
+          <div style={{marginLeft:"auto",fontSize:14,fontWeight:800,color:all_ok?"var(--cj-su)":"var(--cj-wa)",fontFamily:"Orbitron,monospace"}}>{ok_count}/{items.length}</div>
         </div>
-        <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,.06)",marginBottom:18,overflow:"hidden"}}>
-          <div style={{height:"100%",width:(ok_count/items.length*100)+"%",background:all_ok?"#00ff88":"#ffb800",boxShadow:"0 0 8px "+(all_ok?"#00ff88":"#ffb800"),transition:"width .3s"}}/>
+        <div style={{height:4,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",marginBottom:18,overflow:"hidden"}}>
+          <div style={{height:"100%",width:(ok_count/items.length*100)+"%",background:all_ok?"var(--cj-su)":"var(--cj-wa)",boxShadow:"0 0 8px "+(all_ok?"var(--cj-su)":"var(--cj-wa)"),transition:"width .3s"}}/>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
           {items.map(function(it){return(
-            <label key={it.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:checks[it.id]?"rgba(0,255,136,.07)":"rgba(255,255,255,.025)",border:"1px solid "+(checks[it.id]?"rgba(0,255,136,.3)":"rgba(255,255,255,.08)"),cursor:"pointer",transition:"all .2s"}}>
-              <input type="checkbox" checked={!!checks[it.id]} onChange={function(e){setCheck(function(p){var n=Object.assign({},p);n[it.id]=e.target.checked;return n;});}} style={{width:18,height:18,accentColor:"#00ff88",flexShrink:0}}/>
-              <span style={{fontSize:13,color:checks[it.id]?K.dim:K.txt,textDecoration:checks[it.id]?"line-through":"none",fontWeight:checks[it.id]?400:500}}>{it.label}</span>
+            <label key={it.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:checks[it.id]?"rgba(var(--cj-surgb),.07)":"rgba(var(--cj-fgrgb),.025)",border:"1px solid "+(checks[it.id]?"rgba(var(--cj-surgb),.3)":"rgba(var(--cj-fgrgb),.08)"),cursor:"pointer",transition:"all .2s"}}>
+              <input type="checkbox" checked={!!checks[it.id]} onChange={function(e){setCheck(function(p){var n=Object.assign({},p);n[it.id]=e.target.checked;return n;});}} style={{width:18,height:18,accentColor:"var(--cj-su)",flexShrink:0}}/>
+              <span style={{fontSize:14,color:checks[it.id]?K.dim:K.txt,textDecoration:checks[it.id]?"line-through":"none",fontWeight:checks[it.id]?400:500}}>{it.label}</span>
             </label>
           );})}
         </div>
-        <button onClick={onConfirm} disabled={!all_ok} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",opacity:all_ok?1:0.45,color:"#00ff88",borderColor:"rgba(0,255,136,.5)",background:"rgba(0,255,136,.1)",cursor:all_ok?"pointer":"not-allowed",fontSize:13,fontWeight:800}}>
+        <button onClick={onConfirm} disabled={!all_ok} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",opacity:all_ok?1:0.45,color:"var(--cj-su)",borderColor:"rgba(var(--cj-surgb),.5)",background:"rgba(var(--cj-surgb),.1)",cursor:all_ok?"pointer":"not-allowed",fontSize:14,fontWeight:800}}>
           {all_ok?"📤 Confirmar Protocolo — Tudo verificado!":"Complete todos os itens para confirmar"}
         </button>
       </div>
@@ -3178,7 +3359,7 @@ var PECA_COR = {
   "Agravo Interno":"#f97316","Embargos de Declaração":"#e17055","Embargos Infringentes":"#d44b2f","Embargos de Divergência":"#c0392b",
   // ── Recursos excepcionais STJ/STF (família violeta/púrpura) ──
   "Recurso Especial":"#8b5cf6","Agravo em Recurso Especial":"#7c3aed",
-  "Recurso Extraordinário":"#a855f7","Agravo em Recurso Extraordinário":"#9333ea","Recurso Ordinário Constitucional":"#6d28d9",
+  "Recurso Extraordinário":"var(--cj-pu)","Agravo em Recurso Extraordinário":"#9333ea","Recurso Ordinário Constitucional":"#6d28d9",
   // ── MS e incidentes (família azul) ──
   "Informações em MS":"#3b82f6","Contrarrazões":"#2563eb","Contraminuta":"#60a5fa",
   // ── Execução e cumprimento (família vermelho/rosa) ──
@@ -3190,9 +3371,9 @@ var PECA_COR = {
   // ── Manifestações gerais (família neutra/pedra) ──
   "Manifestação":"#78716c","Petição Simples":"#a8a29e","Razões de Recurso":"#d97706","Contrarrazões de Recurso":"#2563eb",
   // ── Memoriais e sustentação (família índigo/violeta) ──
-  "Memorial":"#818cf8","Memoriais":"#6366f1","Alegações Finais":"#4f46e5","Sustentação Oral":"#b84dff",
+  "Memorial":"#818cf8","Memoriais":"#6366f1","Alegações Finais":"#4f46e5","Sustentação Oral":"var(--cj-pu)",
   // ── Administrativo CFM (família verde/menta) ──
-  "Parecer Jurídico":"#00ff88","Ofício":"#22d3ee","Nota Técnica":"#4ade80","Despacho de Andamento":"#86efac",
+  "Parecer Jurídico":"var(--cj-su)","Ofício":"#22d3ee","Nota Técnica":"#4ade80","Despacho de Andamento":"#86efac",
   // ── Contratos (dourado) ──
   "Análise de Contrato":"#eab308",
   // ── Outros ──
@@ -3245,44 +3426,44 @@ function MinutaModal({proc, onClose}) {
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.25)",borderRadius:22,width:"100%",maxWidth:820,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.25)",borderRadius:22,width:"100%",maxWidth:820,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
           <span style={{fontSize:24}}>📝</span>
           <div style={{flex:1}}>
-            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Gerador de Minuta Completa</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>{proc&&proc.assunto||"Peça jurídica"} · {proc&&proc.num||"Novo processo"}</div>
+            <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Gerador de Minuta Completa</h3>
+            <div style={{fontSize:12,color:K.dim,marginTop:2}}>{proc&&proc.assunto||"Peça jurídica"} · {proc&&proc.num||"Novo processo"}</div>
           </div>
           {/* ═══ v10 — TABS ═══ */}
           <div style={{display:"flex",gap:4,background:"rgba(0,0,0,.3)",padding:3,borderRadius:10}}>
-            <button onClick={function(){setTab("gerar");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="gerar"?K.acG:"transparent",color:tab==="gerar"?K.ac:K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Gerar</button>
-            <button onClick={function(){setTab("drafts");setDrafts(loadDrafts());}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="drafts"?K.puG:"transparent",color:tab==="drafts"?K.pu:K.dim,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>Rascunhos {drafts.length>0&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:999,background:K.pu,color:"#fff"}}>{drafts.length}</span>}</button>
+            <button onClick={function(){setTab("gerar");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="gerar"?K.acG:"transparent",color:tab==="gerar"?K.ac:K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Gerar</button>
+            <button onClick={function(){setTab("drafts");setDrafts(loadDrafts());}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:tab==="drafts"?K.puG:"transparent",color:tab==="drafts"?K.pu:K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>Rascunhos {drafts.length>0&&<span style={{fontSize:11,padding:"1px 6px",borderRadius:999,background:K.pu,color:"var(--cj-tx0)"}}>{drafts.length}</span>}</button>
           </div>
         </div>
         {/* ═══ TAB DRAFTS ═══ */}
         {tab==="drafts"&&<div>
           {drafts.length===0?<div style={{padding:"40px 20px",textAlign:"center",color:K.dim}}>
             <div style={{fontSize:36,marginBottom:12}}>📋</div>
-            <div style={{fontSize:13,fontWeight:700,color:K.txt,marginBottom:6}}>Nenhum rascunho salvo</div>
-            <div style={{fontSize:11}}>Minutas geradas são salvas automaticamente a cada 2 segundos</div>
+            <div style={{fontSize:14,fontWeight:700,color:K.txt,marginBottom:6}}>Nenhum rascunho salvo</div>
+            <div style={{fontSize:12}}>Minutas geradas são salvas automaticamente a cada 2 segundos</div>
           </div>:<div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:440,overflowY:"auto"}}>
-            {drafts.map(function(d){return <div key={d.id} style={{padding:"12px 14px",borderRadius:11,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){setMinuta(d.texto);setTipoMinuta(d.tipo);setObs(d.obs||"");setDraftId(d.id);setTab("gerar");}}>
+            {drafts.map(function(d){return <div key={d.id} style={{padding:"12px 14px",borderRadius:11,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){setMinuta(d.texto);setTipoMinuta(d.tipo);setObs(d.obs||"");setDraftId(d.id);setTab("gerar");}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:10,color:K.pu,fontWeight:700,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:3}}>{d.tipo}</div>
-                  <div title={d.procAssunto||""} style={{fontSize:12,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.procAssunto||"Sem assunto"}</div>
-                  <div style={{fontSize:10,color:K.dim,marginTop:2,fontFamily:"'JetBrains Mono',monospace"}}>{d.procNum||"—"} · {d.texto.length} caracteres</div>
+                  <div style={{fontSize:12,color:K.pu,fontWeight:700,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:3}}>{d.tipo}</div>
+                  <div title={d.procAssunto||""} style={{fontSize:13,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.procAssunto||"Sem assunto"}</div>
+                  <div style={{fontSize:12,color:K.dim,marginTop:2,fontFamily:"'JetBrains Mono',monospace"}}>{d.procNum||"—"} · {d.texto.length} caracteres</div>
                 </div>
                 <button onClick={function(e){e.stopPropagation();if(confirm("Excluir rascunho?")){deleteDraft(d.id);setDrafts(loadDrafts());}}} style={{background:"none",border:"none",color:K.dim2,cursor:"pointer",padding:4}}><X size={14}/></button>
               </div>
-              <div title={d.texto} style={{fontSize:10,color:K.dim2,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",lineHeight:1.5}}>{d.texto.substring(0,220)}</div>
-              <div style={{fontSize:9,color:K.dim2,marginTop:4}}>{new Date(d.createdAt).toLocaleString("pt-BR")}</div>
+              <div title={d.texto} style={{fontSize:12,color:K.dim2,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",lineHeight:1.5}}>{d.texto.substring(0,220)}</div>
+              <div style={{fontSize:11,color:K.dim2,marginTop:4}}>{new Date(d.createdAt).toLocaleString("pt-BR")}</div>
             </div>;})}
           </div>}
         </div>}
         {/* ═══ TAB GERAR ═══ */}
         {tab==="gerar"&&<>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14,marginBottom:16}}>
           <div>
             <label style={lblSt}>Tipo de Peça</label>
             <select style={inpSt} value={tipoMinuta} onChange={function(e){setTipoMinuta(e.target.value);}}>
@@ -3291,37 +3472,37 @@ function MinutaModal({proc, onClose}) {
           </div>
           <div>
             <label style={lblSt}>Instruções adicionais (opcional)</label>
-            <textarea style={{...inpSt,minHeight:60,resize:"vertical",fontSize:11}} value={obsExtra} onChange={function(e){setObs(e.target.value);}} placeholder="Ex: Incluir pedido de tutela de urgência, enfatizar Lei 12.842/2013..."/>
+            <textarea style={{...inpSt,minHeight:60,resize:"vertical",fontSize:12}} value={obsExtra} onChange={function(e){setObs(e.target.value);}} placeholder="Ex: Incluir pedido de tutela de urgência, enfatizar Lei 12.842/2013..."/>
           </div>
         </div>
-        <div style={{padding:"10px 14px",borderRadius:11,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",marginBottom:14,fontSize:11,color:K.dim,lineHeight:1.6,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{flex:1}}><span style={{color:"#00e5ff",fontWeight:700}}>Padrão COJUR: </span>Sem travessão · NORMA+FATO+CONSEQUÊNCIA · Estrutura: Relatório / Fundamentos / Conclusão · Linguagem técnica CFM</span>
-          {minuta&&draftId&&<span style={{fontSize:10,color:K.su,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>💾 Auto-salvo</span>}
+        <div style={{padding:"10px 14px",borderRadius:11,background:"rgba(var(--cj-acrgb),.05)",border:"1px solid rgba(var(--cj-acrgb),.12)",marginBottom:14,fontSize:12,color:K.dim,lineHeight:1.6,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{flex:1}}><span style={{color:"var(--cj-ac)",fontWeight:700}}>Padrão COJUR: </span>Sem travessão · NORMA+FATO+CONSEQUÊNCIA · Estrutura: Relatório / Fundamentos / Conclusão · Linguagem técnica CFM</span>
+          {minuta&&draftId&&<span style={{fontSize:12,color:K.su,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>💾 Auto-salvo</span>}
         </div>
         {!loading&&!minuta&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"13px",fontSize:14,letterSpacing:".3px"}}>
           📝 Gerar Minuta Completa de {tipoMinuta}
         </button>}
-        {loading&&<div style={{textAlign:"center",padding:"16px 0",color:"#00e5ff"}}>
+        {loading&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--cj-ac)"}}>
           {!minuta&&<><div className="cj-pulse" style={{fontSize:38,marginBottom:12}}>📝</div>
-          <div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Redigindo {tipoMinuta}...</div>
-          <div style={{fontSize:11,color:K.dim,marginTop:6}}>Texto aparecerá em tempo real via streaming</div></>}
+          <div style={{fontSize:14,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Redigindo {tipoMinuta}...</div>
+          <div style={{fontSize:12,color:K.dim,marginTop:6}}>Texto aparecerá em tempo real via streaming</div></>}
           {minuta&&<div style={{textAlign:"left"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Redigindo em tempo real...</div>
-            <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"#00e5ff"}}/>
+            <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Redigindo em tempo real...</div>
+            <div className="cj-pulse" style={{width:8,height:8,borderRadius:"50%",background:"var(--cj-ac)"}}/>
           </div>
-          <textarea readOnly value={minuta} style={{...inpSt,minHeight:300,resize:"vertical",fontSize:11,lineHeight:1.7,fontFamily:"inherit"}}/></div>}
+          <textarea readOnly value={minuta} style={{...inpSt,minHeight:300,resize:"vertical",fontSize:12,lineHeight:1.7,fontFamily:"inherit"}}/></div>}
         </div>}
         {minuta&&!loading&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Minuta gerada · {tipoMinuta}</div>
-            <div style={{fontSize:10,color:K.dim}}>{minuta.length} caracteres</div>
+            <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Minuta gerada · {tipoMinuta}</div>
+            <div style={{fontSize:12,color:K.dim}}>{minuta.length} caracteres</div>
           </div>
-          <textarea readOnly value={minuta} style={{...inpSt,minHeight:420,resize:"vertical",fontSize:11,lineHeight:1.7,fontFamily:"inherit",marginBottom:12}}/>
+          <textarea readOnly value={minuta} style={{...inpSt,minHeight:420,resize:"vertical",fontSize:12,lineHeight:1.7,fontFamily:"inherit",marginBottom:12}}/>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"11px",color:copied?"#00ff88":"#00e5ff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)",background:copied?"rgba(0,255,136,.08)":"rgba(0,229,255,.08)"}}>
+            <button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"11px",color:copied?"var(--cj-su)":"var(--cj-ac)",borderColor:copied?"rgba(var(--cj-surgb),.4)":"rgba(var(--cj-acrgb),.35)",background:copied?"rgba(var(--cj-surgb),.08)":"rgba(var(--cj-acrgb),.08)"}}>
               {copied?"✅ Copiado!":"📋 Copiar Minuta"}
             </button>
-            <button onClick={gerar} style={{...btnGhost,padding:"11px 16px",fontSize:12}}>🔄 Regenerar</button>
+            <button onClick={gerar} style={{...btnGhost,padding:"11px 16px",fontSize:13}}>🔄 Regenerar</button>
           </div>
         </div>}
         </>}
@@ -3347,29 +3528,29 @@ function DjeAutoModal(djeP){
   var aplicar=function(){if(!result||!result.dataDJe)return;dp({type:"UPD",id:proc.id,isAdm:false,ch:{pubDJe:result.dataDJe,intersticio:result.intersticio||15}});onClose();};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"center",padding:"28px 16px"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.25)",borderRadius:22,width:"100%",maxWidth:520,padding:24,position:"relative"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <span style={{fontSize:22}}>DJe</span>
-          <div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Busca DJe Automatica</h3><div style={{fontSize:11,color:K.dim}}>IA pesquisa a publicacao mais recente</div></div>
+          <div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Busca DJe Automatica</h3><div style={{fontSize:12,color:K.dim}}>IA pesquisa a publicacao mais recente</div></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:12}}>
           <div><label style={lblSt}>N do Processo</label><input style={inpSt} value={numero} onChange={function(e){setNumero(e.target.value);}} placeholder="0000000-00.0000.0.00.0000"/></div>
           <div><label style={lblSt}>Tribunal</label><select style={inpSt} value={trib} onChange={function(e){setTrib(e.target.value);}}>{TRIBS.map(function(t){return <option key={t.label||t} value={t.label||t} style={{background:K.modal}}>{t.label||t}</option>;})}</select></div>
         </div>
         {!loading&&!result&&<button onClick={buscar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>Buscar no DJe</button>}
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:28,marginBottom:8}}>...</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Pesquisando...</div></div>}
-        {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginTop:8}}>{err}</div>}
+        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"var(--cj-ac)"}}><div className="cj-pulse" style={{fontSize:28,marginBottom:8}}>...</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Pesquisando...</div></div>}
+        {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(var(--cj-crrgb),.1)",border:"1px solid rgba(var(--cj-crrgb),.3)",color:"var(--cj-cr)",fontSize:13,marginTop:8}}>{err}</div>}
         {result&&<div>
-          <div style={{padding:"14px",borderRadius:13,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.2)",marginBottom:12}}>
-            {result.dataDJe&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Data Publicacao DJe</div><div style={{fontSize:18,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,monospace"}}>{result.dataDJe}</div></div>}
-            {result.tipoAto&&<div style={{marginBottom:4}}><span style={{fontSize:9,color:K.dim,textTransform:"uppercase",fontWeight:700}}>Ato: </span><span style={{fontSize:12,color:K.txt}}>{result.tipoAto}</span></div>}
-            {result.prazo&&<div><span style={{fontSize:9,color:K.dim,textTransform:"uppercase",fontWeight:700}}>Prazo: </span><span style={{fontSize:12,color:"#ffb800",fontWeight:700}}>{result.prazo} ({result.intersticio||15}du)</span></div>}
-            {result.resumo&&<div style={{fontSize:11,color:K.dim,fontStyle:"italic",marginTop:6}}>{result.resumo}</div>}
+          <div style={{padding:"14px",borderRadius:13,background:"rgba(var(--cj-acrgb),.06)",border:"1px solid rgba(var(--cj-acrgb),.2)",marginBottom:12}}>
+            {result.dataDJe&&<div style={{marginBottom:6}}><div style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Data Publicacao DJe</div><div style={{fontSize:18,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,monospace"}}>{result.dataDJe}</div></div>}
+            {result.tipoAto&&<div style={{marginBottom:4}}><span style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700}}>Ato: </span><span style={{fontSize:13,color:K.txt}}>{result.tipoAto}</span></div>}
+            {result.prazo&&<div><span style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700}}>Prazo: </span><span style={{fontSize:13,color:"var(--cj-wa)",fontWeight:700}}>{result.prazo} ({result.intersticio||15}du)</span></div>}
+            {result.resumo&&<div style={{fontSize:12,color:K.dim,fontStyle:"italic",marginTop:6}}>{result.resumo}</div>}
           </div>
           <div style={{display:"flex",gap:8}}>
-            {result.dataDJe&&proc&&<button onClick={aplicar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",fontSize:12}}>Aplicar data ao processo</button>}
-            <button onClick={buscar} style={{...btnGhost,padding:"10px 14px",fontSize:12}}>Nova busca</button>
+            {result.dataDJe&&proc&&<button onClick={aplicar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"10px",fontSize:13}}>Aplicar data ao processo</button>}
+            <button onClick={buscar} style={{...btnGhost,padding:"10px 14px",fontSize:13}}>Nova busca</button>
           </div>
         </div>}
       </div>
@@ -3392,31 +3573,31 @@ function IANovoProcessoModal(iaNP){
     fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})})
     .then(function(r){return r.json();}).then(function(d){var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();try{setResult(JSON.parse(txt));setLoad(false);}catch(e){setErr("Nao foi possivel extrair. Descreva com mais detalhes.");setLoad(false);}}).catch(function(){setErr("Erro de conexao.");setLoad(false);});
   };
-  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",proc:clean});}else{dp({type:"ADD_A",proc:clean});}onClose();};
+  var salvar=function(){if(!result)return;var clean={};Object.keys(result).forEach(function(k){if(result[k]!==null&&result[k]!=="null")clean[k]=result[k];});if(tipo==="jud"){dp({type:"ADD_J",d:clean});}else{dp({type:"ADD_A",d:clean});}onClose();};
   var campos=[["N Processo","num"],["N SEI","numeroSEI"],["Assunto","assunto"],["Tribunal","tribunal"],["Tipo Acao","tipoAcao"],["Tipo Peca","tipoPeca"],["Parte Contraria","parteContraria"],["Prazo Final","prazoFinal"],["Status","status"],["Proxima Providencia","proxProv"]];
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.87)",backdropFilter:"blur(14px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"24px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:700,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.3)",borderRadius:22,width:"100%",maxWidth:700,padding:26,position:"relative",boxShadow:"0 32px 80px rgba(0,0,0,.9)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <span style={{fontSize:24}}>IA</span>
-          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Novo Processo via IA</h3><div style={{fontSize:11,color:K.dim,marginTop:2}}>Descreva em linguagem natural — a IA preenche os campos</div></div>
+          <div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Novo Processo via IA</h3><div style={{fontSize:12,color:K.dim,marginTop:2}}>Descreva em linguagem natural — a IA preenche os campos</div></div>
         </div>
         <div style={{display:"flex",gap:8,marginBottom:12}}>
-          {[["jud","Judicial"],["adm","Administrativo"]].map(function(it){return <button key={it[0]} onClick={function(){setTipo(it[0]);setResult(null);}} style={{flex:1,padding:"8px",borderRadius:11,border:tipo===it[0]?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.12)",background:tipo===it[0]?"rgba(0,229,255,.1)":"transparent",color:tipo===it[0]?"#00e5ff":K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{it[1]}</button>;})}
+          {[["jud","Judicial"],["adm","Administrativo"]].map(function(it){return <button key={it[0]} onClick={function(){setTipo(it[0]);setResult(null);}} style={{flex:1,padding:"8px",borderRadius:11,border:tipo===it[0]?"1px solid rgba(var(--cj-acrgb),.5)":"1px solid rgba(var(--cj-acrgb),.12)",background:tipo===it[0]?"rgba(var(--cj-acrgb),.1)":"transparent",color:tipo===it[0]?"var(--cj-ac)":K.dim,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{it[1]}</button>;})}
         </div>
-        <textarea value={descricao} onChange={function(e){setDesc(e.target.value);}} placeholder="Descreva o processo. Ex: Processo SEI 26.0.001234-5, mandado de seguranca no TRF-1 contra Resolucao CFFa 770/2025, prazo 10 dias a partir de 15/04/2026, parte contraria CFFa" style={{...inpSt,minHeight:100,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:12}}/>
-        {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:10}}>{err}</div>}
-        {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:13}}>Extrair campos com IA</button>}
+        <textarea value={descricao} onChange={function(e){setDesc(e.target.value);}} placeholder="Descreva o processo. Ex: Processo SEI 26.0.001234-5, mandado de seguranca no TRF-1 contra Resolucao CFFa 770/2025, prazo 10 dias a partir de 15/04/2026, parte contraria CFFa" style={{...inpSt,minHeight:100,resize:"vertical",marginBottom:12,lineHeight:1.6,fontSize:13}}/>
+        {err&&<div style={{padding:"10px",borderRadius:10,background:"rgba(var(--cj-crrgb),.1)",border:"1px solid rgba(var(--cj-crrgb),.3)",color:"var(--cj-cr)",fontSize:13,marginBottom:10}}>{err}</div>}
+        {!loading&&!result&&<button onClick={analisar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:14}}>Extrair campos com IA</button>}
         {loading&&<div style={{padding:"18px 0"}}><TerminalAI lines={["Interpretando descrição livre…","Identificando tipo, partes e órgão competente…","Sugerindo classificação e tese-mãe…","Pré-cadastrando o processo."]}/></div>}
         {result&&!loading&&<div>
-          <div style={{fontSize:10,color:"#00e5ff",fontWeight:700,marginBottom:10,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Campos extraidos — revise antes de salvar</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-            {campos.map(function(item){var val=result[item[1]];if(!val||val==="null")return null;return <div key={item[1]} style={{padding:"9px 11px",borderRadius:10,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)"}}><div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>{item[0]}</div><div style={{fontSize:12,color:K.txt,fontWeight:600,wordBreak:"break-all"}}>{String(val)}</div></div>;})}
+          <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,marginBottom:10,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}}>Campos extraidos — revise antes de salvar</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:8,marginBottom:14}}>
+            {campos.map(function(item){var val=result[item[1]];if(!val||val==="null")return null;return <div key={item[1]} style={{padding:"9px 11px",borderRadius:10,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-acrgb),.1)"}}><div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>{item[0]}</div><div style={{fontSize:13,color:K.txt,fontWeight:600,wordBreak:"break-all"}}>{String(val)}</div></div>;})}
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={salvar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"11px",fontSize:13,fontWeight:800}}>Cadastrar processo</button>
-            <button onClick={function(){setResult(null);}} style={{...btnGhost,padding:"11px 16px",fontSize:12}}>Corrigir</button>
+            <button onClick={salvar} style={{flex:1,...btnPrim,justifyContent:"center",padding:"11px",fontSize:14,fontWeight:800}}>Cadastrar processo</button>
+            <button onClick={function(){setResult(null);}} style={{...btnGhost,padding:"11px 16px",fontSize:13}}>Corrigir</button>
           </div>
         </div>}
       </div>
@@ -3445,12 +3626,12 @@ function RelatorioSemanalModal(rsP){
   var copy=function(){try{navigator.clipboard.writeText(result).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});}catch(e){}};
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.83)",backdropFilter:"blur(10px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"32px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:22,width:"100%",maxWidth:620,padding:24,position:"relative"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.2)",borderRadius:22,width:"100%",maxWidth:620,padding:24,position:"relative"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><span style={{fontSize:22}}>📋</span><div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Resumo Semanal</h3><div style={{fontSize:11,color:K.dim}}>Gerado por IA com dados reais do acervo</div></div></div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><span style={{fontSize:22}}>📋</span><div><h3 style={{margin:0,fontSize:14,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Resumo Semanal</h3><div style={{fontSize:12,color:K.dim}}>Gerado por IA com dados reais do acervo</div></div></div>
         {!result&&!loading&&<button onClick={gerar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px"}}>Gerar Resumo da Semana</button>}
-        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:28,marginBottom:8}}>...</div><div style={{fontSize:12,fontFamily:"Orbitron,sans-serif"}}>Gerando resumo...</div></div>}
-        {result&&<div><div style={{padding:"14px",borderRadius:12,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.1)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:8}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"9px",color:copied?"#00ff88":"#00e5ff"}}>{copied?"Copiado!":"Copiar Resumo"}</button><button onClick={gerar} style={{...btnGhost,padding:"9px 12px",fontSize:12}}>Regenerar</button></div></div>}
+        {loading&&<div style={{textAlign:"center",padding:"20px 0",color:"var(--cj-ac)"}}><div className="cj-pulse" style={{fontSize:28,marginBottom:8}}>...</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif"}}>Gerando resumo...</div></div>}
+        {result&&<div><div style={{padding:"14px",borderRadius:12,background:"rgba(var(--cj-acrgb),.04)",border:"1px solid rgba(var(--cj-acrgb),.1)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",marginBottom:12}}>{result}</div><div style={{display:"flex",gap:8}}><button onClick={copy} style={{flex:1,...btnPrim,justifyContent:"center",padding:"9px",color:copied?"var(--cj-su)":"var(--cj-ac)"}}>{copied?"Copiado!":"Copiar Resumo"}</button><button onClick={gerar} style={{...btnGhost,padding:"9px 12px",fontSize:13}}>Regenerar</button></div></div>}
       </div>
     </div>
   );
@@ -3471,46 +3652,46 @@ function StatsModal(stP){
   var hPendentes=all.reduce(function(acc,p){var est={"Parecer Jurídico":2.5,"Agravo Interno":2,"Contraminuta":2,"Manifestação":1.5,"Embargos de Declaração":0.75,"Ofício":0.5};return acc+(est[p.tipoPeca]||1.5);},0);
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1500,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"28px 16px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.25)",borderRadius:22,width:"100%",maxWidth:720,padding:26,position:"relative"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-purgb),.25)",borderRadius:22,width:"100%",maxWidth:720,padding:26,position:"relative"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><span style={{fontSize:22}}>📊</span><div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Estatísticas Pessoais</h3><div style={{fontSize:11,color:K.dim}}>Dados reais do seu acervo COJUR</div></div></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-          {[["Total acervo",all.length,"#00e5ff"],["Realizados",real.length,"#00ff88"],["Críticos (≤5du)",criticos,"#ff2e5b"],["Sem mov. (≥7d)",semMov,"#ffb800"]].map(function(item){return(
-            <div key={item[0]} style={{padding:"14px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",textAlign:"center"}}>
-              <div style={{fontSize:9,color:K.dim,marginBottom:6,textTransform:"uppercase",letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><span style={{fontSize:22}}>📊</span><div><h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif"}}>Estatísticas Pessoais</h3><div style={{fontSize:12,color:K.dim}}>Dados reais do seu acervo COJUR</div></div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12,marginBottom:20}}>
+          {[["Total acervo",all.length,"var(--cj-ac)"],["Realizados",real.length,"var(--cj-su)"],["Críticos (≤5du)",criticos,"var(--cj-cr)"],["Sem mov. (≥7d)",semMov,"var(--cj-wa)"]].map(function(item){return(
+            <div key={item[0]} style={{padding:"14px 12px",borderRadius:14,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-fgrgb),.08)",textAlign:"center"}}>
+              <div style={{fontSize:11,color:K.dim,marginBottom:6,textTransform:"uppercase",letterSpacing:".5px",fontWeight:700}}>{item[0]}</div>
               <div style={{fontSize:28,fontWeight:800,color:item[2],fontFamily:"Orbitron,monospace"}}>{item[1]}</div>
             </div>
           );})}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16}}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:K.txt,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Peças por Tipo (Realizadas)</div>
+            <div style={{fontSize:12,fontWeight:700,color:K.txt,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Peças por Tipo (Realizadas)</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {topTipos.length?topTipos.map(function(item){var pct=Math.round(item[1]/real.length*100)||0;return(
                 <div key={item[0]} style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{fontSize:11,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item[0]}</div>
-                  <div style={{width:80,height:6,borderRadius:999,background:"rgba(255,255,255,.06)",overflow:"hidden",flexShrink:0}}>
+                  <div style={{fontSize:12,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item[0]}</div>
+                  <div style={{width:80,height:6,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",overflow:"hidden",flexShrink:0}}>
                     <div style={{height:"100%",width:pct+"%",background:getPecaCor(item[0]),borderRadius:999}}/>
                   </div>
-                  <div style={{fontSize:10,color:K.dim,width:20,textAlign:"right",flexShrink:0}}>{item[1]}</div>
+                  <div style={{fontSize:12,color:K.dim,width:20,textAlign:"right",flexShrink:0}}>{item[1]}</div>
                 </div>
-              );}):(<div style={{fontSize:12,color:K.dim}}>Nenhuma peça realizada ainda</div>)}
+              );}):(<div style={{fontSize:13,color:K.dim}}>Nenhuma peça realizada ainda</div>)}
             </div>
           </div>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:K.txt,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Por Status (Acervo)</div>
+            <div style={{fontSize:12,fontWeight:700,color:K.txt,marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Por Status (Acervo)</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {Object.entries(porStatus).map(function(item){return(
-                <div key={item[0]} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",borderRadius:8,background:"rgba(255,255,255,.025)"}}>
-                  <span style={{fontSize:11,color:K.txt}}>{item[0]}</span>
-                  <span style={{fontSize:12,fontWeight:700,color:"#00e5ff",fontFamily:"Orbitron,monospace"}}>{item[1]}</span>
+                <div key={item[0]} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.025)"}}>
+                  <span style={{fontSize:12,color:K.txt}}>{item[0]}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"var(--cj-ac)",fontFamily:"Orbitron,monospace"}}>{item[1]}</span>
                 </div>
               );})}
             </div>
-            <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)"}}>
-              <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Carga estimada pendente</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,monospace"}}>{hPendentes.toFixed(1)}h</div>
-              <div style={{fontSize:9,color:K.dim}}>baseado nos tipos de peça · 4h/dia disponíveis</div>
+            <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:"rgba(var(--cj-acrgb),.05)",border:"1px solid rgba(var(--cj-acrgb),.12)"}}>
+              <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Carga estimada pendente</div>
+              <div style={{fontSize:20,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,monospace"}}>{hPendentes.toFixed(1)}h</div>
+              <div style={{fontSize:11,color:K.dim}}>baseado nos tipos de peça · 4h/dia disponíveis</div>
             </div>
           </div>
         </div>
@@ -3573,13 +3754,13 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
         {/* HEADER fixo no topo */}
         <div style={{flexShrink:0,flexGrow:0,padding:"20px 32px 14px",borderBottom:`1px solid ${K.brd}`,display:"flex",alignItems:"center",gap:12,background:K.modal,minHeight:60}}>
           <h2 style={{margin:0,fontSize:18,fontWeight:700,color:K.txt,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.3}}>{title}</h2>
-          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.7</span>
+          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:K.dim,letterSpacing:".15em",opacity:.6}}>v42.7</span>
           <button onClick={onClose} style={{flexShrink:0,background:"none",border:"none",color:K.dim,cursor:"pointer",padding:6,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}} title="Fechar (Esc)"><X size={20}/></button>
         </div>
 
         {/* BODY scrollavel (so essa area rola) */}
         <div ref={bodyRef} className="cj-modal-body" style={{flex:"1 1 auto",minHeight:0,overflowY:"auto",overflowX:"hidden",padding:"20px 32px 24px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16}}>
           {fields.map(f=>{
             const span=f.full?{gridColumn:"1 / -1"}:{};
             return(
@@ -3594,20 +3775,28 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
                 ):f.type==="checkbox"?(
                   <label style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",cursor:"pointer"}}>
                     <input type="checkbox" checked={!!form[f.key]} onChange={e=>set(f.key,e.target.checked)} style={{width:16,height:16,accentColor:K.ac}}/>
-                    <span style={{fontSize:13,color:K.txt}}>{f.checkLabel||"Sim"}</span>
+                    <span style={{fontSize:14,color:K.txt}}>{f.checkLabel||"Sim"}</span>
                   </label>
                 ):f.type==="number"?(
-                  <input style={inpSt} type="number" min={1} max={5} value={form[f.key]??3} onChange={e=>set(f.key,parseInt(e.target.value)||3)}/>
+                  /* v44 FIX: antes fixava min=1 max=5 default=3 para TODO campo
+                     numerico -> progresso(0-100) nunca podia ser 0, tempoFala/
+                     intersticio ganhavam default/limite errados. Agora por campo. */
+                  <input style={inpSt} type="number" min={f.min??1} max={f.max??5} step={f.step??1}
+                    value={form[f.key]??(f.default??"")}
+                    onChange={e=>{var raw=e.target.value; if(raw===""){set(f.key,undefined);return;} var n=parseInt(raw,10); set(f.key, isNaN(n)?undefined:n);}}/>
                 ):f.type==="datetime-local"?(
+                  /* v44 FIX: toISOString() (UTC) deslocava a hora (-3h no Brasil)
+                     e podia lancar RangeError numa Date invalida. Formatamos em
+                     hora LOCAL e ignoramos Invalid Date. */
                   <input style={inpSt} type="datetime-local" value={
-                    form[f.key] instanceof Date
-                      ? form[f.key].toISOString().slice(0,16)
+                    (form[f.key] instanceof Date && !isNaN(form[f.key].getTime()))
+                      ? (function(d){var p=n=>(n<10?"0":"")+n;return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());})(form[f.key])
                       : (form[f.key] && typeof form[f.key]==="string" && form[f.key].length>=10
                           ? (form[f.key].length===10 ? form[f.key]+"T12:00" : form[f.key].slice(0,16))
                           : "")
                   } onChange={e=>{
                     var val=e.target.value?new Date(e.target.value):null;
-                    set(f.key, val && !isNaN(val) ? val : e.target.value);
+                    set(f.key, val && !isNaN(val.getTime()) ? val : e.target.value);
                   }}/>
                 ):f.type==="date"?(
                   <div>
@@ -3615,15 +3804,19 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
                     var val=e.target.value?new Date(e.target.value+"T12:00:00"):null;
                     set(f.key,val);
                     if(f.key==="pubDJe"&&val){
+                      /* v44 FIX: showToast nao existe no escopo de FM (era const
+                         dentro de App) -> "showToast&&" lancava ReferenceError e
+                         quebrava o onChange. O preview de prazo logo abaixo ja
+                         informa o usuario, entao removemos a chamada. */
                       var np=calcPrazoDJe(val,form.intersticio||15);
-                      if(np){set("prazoFinal",np);showToast&&showToast("Prazo calculado automaticamente do DJe","success");}
+                      if(np){set("prazoFinal",np);}
                     }
                   }}/>
                   {f.key==="pubDJe"&&form.pubDJe&&(function(){
                     var np=calcPrazoDJe(form.pubDJe instanceof Date?form.pubDJe:new Date(form.pubDJe+"T12:00:00"),form.intersticio||15);
                     if(!np) return null;
                     var npStr=(np instanceof Date?np:new Date(np+"T12:00:00")).toLocaleDateString("pt-BR");
-                    return React.createElement("div",{style:{marginTop:4,padding:"4px 10px",borderRadius:8,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)",fontSize:11,color:"#00e5ff",display:"flex",gap:6,alignItems:"center"}},
+                    return React.createElement("div",{style:{marginTop:4,padding:"4px 10px",borderRadius:8,background:"rgba(var(--cj-acrgb),.08)",border:"1px solid rgba(var(--cj-acrgb),.2)",fontSize:12,color:"var(--cj-ac)",display:"flex",gap:6,alignItems:"center"}},
                       "📅 Prazo calculado: ",React.createElement("strong",null,npStr)," (",((form.intersticio||15)+"du"),")"
                     );
                   })()}
@@ -3645,9 +3838,9 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
             {onDelete && !confirmDel && <button style={btnDanger} onClick={()=>setCD(true)}><Trash2 size={14}/>Excluir</button>}
             {onDelete && confirmDel && (
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:K.cr}}>Confirmar exclusão?</span>
-                <button style={{...btnDanger,padding:"6px 12px",fontSize:12}} onClick={onDelete}>Sim</button>
-                <button style={{...btnGhost,padding:"6px 12px",fontSize:12}} onClick={()=>setCD(false)}>Não</button>
+                <span style={{fontSize:13,color:K.cr}}>Confirmar exclusão?</span>
+                <button style={{...btnDanger,padding:"6px 12px",fontSize:13}} onClick={onDelete}>Sim</button>
+                <button style={{...btnGhost,padding:"6px 12px",fontSize:13}} onClick={()=>setCD(false)}>Não</button>
               </div>
             )}
           </div>
@@ -3655,8 +3848,16 @@ const FM=({title,fields,initial,onSave,onClose,onDelete,suggestions})=>{
             <button style={btnGhost} onClick={onClose}>Cancelar</button>
             <button style={btnPrim} onClick={()=>{
               var erros=[];
-              if(!form.assunto||!form.assunto.trim()) erros.push("Assunto é obrigatório");
-              if(!form.prazoFinal) erros.push("Prazo Final é obrigatório");
+              /* v44 FIX (CRITICO): a validacao exigia assunto+prazoFinal SEMPRE,
+                 mas FM e reaproveitado para Reuniao/Sustentacao/Viagem (que nao
+                 tem esses campos) -> era IMPOSSIVEL salvar esses cadastros. Agora
+                 so validamos os campos que o proprio form declara em `fields`. */
+              var has=function(k){return (fields||[]).some(function(f){return f.key===k;});};
+              if(has("assunto")&&(!form.assunto||!String(form.assunto).trim())) erros.push("Assunto é obrigatório");
+              if(has("prazoFinal")&&!form.prazoFinal) erros.push("Prazo Final é obrigatório");
+              if(has("titulo")&&(!form.titulo||!String(form.titulo).trim())) erros.push("Título é obrigatório");
+              if(has("tema")&&(!form.tema||!String(form.tema).trim())) erros.push("Tema é obrigatório");
+              if(has("destino")&&(!form.destino||!String(form.destino).trim())) erros.push("Destino é obrigatório");
               if(form.impacto&&(form.impacto<1||form.impacto>5)) erros.push("Impacto deve ser entre 1 e 5");
               if(form.complexidade&&(form.complexidade<1||form.complexidade>5)) erros.push("Complexidade deve ser entre 1 e 5");
               if(form.progresso!==undefined&&(form.progresso<0||form.progresso>100)) erros.push("Progresso deve ser entre 0 e 100");
@@ -3679,7 +3880,7 @@ const F_ADM=[
   {key:"interessado",label:"Interessado"},{key:"orgao",label:"Órgão / Unidade"},{key:"responsavel",label:"Responsável"},{key:"linkRef",label:"Link de Referência",full:true},{key:"linkSEI",label:"Link Processo SEI",ph:"https://sei.cfm.org.br/sei/...",full:true},
   {key:"tipoPeca",label:"Tipo de Peça",type:"select",options:TIPOS_PECA},{key:"prazoFinal",label:"Prazo Final",type:"date"},
   {key:"status",label:"Status",type:"select",options:STS},{key:"fase",label:"Fase",type:"select",options:PHS},
-  {key:"impacto",label:"Impacto (1-5)",type:"number"},{key:"complexidade",label:"Complexidade (1-5)",type:"number"},
+  {key:"impacto",label:"Impacto (1-5)",type:"number",min:1,max:5,default:3},{key:"complexidade",label:"Complexidade (1-5)",type:"number",min:1,max:5,default:3},
   {key:"proxProv",label:"Próxima Providência",full:true},{key:"dataProv",label:"Data da Providência",type:"date"},
   {key:"estTempo",label:"Estimativa de Tempo",ph:"Ex: 4h"},{key:"depTerc",label:"Depende de Terceiros",type:"checkbox"},
   {key:"reuniao",label:"Reunião Vinculada",type:"checkbox"},{key:"sustentacao",label:"Sustentação Vinculada",type:"checkbox"},
@@ -3691,17 +3892,17 @@ const F_JUD=[
   {key:"tipoAcao",label:"Tipo de Ação",type:"select",options:TACOES},{key:"tipoPeca",label:"Tipo de Peça",type:"select",options:TIPOS_PECA},
   {key:"parteContraria",label:"Parte Contrária"},{key:"prazoFinal",label:"Prazo Final",type:"date"},
   {key:"dataSustentacao",label:"Data/Hora da Sustentação Oral",type:"datetime-local",ph:""},
-  {key:"tempoFala",label:"Tempo de fala (min)",type:"number",ph:"15"},
-  {key:"pubDJe",label:"Data Publicação DJe",type:"date",ph:"Data da publicação no DJe"},{key:"intersticio",label:"Prazo em dias úteis",type:"number",ph:"Auto por tipo de peça"},
+  {key:"tempoFala",label:"Tempo de fala (min)",type:"number",ph:"15",min:1,max:120,default:15},
+  {key:"pubDJe",label:"Data Publicação DJe",type:"date",ph:"Data da publicação no DJe"},{key:"intersticio",label:"Prazo em dias úteis",type:"number",ph:"Auto por tipo de peça",min:1,max:90,default:15},
   {key:"status",label:"Status",type:"select",options:STS},{key:"fase",label:"Fase",type:"select",options:PHS},
-  {key:"impacto",label:"Impacto (1-5)",type:"number"},{key:"complexidade",label:"Complexidade (1-5)",type:"number"},
+  {key:"impacto",label:"Impacto (1-5)",type:"number",min:1,max:5,default:3},{key:"complexidade",label:"Complexidade (1-5)",type:"number",min:1,max:5,default:3},
   {key:"proxProv",label:"Próxima Providência",full:true},{key:"dataProv",label:"Data da Providência",type:"date"},
   {key:"estTempo",label:"Estimativa de Tempo",ph:"Ex: 6h"},{key:"depTerc",label:"Depende de Terceiros",type:"checkbox"},
   {key:"reuniao",label:"Reunião Vinculada",type:"checkbox",checkLabel:"Criar automaticamente evento na agenda de reuniões"},
   {key:"sustentacao",label:"Sustentação Vinculada",type:"checkbox",checkLabel:"Criar automaticamente evento na agenda de sustentação oral"},
   {key:"destaque",label:"Destaque / Observação Importante",type:"textarea",full:true},
   {key:"obs",label:"Observações Gerais",type:"textarea",full:true},
-  {key:"progresso",label:"Progresso da elaboração (0-100%)",type:"number",ph:"0"},
+  {key:"progresso",label:"Progresso da elaboração (0-100%)",type:"number",ph:"0",min:0,max:100,step:5,default:0},
   {key:"motivoAcompanhamento",label:"Motivo do Acompanhamento",type:"textarea",full:true,ph:"Motivo pelo qual este processo está em acompanhamento..."},
 ];
 const F_REUN=[{key:"titulo",label:"Título",full:true},{key:"data",label:"Data",type:"date"},{key:"hora",label:"Horário",ph:"14:00"},{key:"local",label:"Local"},{key:"obs",label:"Observações",type:"textarea",full:true}];
@@ -3710,7 +3911,10 @@ const F_VIAG=[{key:"destino",label:"Destino"},{key:"motivo",label:"Motivo",full:
 
 const extLabel=p=>p.tipo==="jud"?"Parte Contrária":"Interessado";
 const extValue=p=>p.tipo==="jud"?(p.parteContraria||"—"):(p.interessado||"—");
-const openRef=url=>{if(!url)return;try{window.open(url,"_blank","noopener,noreferrer")}catch(e){}};
+/* v44 FIX: links vem de campos livres/import; bloqueia javascript:/data: etc.
+   Aceita apenas http(s) e caminhos relativos; senao retorna "#". */
+const safeHref=url=>{if(!url)return "#";var u=String(url).trim();if(/^(https?:)?\/\//i.test(u)||/^\//.test(u))return u;if(/^[a-z][a-z0-9+.-]*:/i.test(u))return "#";return u;};
+const openRef=url=>{if(!url)return;var u=safeHref(url);if(u==="#")return;try{window.open(u,"_blank","noopener,noreferrer")}catch(e){}};
 
 /* PROCESS CARD */
 /* ProcessCard — memoizado para evitar re-renders desnecessários */
@@ -3736,7 +3940,7 @@ const MeshBg = React.memo(() => {
       <div className="cj-blob cj-blob-b" style={{
         position:"absolute", right:"-10%", top:"30%",
         width:"50vw", height:"50vw", borderRadius:"50%",
-        background:"radial-gradient(circle, rgba(184,77,255,.45), rgba(184,77,255,0) 70%)",
+        background:"radial-gradient(circle, rgba(var(--cj-purgb),.45), rgba(var(--cj-purgb),0) 70%)",
       }}/>
       <div className="cj-blob cj-blob-c" style={{
         position:"absolute", left:"30%", bottom:"-20%",
@@ -3828,9 +4032,9 @@ const HoverPreview = ({ proc, anchor }) => {
     width: PANEL_W,
     padding: 0,
     borderRadius: 12,
-    background: "linear-gradient(180deg, rgba(8,12,24,.97), rgba(4,7,16,.99))",
+    background: "linear-gradient(180deg, rgba(var(--cj-panelrgb),.97), rgba(var(--cj-panelrgb),.99))",
     border: `1px solid ${accent}66`,
-    boxShadow: `0 12px 36px rgba(0,0,0,.78), 0 0 22px ${accent}33, inset 0 1px 0 rgba(255,255,255,.04)`,
+    boxShadow: `0 12px 36px rgba(0,0,0,.78), 0 0 22px ${accent}33, inset 0 1px 0 rgba(var(--cj-fgrgb),.04)`,
     backdropFilter: "blur(14px)",
     pointerEvents: "none",
     zIndex: 9999,
@@ -3873,7 +4077,7 @@ const HoverPreview = ({ proc, anchor }) => {
               fontFamily:"Orbitron,sans-serif",lineHeight:1,
               textShadow:`0 0 8px ${accent}88`,
             }}>{dr<0?"!":dr}</span>
-            <span style={{fontSize:7,color:accent,opacity:.75,fontFamily:"'JetBrains Mono',monospace",marginTop:2,letterSpacing:".05em"}}>{dr<0?"ATRASO":"DIAS ÚT."}</span>
+            <span style={{fontSize:11,color:accent,opacity:.75,fontFamily:"'JetBrains Mono',monospace",marginTop:2,letterSpacing:".05em"}}>{dr<0?"ATRASO":"DIAS ÚT."}</span>
           </div>
         </div>
         <div style={{flex:1,minWidth:0}}>
@@ -3884,7 +4088,7 @@ const HoverPreview = ({ proc, anchor }) => {
             background:accent+"22",
             border:`1px solid ${accent}77`,
             color:accent,
-            fontSize:9,fontWeight:900,
+            fontSize:11,fontWeight:900,
             letterSpacing:".12em",
             fontFamily:"Orbitron,sans-serif",
             textShadow:`0 0 6px ${accent}55`,
@@ -3893,15 +4097,15 @@ const HoverPreview = ({ proc, anchor }) => {
           }}>{urgLabel}</div>
           {/* number */}
           <div style={{
-            fontSize:11,color:"#7dd3fc",
+            fontSize:12,color:"var(--cj-info)",
             fontFamily:"'JetBrains Mono',monospace",fontWeight:700,
             whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
             letterSpacing:".02em",
-            textShadow:"0 0 8px rgba(125,211,252,.35)",
+            textShadow:"0 0 8px rgba(var(--cj-inforgb),.35)",
           }}>{proc.num||"sem nº"}</div>
           {/* type */}
           <div style={{
-            fontSize:8,color:"rgba(190,215,235,.55)",marginTop:2,
+            fontSize:11,color:"rgba(190,215,235,.55)",marginTop:2,
             letterSpacing:".08em",fontFamily:"'JetBrains Mono',monospace",
           }}>
             {proc.tipo==="jud" ? "▶ JUDICIAL" : "▶ ADMINISTRATIVO"}
@@ -3916,7 +4120,7 @@ const HoverPreview = ({ proc, anchor }) => {
       {/* ═══ SUBJECT — most important text ═══ */}
       <div style={{
         padding:"10px 14px",
-        fontSize:12,fontWeight:600,color:"#e2e8f0",
+        fontSize:13,fontWeight:600,color:"#e2e8f0",
         lineHeight:1.45,
         position:"relative",zIndex:1,
       }}>
@@ -3934,14 +4138,14 @@ const HoverPreview = ({ proc, anchor }) => {
             borderRadius:6,
           }}>
             <div style={{
-              fontSize:8,color:accent,
+              fontSize:11,color:accent,
               letterSpacing:".12em",fontWeight:800,
               fontFamily:"Orbitron,sans-serif",
               marginBottom:3,opacity:.9,
               textShadow:`0 0 4px ${accent}55`,
             }}>▶ AÇÃO</div>
             <div style={{
-              fontSize:11,color:"#dde6f3",
+              fontSize:12,color:"#dde6f3",
               lineHeight:1.4,fontWeight:600,
             }}>{proxProv}{proxProvCut?"…":""}</div>
           </div>
@@ -3957,8 +4161,8 @@ const HoverPreview = ({ proc, anchor }) => {
       }}>
         {/* prazo timeline */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <span style={{fontSize:8,color:"rgba(190,215,235,.40)",letterSpacing:".10em",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>PRAZO</span>
-          <span style={{fontSize:9,color:accent,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textShadow:`0 0 4px ${accent}33`}}>
+          <span style={{fontSize:11,color:"rgba(190,215,235,.40)",letterSpacing:".10em",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>PRAZO</span>
+          <span style={{fontSize:11,color:accent,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textShadow:`0 0 4px ${accent}33`}}>
             {prazoFmt}
           </span>
         </div>
@@ -3979,35 +4183,35 @@ const HoverPreview = ({ proc, anchor }) => {
               padding:"2px 7px",borderRadius:3,
               background:"rgba(127,184,224,.10)",
               border:"1px solid rgba(127,184,224,.18)",
-              color:"#bbd5ec",fontSize:9,fontWeight:700,
+              color:"#bbd5ec",fontSize:11,fontWeight:700,
               fontFamily:"'JetBrains Mono',monospace",
             }}>{(proc.tribunal||proc.orgao||"").slice(0,12)}</span>
           )}
           {scoreVal > 0 && (
             <span style={{
               padding:"2px 7px",borderRadius:3,
-              background: scoreVal >= 75 ? "rgba(255,102,128,.12)" : scoreVal >= 50 ? "rgba(255,184,0,.12)" : "rgba(95,178,96,.12)",
-              border:`1px solid ${scoreVal >= 75 ? "rgba(255,102,128,.28)" : scoreVal >= 50 ? "rgba(255,184,0,.28)" : "rgba(95,178,96,.28)"}`,
-              color: scoreVal >= 75 ? "#ff6680" : scoreVal >= 50 ? "#ffb800" : "#5fb260",
-              fontSize:9,fontWeight:800,
+              background: scoreVal >= 75 ? "rgba(255,102,128,.12)" : scoreVal >= 50 ? "rgba(var(--cj-wargb),.12)" : "rgba(95,178,96,.12)",
+              border:`1px solid ${scoreVal >= 75 ? "rgba(255,102,128,.28)" : scoreVal >= 50 ? "rgba(var(--cj-wargb),.28)" : "rgba(95,178,96,.28)"}`,
+              color: scoreVal >= 75 ? "#ff6680" : scoreVal >= 50 ? "var(--cj-wa)" : "#5fb260",
+              fontSize:11,fontWeight:800,
               fontFamily:"'JetBrains Mono',monospace",
             }}>◈ {scoreVal}</span>
           )}
           {histCount > 0 && (
             <span style={{
               padding:"2px 7px",borderRadius:3,
-              background:"rgba(0,229,255,.10)",
-              border:"1px solid rgba(0,229,255,.20)",
-              color:"#00e5ff",fontSize:9,fontWeight:700,
+              background:"rgba(var(--cj-acrgb),.10)",
+              border:"1px solid rgba(var(--cj-acrgb),.20)",
+              color:"var(--cj-ac)",fontSize:11,fontWeight:700,
               fontFamily:"'JetBrains Mono',monospace",
             }}>◇ {histCount}</span>
           )}
           {proc.depTerc && (
             <span style={{
               padding:"2px 7px",borderRadius:3,
-              background:"rgba(255,184,0,.12)",
-              border:"1px solid rgba(255,184,0,.28)",
-              color:"#ffb800",fontSize:9,fontWeight:700,
+              background:"rgba(var(--cj-wargb),.12)",
+              border:"1px solid rgba(var(--cj-wargb),.28)",
+              color:"var(--cj-wa)",fontSize:11,fontWeight:700,
               fontFamily:"'JetBrains Mono',monospace",
             }}>3os</span>
           )}
@@ -4125,7 +4329,7 @@ const ConfettiHost = () => {
 };
 const ConfettiBurst = ({ color }) => {
   const pieces = useMemo(() => {
-    const cs = ["#00e5ff","#5fb260","#ffb800","#b84dff","#ff6680","#fff"];
+    const cs = ["var(--cj-ac)","#5fb260","var(--cj-wa)","var(--cj-pu)","#ff6680","#fff"];
     return Array.from({length: 60}, (_, i) => ({
       i,
       left: 30 + Math.random() * 40,    /* % */
@@ -4360,14 +4564,14 @@ const RelacoesPg = ({ st, ss, sp }) => {
         ctx.fillStyle = accent;
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r * (isHov ? 1.3 : 1), 0, Math.PI * 2); ctx.fill();
         /* highlight */
-        ctx.fillStyle = "rgba(255,255,255,.85)";
+        ctx.fillStyle = "rgba(var(--cj-fgrgb),.85)";
         ctx.beginPath(); ctx.arc(n.x - n.r*0.3, n.y - n.r*0.3, n.r*0.35, 0, Math.PI * 2); ctx.fill();
         /* label for hovered */
         if (isHov) {
           ctx.font = "bold 11px 'JetBrains Mono', monospace";
           const text = (n.proc.num || "").slice(-9) || "?";
           const tw = ctx.measureText(text).width + 12;
-          ctx.fillStyle = "rgba(8,12,22,.92)";
+          ctx.fillStyle = "rgba(var(--cj-panelrgb),.92)";
           ctx.fillRect(n.x - tw/2, n.y - n.r - 22, tw, 16);
           ctx.strokeStyle = accent;
           ctx.lineWidth = 0.6;
@@ -4400,12 +4604,17 @@ const RelacoesPg = ({ st, ss, sp }) => {
   const onDown = (e) => {
     if (hovered) {
       const node = nodes.find(n => n.id === hovered);
-      if (node) mouseRef.current.dragging = node;
+      if (node) { mouseRef.current.dragging = node; mouseRef.current.downX = mouseRef.current.x; mouseRef.current.downY = mouseRef.current.y; }
     }
   };
   const onUp = (e) => {
-    if (mouseRef.current.dragging && mouseRef.current.draggedDist < 5) {
-      ss(mouseRef.current.dragging.proc);
+    /* v44 FIX: draggedDist nunca era atribuido -> (undefined < 5) === false e o
+       clique para abrir o processo NUNCA disparava. Medimos a distancia entre o
+       ponto do mousedown e o mouseup; clique (pouco movimento) abre o processo. */
+    if (mouseRef.current.dragging) {
+      var dx = mouseRef.current.x - (mouseRef.current.downX!=null?mouseRef.current.downX:mouseRef.current.x);
+      var dy = mouseRef.current.y - (mouseRef.current.downY!=null?mouseRef.current.downY:mouseRef.current.y);
+      if (Math.hypot(dx, dy) < 5) ss(mouseRef.current.dragging.proc);
     }
     mouseRef.current.dragging = null;
   };
@@ -4423,19 +4632,19 @@ const RelacoesPg = ({ st, ss, sp }) => {
 
   return (
     <div style={{padding:0,height:"100%",display:"flex",flexDirection:"column",overflow:"hidden",background:"#040a14",position:"relative"}}>
-      <div style={{padding:"14px 22px",display:"flex",alignItems:"center",gap:14,flexShrink:0,borderBottom:"1px solid rgba(127,174,204,.08)",background:"rgba(8,13,22,.7)",backdropFilter:"blur(8px)",zIndex:5}}>
-        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, rgba(0,229,255,.18), rgba(184,77,255,.12))",border:"1px solid rgba(0,229,255,.3)",boxShadow:"0 0 14px rgba(0,229,255,.22)"}}>
-          <Layers size={18} color="#00e5ff"/>
+      <div style={{padding:"14px 22px",display:"flex",alignItems:"center",gap:14,flexShrink:0,borderBottom:"1px solid rgba(127,174,204,.08)",background:"rgba(var(--cj-panelrgb),.7)",backdropFilter:"blur(8px)",zIndex:5}}>
+        <div style={{width:40,height:40,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, rgba(var(--cj-acrgb),.18), rgba(var(--cj-purgb),.12))",border:"1px solid rgba(var(--cj-acrgb),.3)",boxShadow:"0 0 14px rgba(var(--cj-acrgb),.22)"}}>
+          <Layers size={18} color="var(--cj-ac)"/>
         </div>
         <div>
           <h2 style={{margin:0,fontSize:15,fontWeight:700,color:"#bbd5ec",fontFamily:"Orbitron,sans-serif",letterSpacing:".15em"}}>RELAÇÕES</h2>
-          <div style={{fontSize:10,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:2}}>{nodes.length} processos · {edges.length} conexões · arraste para reorganizar</div>
+          <div style={{fontSize:12,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:2}}>{nodes.length} processos · {edges.length} conexões · arraste para reorganizar</div>
         </div>
         <div style={{flex:1}}/>
-        <div style={{display:"flex",gap:14,alignItems:"center",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#ff6680",boxShadow:"0 0 6px #ff6680"}}/><span style={{color:"rgba(255,102,128,.85)"}}>parte ({stats.partyCount})</span></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#7faecc"}}/><span style={{color:"rgba(127,174,204,.7)"}}>peça ({stats.tpCount})</span></div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"#b84dff"}}/><span style={{color:"rgba(184,77,255,.75)"}}>órgão ({stats.trCount})</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:2,background:"var(--cj-pu)"}}/><span style={{color:"rgba(var(--cj-purgb),.75)"}}>órgão ({stats.trCount})</span></div>
         </div>
       </div>
       <div ref={containerRef} style={{flex:1,position:"relative"}}>
@@ -4452,173 +4661,124 @@ const RelacoesPg = ({ st, ss, sp }) => {
 };
 
 
+/* v43 · CARD ENXUTO: só alta relevância visível (prazo, tipo, peça, assunto,
+   nº/SEI, próxima ação resumida). Detalhes completos expandem no hover
+   (.cj-pc-more) e o clique abre o painel completo do processo. Removidos:
+   sparkline decorativa (dados sintéticos), HoverPreview flutuante e tilt 3D. */
 const PC=React.memo(({item:p,onClick:oc,dp,compact,onEdit})=>{const isA=p.tipo==="adm";const side=extValue(p);const accent=uC(p.diasRestantes);
-  const tilt = useTilt(6);
-  const [hovering, setHovering] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const previewTimer = useRef(null);
-  const cardRef = useRef(null);
-  /* combine refs */
-  const setRef = (el) => { tilt.ref.current = el; cardRef.current = el; };
-  const handleMouseEnter = () => {
-    setHovering(true);
-    if (previewTimer.current) clearTimeout(previewTimer.current);
-    previewTimer.current = setTimeout(() => setShowPreview(true), 700);
-  };
-  const handleMouseLeave = (e) => {
-    setHovering(false);
-    setShowPreview(false);
-    if (previewTimer.current) clearTimeout(previewTimer.current);
-    tilt.onMouseLeave();
-    if (e && e.currentTarget) {
-      e.currentTarget.style.transform = "perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0)";
-      e.currentTarget.style.borderColor = accent + "22";
-    }
-  };
-  const handleMouseMove = (e) => {
-    tilt.onMouseMove(e);
-  };
+  const [hovering,setHovering]=useState(false);
+  const sustOn=isSustAlerta(p);
+  const prazoStr=(function(){try{if(!p.prazoFinal)return null;var d=p.prazoFinal instanceof Date?p.prazoFinal:new Date(p.prazoFinal+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}catch(e){return null;}})();
   return(
-  <>
-  {showPreview && <HoverPreview proc={p} anchor={cardRef.current}/>}
-  <div ref={setRef} onClick={e=>{e.stopPropagation();oc?.(p)}}
-    onMouseEnter={handleMouseEnter}
-    onMouseLeave={handleMouseLeave}
-    onMouseMove={handleMouseMove}
-    className="cj-soft" style={{background:"linear-gradient(180deg,rgba(18,24,42,.92),rgba(11,15,29,.94))",border:"1px solid "+(p.iaS>=75?"rgba(255,46,91,.35)":p.iaS>=50?"rgba(255,184,0,.28)":accent+"22"),borderRadius:20,padding:"0",cursor:"pointer",transition:"transform .22s ease, border-color .25s, box-shadow .25s",overflow:"hidden",position:"relative",transformStyle:"preserve-3d",willChange:"transform",boxShadow: hovering ? `0 14px 40px rgba(0,0,0,.55), 0 0 26px ${accent}22` : "0 4px 16px rgba(0,0,0,.35)"}}>
+  <div onClick={e=>{e.stopPropagation();oc?.(p)}} onMouseEnter={()=>setHovering(true)} onMouseLeave={()=>setHovering(false)}
+    role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"&&e.target===e.currentTarget){e.preventDefault();oc?.(p);}}}
+    className="cj-soft cj-pc" style={{background:K.card,border:"1px solid "+(p.iaS>=75?"rgba(var(--cj-crrgb),.35)":p.iaS>=50?"rgba(var(--cj-wargb),.28)":accent+"22"),borderRadius:16,padding:0,cursor:"pointer",transition:"transform .2s ease, border-color .2s, box-shadow .2s",overflow:"hidden",position:"relative",boxShadow:hovering?"0 14px 40px rgba(0,0,0,.45)":"0 4px 16px rgba(0,0,0,.3)",transform:hovering?"translateY(-2px)":"none"}}>
     <QuickActionsToolbar proc={p} dp={dp} onEdit={onEdit} visible={hovering} accent={accent}/>
-    <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,borderRadius:"0 0 0 20px",background:`linear-gradient(180deg,${accent},${accent}44 60%,transparent)`}}/>
-    {isSustAlerta(p)&&(function(){
+    <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:accent,opacity:.85}}/>
+    {sustOn&&(function(){
       var nivel=getSustNivel(p);var cd=getSustCountdown(p);var dl=getSustDeadlineStr(p);
-      var cores={critico:{bg:"rgba(255,46,91,.18)",bd:"rgba(255,46,91,.8)",txt:"#ff2e5b",anim:"textBlink .9s ease-in-out infinite"},urgente:{bg:"rgba(255,184,0,.15)",bd:"rgba(255,184,0,.7)",txt:"#ffb800",anim:"cjPulse 1.8s ease infinite"},preparo:{bg:"rgba(0,229,255,.1)",bd:"rgba(0,229,255,.5)",txt:"#00e5ff",anim:"none"}};
+      var cores={critico:{bg:"rgba(var(--cj-crrgb),.18)",bd:"rgba(var(--cj-crrgb),.8)",txt:"var(--cj-cr)",anim:"textBlink .9s ease-in-out infinite"},urgente:{bg:"rgba(var(--cj-wargb),.15)",bd:"rgba(var(--cj-wargb),.7)",txt:"var(--cj-wa)",anim:"cjPulse 1.8s ease infinite"},preparo:{bg:"rgba(var(--cj-acrgb),.1)",bd:"rgba(var(--cj-acrgb),.5)",txt:"var(--cj-ac)",anim:"none"}};
       var c=cores[nivel]||cores.preparo;
       var msgs={critico:"PRAZO DE ENVIO VENCENDO — envie vídeo/memoriais agora!",urgente:"Prazo de envio em breve — deadline: "+(dl||"—"),preparo:"Prepare memoriais e inscrição — deadline de envio: "+(dl||"—")};
       var labels={critico:"ENVIE AGORA",urgente:"PRAZO PRÓXIMO",preparo:"EM PREPARO"};
       return(
       <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,background:c.bg,borderBottom:"2px solid "+c.bd,padding:"5px 14px",display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:13,animation:c.anim}}>🎤</span>
+        <span style={{fontSize:14,animation:c.anim}}>🎤</span>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:10,fontWeight:900,color:c.txt,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:nivel==="critico"?c.anim:"none"}}>SUSTENTAÇÃO ORAL</div>
-          <div style={{fontSize:9,color:c.txt,opacity:.8,marginTop:1}}>{msgs[nivel]}</div>
+          <div style={{fontSize:12,fontWeight:900,color:c.txt,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:nivel==="critico"?c.anim:"none"}}>SUSTENTAÇÃO ORAL</div>
+          <div style={{fontSize:11,color:c.txt,opacity:.8,marginTop:1}}>{msgs[nivel]}</div>
         </div>
-        {cd&&<span style={{fontSize:11,fontWeight:800,color:c.txt,fontFamily:"Orbitron,monospace",animation:c.anim}}>{cd}</span>}
-        {!cd&&p.dataSustentacao&&<span style={{fontSize:9,fontWeight:700,color:c.txt,opacity:.8,flexShrink:0}}>{(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
-        <span style={{fontSize:9,fontWeight:700,color:c.txt,background:c.txt+"25",padding:"2px 8px",borderRadius:4,whiteSpace:"nowrap"}}>{labels[nivel]}</span>
+        {cd&&<span style={{fontSize:12,fontWeight:800,color:c.txt,fontFamily:"Orbitron,monospace",animation:c.anim}}>{cd}</span>}
+        {!cd&&p.dataSustentacao&&<span style={{fontSize:11,fontWeight:700,color:c.txt,opacity:.8,flexShrink:0}}>{(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
+        <span style={{fontSize:11,fontWeight:700,color:c.txt,background:c.txt+"25",padding:"2px 8px",borderRadius:4,whiteSpace:"nowrap"}}>{labels[nivel]}</span>
       </div>);
     })()}
-    <div style={{padding:compact?"8px 12px 6px":"14px 16px 10px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))"}}>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}>
-        <div style={{display:"flex",gap:10,minWidth:0,flex:1}}>
-          <div style={{width:42,height:42,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",background:p.tipo==="jud"?K.puG:K.acG,border:`1px solid ${p.tipo==="jud"?K.pu:K.ac}22`,flexShrink:0}}>
-            {p.tipo==="jud"?<Scale size={18} color={K.pu}/>:<FolderOpen size={18} color={K.ac}/>}
+    <div style={{padding:compact?"10px 14px 10px 20px":"14px 16px 12px 20px",paddingTop:sustOn?48:undefined}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",minWidth:0}}>
+          {p.tipo==="jud"?<Bd color={K.pu}><Scale size={10}/>{p.tribunal||"Judicial"}</Bd>:<Bd color={K.ac}><FolderOpen size={10}/>Administrativo</Bd>}
+          {p.tipoPeca&&<Bd color={getPecaCor(p.tipoPeca)}>{p.tipoPeca}</Bd>}
+          {isProtocolar(p)&&<Bd color={K.su}>Protocolar</Bd>}
+          {isCorrecao(p)&&<Bd color={K.wa}>Correção</Bd>}
+          {isExecucao(p)&&<Bd color={K.ac}>Em execução</Bd>}
+          {p.depTerc&&<Bd color={K.wa}><Users size={10}/>Terceiros</Bd>}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
+          <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
+          {prazoStr&&<div style={{fontSize:12,color:uC(p.diasRestantes),fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{prazoStr}</div>}
+        </div>
+      </div>
+      <div title={p.assunto||""} style={{fontSize:15,fontWeight:800,color:K.txt,marginTop:10,lineHeight:1.45}}>{p.assunto||"Sem assunto"}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,flexWrap:"wrap"}}>
+        <span title={p.num||""} style={{fontSize:13,fontWeight:600,color:K.dim,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Novo cadastro"}</span>
+        {p.numeroSEI&&<span onClick={function(e){e.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText(p.numeroSEI).then(function(){showCopyToast("SEI "+p.numeroSEI);});}} title={"Clique para copiar SEI: "+p.numeroSEI} style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:"var(--cj-info)",cursor:"copy",padding:"2px 8px",borderRadius:6,background:"rgba(var(--cj-inforgb),.08)",border:"1px solid rgba(var(--cj-inforgb),.18)"}}>SEI {p.numeroSEI}</span>}
+      </div>
+      {p.proxProv&&<div title={p.proxProv} style={{fontSize:13,color:K.dim,marginTop:8,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}><span style={{color:accent,fontWeight:800}}>→ </span>{p.proxProv}</div>}
+
+      <div className="cj-pc-more" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:12}}>
+          <div style={{padding:"10px 12px",borderRadius:12,background:"rgba(var(--cj-fgrgb),.025)",border:`1px solid ${K.brd}`}}>
+            <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{extLabel(p)}</div>
+            <div style={{fontSize:13,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{side||"—"}</div>
           </div>
-          <div style={{minWidth:0}}>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-              <Bd color={p.tipo==="jud"?K.pu:K.ac}>{p.tipo==="jud"?"Judicial":"Administrativo"}</Bd>
-              {p.dataSustentacao&&p.tipoPeca==="Sustentação Oral"&&<div style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:6,background:"rgba(255,46,91,.18)",border:"1px solid rgba(255,46,91,.5)",color:"#ff2e5b",fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",flexShrink:0,animation:isSustAlerta(p)?"textBlink .9s ease-in-out infinite":"none"}}>
-                🎤 {(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}
-              </div>}
+          <div style={{padding:"10px 12px",borderRadius:12,background:"rgba(var(--cj-fgrgb),.025)",border:`1px solid ${K.brd}`}}>
+            <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{p.tipo==="jud"?"Órgão / Gabinete":"Órgão / Unidade"}</div>
+            <div style={{fontSize:13,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.orgao||"—"}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
+          <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
+          <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
+          {p.responsavel&&<Bd color={K.ac}><Users size={10}/>{p.responsavel}</Bd>}
+          {p.reuniao&&<Bd color={K.ac}><Calendar size={10}/>Reunião</Bd>}
+          {p.sustentacao&&<Bd color={K.pu}><Gavel size={10}/>Sustentação</Bd>}
+          <SB s={p.score}/>
+        </div>
+        <div style={{padding:"12px 14px",borderRadius:14,background:`linear-gradient(180deg,${accent}10,rgba(var(--cj-fgrgb),.02))`,border:`1px solid ${accent}22`,marginBottom:12}}>
+          <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:5}}>Próxima providência</div>
+          <div style={{fontSize:13,color:K.txt,fontWeight:700,marginBottom:5,lineHeight:1.5}}>{p.proxProv||"Sem próxima providência"}</div>
+          <div style={{fontSize:12,color:K.dim}}>Prazo final: {fmt(p.prazoFinal)} {p.prazoFinal&&React.createElement(CjInline,{fn:function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();var title=encodeURIComponent("COJUR: "+p.assunto);var d=toISO(toD(p.prazoFinal)).replace(/-/g,"");var dates=d+"T120000/"+d+"T150000";var url="https://calendar.google.com/calendar/render?action=TEMPLATE&text="+title+"&dates="+dates;window.open(url,"_blank","noopener,noreferrer");},style:{padding:"2px 8px",borderRadius:5,border:"1px solid rgba(var(--cj-acrgb),.25)",background:"rgba(var(--cj-acrgb),.06)",color:"var(--cj-ac)",fontSize:11,fontWeight:700,cursor:"pointer",marginLeft:6,fontFamily:"inherit"}},"Cal");}})}{p.dataProv?` · Providência: ${fmt(toD(p.dataProv))}`:""}</div>
+        </div>
+        {hasCustas(p)&&<div className="cj-custas-blink" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:10,background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.45)",marginBottom:10}}>
+          <DollarSign size={13} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:12,fontWeight:800,color:K.wa}}>CUSTAS OBRIGATÓRIAS</div>{(function(){var ci=getCustasInfo(p.tribunal);return ci?<div style={{fontSize:11,color:"var(--cj-wa-soft)",marginTop:1}}>{ci.valor}</div>:<div style={{fontSize:11,color:"var(--cj-wa-soft)",marginTop:1}}>Verifique preparo antes de protocolar</div>;})()}</div>
+        </div>}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          {p.linkSEI&&<button onClick={e=>{e.stopPropagation();window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:11,border:"1px solid rgba(var(--cj-acrgb),.3)",background:"linear-gradient(135deg,rgba(var(--cj-acrgb),.12),rgba(var(--cj-acrgb),.05))",color:"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(var(--cj-acrgb),.18)",textShadow:"0 0 6px rgba(var(--cj-acrgb),.6)",fontFamily:"inherit",whiteSpace:"nowrap"}}>🗂️ Processo SEI</button>}
+          {p.tipo==="jud"&&React.createElement(CjInline,{fn:function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();__setMinutaProc&&__setMinutaProc(p);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(var(--cj-acrgb),.22)",background:"rgba(var(--cj-acrgb),.05)",color:"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"📝 Gerar Minuta");}})}
+          {p.tipo==="jud"&&React.createElement(CjInline,{fn:function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(e){e.stopPropagation();var txt=DESPACHO_CORRECAO.replace(/\\n/g,"\n");try{navigator.clipboard.writeText(txt).then(function(){sCk(true);setTimeout(function(){sCk(false);},2500);});}catch(ex){}},title:"Copiar despacho de envio para correção — Dr. João Paulo",style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:ck?"1px solid rgba(var(--cj-wargb),.5)":"1px solid rgba(var(--cj-wargb),.22)",background:ck?"rgba(var(--cj-wargb),.1)":"rgba(var(--cj-wargb),.05)",color:ck?"var(--cj-wa)":"var(--cj-wa)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit",transition:"all .3s"}},ck?"✅ Despacho copiado!":"📋 Desp. Correção (Dr. JP)");}})}
+          {React.createElement(CjInline,{fn:function(){var s=useState(false);var show=s[0],sShow=s[1];return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(e){e.stopPropagation();sShow(true);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(var(--cj-purgb),.28)",background:"rgba(var(--cj-purgb),.07)",color:"var(--cj-pu)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"📄 Análise IA"),show&&React.createElement(PdfAIModal,{proc:p,onClose:function(){sShow(false);}}));}})}
+          {p.tipo==="adm"&&React.createElement(CjInline,{fn:function(){var[show,sShow]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(e){e.stopPropagation();sShow(true);},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:11,border:"1px solid rgba(var(--cj-purgb),.32)",background:"linear-gradient(135deg,rgba(var(--cj-purgb),.11),rgba(var(--cj-purgb),.05))",color:"var(--cj-pu)",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(var(--cj-purgb),.16)",fontFamily:"inherit",whiteSpace:"nowrap"}},"📋 Elaborar Parecer"),show&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShow(false);}}));}})}
+          {p.tipo==="jud"&&React.createElement(CjInline,{fn:function(){var[ck,sCk]=useState(false);return React.createElement("button",{onClick:function(e){e.stopPropagation();copyText(DESPACHO_ANALISE,function(){sCk(true);setTimeout(function(){sCk(false);},2500);});},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 11px",borderRadius:11,border:ck?"1px solid rgba(var(--cj-purgb),.5)":"1px solid rgba(var(--cj-purgb),.25)",background:ck?"rgba(var(--cj-purgb),.1)":"rgba(var(--cj-purgb),.05)",color:ck?"var(--cj-pu)":"var(--cj-pu)",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .3s",whiteSpace:"nowrap",fontFamily:"inherit"}},ck?"✅ Copiado!":"📤 Despacho Análise");}})}
+          {p.linkRef&&<button onClick={e=>{e.stopPropagation();openRef(p.linkRef)}} style={{...btnGhost,padding:"6px 10px",fontSize:12,color:K.ac,borderColor:K.ac+"33"}}>🔗 Referência</button>}
+          {p.tipo==="jud"&&getTribSistema(p.tribunal)&&(function(){var s=getTribSistema(p.tribunal);return(
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}} onClick={function(e){e.stopPropagation();}}>
+              <button onClick={function(){openTrib(p.tribunal,p.num);}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:12,border:"1px solid rgba(var(--cj-acrgb),.38)",background:"linear-gradient(135deg,rgba(var(--cj-acrgb),.15),rgba(var(--cj-acrgb),.06))",color:"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(var(--cj-acrgb),.2)",textShadow:"0 0 6px rgba(var(--cj-acrgb),.5)",fontFamily:"inherit",whiteSpace:"nowrap"}} title={"2º Grau — "+s.nome+" (nº copiado)"}>
+                {s.icone} {s.sistema} 2G
+              </button>
+              {s.url1g&&<button onClick={function(){if(p.num){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(p.num).then(function(){showCopyToast(p.num);}).catch(function(){var t2=document.createElement("textarea");t2.value=p.num;t2.style.position="fixed";t2.style.opacity="0";document.body.appendChild(t2);t2.focus();t2.select();try{document.execCommand("copy");showCopyToast(p.num);}catch(e){}document.body.removeChild(t2);});}else{var t2=document.createElement("textarea");t2.value=p.num;t2.style.position="fixed";t2.style.opacity="0";document.body.appendChild(t2);t2.focus();t2.select();try{document.execCommand("copy");showCopyToast(p.num);}catch(e){}document.body.removeChild(t2);}}window.open(s.url1g,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:12,border:"1px solid rgba(var(--cj-purgb),.35)",background:"linear-gradient(135deg,rgba(var(--cj-purgb),.12),rgba(var(--cj-purgb),.05))",color:"var(--cj-pu)",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(var(--cj-purgb),.18)",fontFamily:"inherit",whiteSpace:"nowrap"}} title={"1º Grau — "+s.nome+" (nº copiado)"}>
+                {s.icone} {s.sistema} 1G
+              </button>}
             </div>
-            {p.tipoPeca&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"5px 10px",borderRadius:8,background:getPecaCor(p.tipoPeca)+"14",borderLeft:"3px solid "+getPecaCor(p.tipoPeca),marginLeft:-2}}>
-              <span style={{fontSize:15,fontWeight:900,color:getPecaCor(p.tipoPeca),letterSpacing:".3px",textShadow:"0 0 18px "+getPecaCor(p.tipoPeca)+"66",fontFamily:"inherit",lineHeight:1.2}}>{p.tipoPeca}</span>
-              <span style={{fontSize:9,fontWeight:700,color:getPecaCor(p.tipoPeca),opacity:.6,fontFamily:"Orbitron,monospace",letterSpacing:".5px"}}>{getPecaLabel(p.tipoPeca)}</span>
-            </div>}
-            <div title={p.num||""} style={{fontSize:14,fontWeight:800,color:K.txt,fontFamily:"'JetBrains Mono',monospace",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.num||"Novo cadastro"}</div>
-            {p.numeroSEI&&<div onClick={function(e){e.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText(p.numeroSEI).then(function(){showCopyToast("SEI "+p.numeroSEI);});}} title={"Clique para copiar SEI: "+p.numeroSEI} style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"#7dd3fc",marginTop:3,cursor:"pointer",padding:"2px 6px",borderRadius:5,background:"rgba(125,211,252,.1)",border:"1px solid rgba(125,211,252,.15)",display:"inline-flex",alignItems:"center",gap:4,userSelect:"none"}}>🗂 SEI {p.numeroSEI}</div>}
-          </div>
+          );})()}
+          {p.tipo==="jud"&&p.pubDJe&&(function(){var ri=getPrazoInfo(p.tipoPeca);var du2=p.intersticio||ri.du;var prazo=calcPrazoDJe(p.pubDJe,du2);var du=prazo?diffD(prazo,NOW):null;return prazo?(
+            <span title={ri.obs+" — "+du2+"du desde "+ri.base} style={{fontSize:12,color:du<=0?"var(--cj-cr)":du<=5?"var(--cj-wa)":"var(--cj-ac)",fontFamily:"Orbitron,monospace",fontWeight:700,padding:"4px 8px",borderRadius:8,background:"rgba(var(--cj-acrgb),.06)",border:"1px solid rgba(var(--cj-acrgb),.2)"}}>
+              {du<=0?"VENCIDO":du+"du"} ({du2}du)
+            </span>
+          ):null;})()}
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
-          <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flexShrink:0}}>
-              <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
-              {p.prazoFinal&&<div style={{fontSize:9,color:uC(p.diasRestantes),opacity:.7,fontFamily:"monospace",textAlign:"center",whiteSpace:"nowrap"}}>{(function(){try{var d=p.prazoFinal instanceof Date?p.prazoFinal:new Date(p.prazoFinal+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}catch(e){return "";}})()}</div>}
-            </div>
-            <SB s={p.score}/>
-          </div>
-          {/* v41 · sparkline mini · evolução do score (deterministica por id) */}
-          <CnSpark w={84} h={20} color={accent} data={(function(){
-            var seed = (String(p.id||p.num||p.assunto||"x").split("").reduce(function(a,c){return a + c.charCodeAt(0);}, 7)) | 1;
-            var arr = [];
-            var s = (p.score || 50);
-            for (var i = 0; i < 12; i++) {
-              seed = (seed * 9301 + 49297) % 233280;
-              arr.push(Math.max(0, Math.min(100, s - 25 + (seed/233280)*50 - i*0.6)));
-            }
-            return arr.reverse().concat([s]);
-          })()}/>
-          <DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
-        </div>
+        <div style={{marginTop:8,fontSize:12,color:K.dim2,textAlign:"right"}}>Atualizado {fmt(p.ultMov||NOW)}</div>
       </div>
-      {isExecucao(p)&&<div className="cj-pulse" style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(0,229,255,.15)",border:"1px solid rgba(0,229,255,.5)",borderRadius:8,padding:"3px 8px",fontSize:9,color:"#00e5ff",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>⚡ EM EXECUÇÃO</div>}
-      {isAcompanhamento(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.45)",borderRadius:8,padding:"3px 8px",fontSize:9,color:"#b84dff",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>👁 EM ACOMPANHAM.</div>}
-      {isProtocolar(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(0,255,136,.12)",border:"1px solid rgba(0,255,136,.45)",color:"#00ff88",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(0,255,136,.7)"}}>📤 PROTOCOLAR NO TRIBUNAL</div>}
-      {isCorrecao(p)&&<div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(255,184,0,.12)",border:"1px solid rgba(255,184,0,.45)",color:"#ffb800",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(255,184,0,.7)"}}>✏️ AGUARDANDO CORREÇÃO</div>}
-      {p.tipoPeca==="Sustentação Oral"&&<div className="cj-pulse" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:"rgba(184,77,255,.14)",border:"1px solid rgba(184,77,255,.5)",color:"#b84dff",fontSize:10,fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginTop:8,textShadow:"0 0 6px rgba(184,77,255,.5)",animation:"cjPulse 2s ease-in-out infinite"}}>🎤 INSCRIÇÃO PARA SUSTENTAÇÃO ORAL</div>}
-      <div title={p.assunto||""} style={{fontSize:15,fontWeight:800,color:K.txt,marginTop:8,lineHeight:1.45}}>{p.assunto||"Sem assunto"}</div>
+
+      <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0,flex:1}}>
+          <span className="cj-pc-hint" style={{fontSize:11,color:K.dim2,whiteSpace:"nowrap"}}>Detalhes no hover · clique abre</span>
+          {p.checklist&&p.checklist.length>0&&(function(){var total=p.checklist.length;var done=p.checklist.filter(function(c){return typeof c==="object"?c.done:false;}).length;var pct=Math.round(done/total*100);var cor=pct>=100?"var(--cj-su)":pct>=50?"var(--cj-ac)":"var(--cj-wa)";return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:60}},React.createElement("div",{style:{flex:1,height:4,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",overflow:"hidden"}},React.createElement("div",{style:{height:"100%",width:pct+"%",background:cor,borderRadius:999,transition:"width .4s"}})),React.createElement("span",{style:{fontSize:11,color:cor,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,flexShrink:0}},done+"/"+total));})()}
+        </div>
+        <DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>
+      </div>
     </div>
-
-    <div style={{padding:"14px 16px 16px"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        <div style={{padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:`1px solid ${K.brd}`}}>
-          <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{extLabel(p)}</div>
-          <div style={{fontSize:12,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{side||"—"}</div>
-        </div>
-        <div style={{padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.025)",border:`1px solid ${K.brd}`}}>
-          <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{p.tipo==="jud"?"Órgão / Gabinete":"Órgão / Unidade"}</div>
-          <div style={{fontSize:12,color:K.txt,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.orgao||"—"}</div>
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}} onClick={e=>e.stopPropagation()}>
-        <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
-        <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
-        {p.tipo==="jud"&&<Bd color={K.pu}><Scale size={10}/>{p.tribunal}</Bd>}
-        {p.responsavel&&<Bd color={K.ac}><Users size={10}/>{p.responsavel}</Bd>}
-        {p.depTerc&&<Bd color={K.wa}><Users size={10}/>Terceiros</Bd>}
-        {p.reuniao&&<Bd color={K.ac}><Calendar size={10}/>Reunião</Bd>}
-        {p.sustentacao&&<Bd color={K.pu}><Gavel size={10}/>Sustentação</Bd>}
-      </div>
-
-      <div style={{padding:"12px 14px",borderRadius:16,background:`linear-gradient(180deg,${accent}10,rgba(255,255,255,.02))`,border:`1px solid ${accent}22`,marginBottom:12}}>
-        <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:5}}>Próxima providência</div>
-        <div style={{fontSize:12,color:K.txt,fontWeight:700,marginBottom:5,lineHeight:1.5}}>{p.proxProv||"Sem próxima providência"}</div>
-        <div style={{fontSize:11,color:K.dim}}>Prazo final: {fmt(p.prazoFinal)} {p.prazoFinal&&React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();var title=encodeURIComponent("COJUR: "+p.assunto);var d=toISO(toD(p.prazoFinal)).replace(/-/g,"");var dates=d+"T120000/"+d+"T150000";var url="https://calendar.google.com/calendar/render?action=TEMPLATE&text="+title+"&dates="+dates;window.open(url,"_blank","noopener,noreferrer");},style:{padding:"2px 8px",borderRadius:5,border:"1px solid rgba(0,229,255,.25)",background:"rgba(0,229,255,.06)",color:"#00e5ff",fontSize:9,fontWeight:700,cursor:"pointer",marginLeft:6,fontFamily:"inherit"}},"Cal");},null)}{p.dataProv?` · Providência: ${fmt(toD(p.dataProv))}`:""}</div>
-      </div>
-
-      {hasCustas(p)&&<div className="cj-custas-blink" onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:10,background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.45)",marginBottom:10}}>
-        <DollarSign size={13} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:10,fontWeight:800,color:K.wa}}>CUSTAS OBRIGATÓRIAS</div>{(function(){var ci=getCustasInfo(p.tribunal);return ci?<div style={{fontSize:9,color:"#fde68a",marginTop:1}}>{ci.valor}</div>:<div style={{fontSize:9,color:"#fde68a",marginTop:1}}>Verifique preparo antes de protocolar</div>;})()}</div>
-      </div>}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        {p.linkSEI&&<button onClick={e=>{e.stopPropagation();window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:11,border:"1px solid rgba(0,229,255,.3)",background:"linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,229,255,.05))",color:"#00e5ff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,229,255,.18)",textShadow:"0 0 6px rgba(0,229,255,.6)",fontFamily:"inherit",whiteSpace:"nowrap"}}>🗂️ Processo SEI</button>}
-        {p.tipo==="jud"&&React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();setMinutaProc(p);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(0,229,255,.22)",background:"rgba(0,229,255,.05)",color:"#00e5ff",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"📝 Gerar Minuta");},null)}
-        {p.tipo==="jud"&&React.createElement(function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(e){e.stopPropagation();var txt=DESPACHO_CORRECAO.replace(/\\n/g,"\n");try{navigator.clipboard.writeText(txt).then(function(){sCk(true);setTimeout(function(){sCk(false);},2500);});}catch(ex){}},title:"Copiar despacho de envio para correção — Dr. João Paulo",style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:ck?"1px solid rgba(255,184,0,.5)":"1px solid rgba(255,184,0,.22)",background:ck?"rgba(255,184,0,.1)":"rgba(255,184,0,.05)",color:ck?"#ffb800":"#ffb800",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit",transition:"all .3s"}},ck?"✅ Despacho copiado!":"📋 Desp. Correção (Dr. JP)");},null)}
-        {React.createElement(function(){var s=useState(false);var show=s[0],sShow=s[1];return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(e){e.stopPropagation();sShow(true);},style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,border:"1px solid rgba(168,85,247,.28)",background:"rgba(168,85,247,.07)",color:"#b84dff",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"📄 Análise IA"),show&&React.createElement(PdfAIModal,{proc:p,onClose:function(){sShow(false);}}));},null)}
-        {p.tipo==="adm"&&React.createElement(function(){var[show,sShow]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(e){e.stopPropagation();sShow(true);},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:11,border:"1px solid rgba(184,77,255,.32)",background:"linear-gradient(135deg,rgba(184,77,255,.11),rgba(184,77,255,.05))",color:"#b84dff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(184,77,255,.16)",fontFamily:"inherit",whiteSpace:"nowrap"}},"📋 Elaborar Parecer"),show&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShow(false);}}));},null)}
-        {p.tipo==="jud"&&React.createElement(function(){var[ck,sCk]=useState(false);return React.createElement("button",{onClick:function(e){e.stopPropagation();copyText(DESPACHO_ANALISE,function(){sCk(true);setTimeout(function(){sCk(false);},2500);});},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 11px",borderRadius:11,border:ck?"1px solid rgba(184,77,255,.5)":"1px solid rgba(184,77,255,.25)",background:ck?"rgba(184,77,255,.1)":"rgba(184,77,255,.05)",color:ck?"#b84dff":"#b84dff",fontSize:10,fontWeight:700,cursor:"pointer",transition:"all .3s",whiteSpace:"nowrap",fontFamily:"inherit"}},ck?"✅ Copiado!":"📤 Despacho Análise");},null)}
-        {p.linkRef&&<button onClick={e=>{e.stopPropagation();openRef(p.linkRef)}} style={{...btnGhost,padding:"6px 10px",fontSize:11,color:K.ac,borderColor:K.ac+"33"}}>🔗 Referência</button>}
-        {p.tipo==="jud"&&getTribSistema(p.tribunal)&&(function(){var s=getTribSistema(p.tribunal);return(
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}} onClick={function(e){e.stopPropagation();}}>
-            <button onClick={function(){openTrib(p.tribunal,p.num);}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:12,border:"1px solid rgba(0,229,255,.38)",background:"linear-gradient(135deg,rgba(0,229,255,.15),rgba(0,229,255,.06))",color:"#00e5ff",fontSize:10,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,229,255,.2)",textShadow:"0 0 6px rgba(0,229,255,.5)",fontFamily:"inherit",whiteSpace:"nowrap"}} title={"2º Grau — "+s.nome+" (nº copiado)"}>
-              {s.icone} {s.sistema} 2G
-            </button>
-            {s.url1g&&<button onClick={function(){if(p.num){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(p.num).then(function(){showCopyToast(p.num);}).catch(function(){var t2=document.createElement("textarea");t2.value=p.num;t2.style.position="fixed";t2.style.opacity="0";document.body.appendChild(t2);t2.focus();t2.select();try{document.execCommand("copy");showCopyToast(p.num);}catch(e){}document.body.removeChild(t2);});}else{var t2=document.createElement("textarea");t2.value=p.num;t2.style.position="fixed";t2.style.opacity="0";document.body.appendChild(t2);t2.focus();t2.select();try{document.execCommand("copy");showCopyToast(p.num);}catch(e){}document.body.removeChild(t2);}}window.open(s.url1g,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:12,border:"1px solid rgba(168,85,247,.35)",background:"linear-gradient(135deg,rgba(168,85,247,.12),rgba(168,85,247,.05))",color:"#b84dff",fontSize:10,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(168,85,247,.18)",fontFamily:"inherit",whiteSpace:"nowrap"}} title={"1º Grau — "+s.nome+" (nº copiado)"}>
-              {s.icone} {s.sistema} 1G
-            </button>}
-          </div>
-        );})()}
-        {p.tipo==="jud"&&p.pubDJe&&(function(){var ri=getPrazoInfo(p.tipoPeca);var du2=p.intersticio||ri.du;var prazo=calcPrazoDJe(p.pubDJe,du2);var du=prazo?diffD(prazo,NOW):null;return prazo?(
-          <span title={ri.obs+" — "+du2+"du desde "+ri.base} style={{fontSize:10,color:du<=0?"#ff2e5b":du<=5?"#ffb800":"#00e5ff",fontFamily:"Orbitron,monospace",fontWeight:700,padding:"4px 8px",borderRadius:8,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.2)"}}>
-            {du<=0?"VENCIDO":du+"du"} ({du2}du)
-          </span>
-        ):null;})()}
-      </div>
-      <div style={{marginTop:8,fontSize:10,color:K.dim2,textAlign:"right"}}>Atualizado {fmt(p.ultMov||NOW)}</div>
-      {/* ═══ CHECKLIST PROGRESS BAR ═══ */}
-      {p.checklist&&p.checklist.length>0&&(function(){var total=p.checklist.length;var done=p.checklist.filter(function(c){return typeof c==="object"?c.done:false;}).length;var pct=Math.round(done/total*100);var cor=pct>=100?"#00ff88":pct>=50?"#00e5ff":"#ffb800";return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"4px 0"}},React.createElement("div",{style:{flex:1,height:4,borderRadius:999,background:"rgba(255,255,255,.06)",overflow:"hidden"}},React.createElement("div",{style:{height:"100%",width:pct+"%",background:cor,borderRadius:999,transition:"width .4s"}})),React.createElement("span",{style:{fontSize:9,color:cor,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,flexShrink:0}},done+"/"+total));})()}
-    </div>
-    <div style={{height:4,borderRadius:"0 0 20px 20px",background:p.status==="Concluído"?K.su:p.status==="Em Elaboração"?K.wa:p.status==="Arquivado"?K.dim:accent,opacity:.7}}/>
+    <div style={{height:3,background:p.status==="Concluído"?K.su:p.status==="Em Elaboração"?K.wa:p.status==="Arquivado"?K.dim:accent,opacity:.65}}/>
   </div>
-  </>
 )});
 /* KANBAN with localStorage persistence */
 const KANBAN_KEY = "cojur-kanban-cols";
@@ -4656,15 +4816,15 @@ const KanbanV=({items,dp,ss,colKey})=>{
   return(
   <div style={{display:"flex",flexDirection:"column",gap:12}}>
     <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-      <span style={{fontSize:11,color:K.dim,fontWeight:600}}>Colunas:</span>
+      <span style={{fontSize:12,color:K.dim,fontWeight:600}}>Colunas:</span>
       {cols.map(function(ph){return(
-        <span key={ph} style={{fontSize:10,padding:"3px 10px",borderRadius:20,background:K.acG,color:K.ac,border:"1px solid "+K.ac+"33",display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer"}}
+        <span key={ph} style={{fontSize:12,padding:"3px 10px",borderRadius:20,background:K.acG,color:K.ac,border:"1px solid "+K.ac+"33",display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer"}}
           onClick={function(){removeCol(ph);}}>
           {ph} <X size={9}/>
         </span>
       );})}
-      <button onClick={addCol} style={{...btnGhost,padding:"3px 10px",fontSize:10,color:K.su,borderColor:K.su+"44"}}><Plus size={10}/>Coluna</button>
-      <button onClick={function(){saveCols([...DEFAULT_KANBAN_COLS]);}} style={{...btnGhost,padding:"3px 10px",fontSize:10}}>Resetar</button>
+      <button onClick={addCol} style={{...btnGhost,padding:"3px 10px",fontSize:12,color:K.su,borderColor:K.su+"44"}}><Plus size={10}/>Coluna</button>
+      <button onClick={function(){saveCols([...DEFAULT_KANBAN_COLS]);}} style={{...btnGhost,padding:"3px 10px",fontSize:12}}>Resetar</button>
     </div>
     <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:12,minHeight:400}}>
       {cols.map(function(ph,colIdx){var col=items.filter(function(p){return p.fase===ph;}).sort(function(a,b){return b.score-a.score;});var isO=oc===ph;var isColOver=colOverIdx===colIdx&&colDragIdx!==null&&colDragIdx!==colIdx;return(
@@ -4673,32 +4833,32 @@ const KanbanV=({items,dp,ss,colKey})=>{
           onDragOver={function(e){e.preventDefault();if(colDragIdx!==null){sColOverIdx(colIdx);}else{sOc(ph);}}}
           onDragLeave={function(){sOc(null);sColOverIdx(null);}}
           onDrop={function(e){e.preventDefault();sOc(null);sColOverIdx(null);if(colDragIdx!==null){handleColDrop(colIdx);sColDragIdx(null);return;}if(!did)return;var pr=items.find(function(p){return p.id===did;});if(pr&&pr.fase!==ph)dp({type:"UPD",id:did,isAdm:pr.tipo==="adm",ch:{fase:ph}});sDid(null);}}
-          style={{minWidth:260,flex:"0 0 270px",background:isO?"rgba(0,229,255,.06)":"rgba(0,229,255,.02)",borderRadius:14,padding:12,border:"1px solid "+(isColOver?"rgba(184,77,255,.6)":isO?K.ac+"55":K.brd),boxShadow:isO?"0 0 20px rgba(0,229,255,.12)":isColOver?"0 0 20px rgba(184,77,255,.15)":"none",transition:"all .2s",opacity:colDragIdx===colIdx?0.5:1}}>
+          style={{minWidth:260,flex:"0 0 270px",background:isO?"rgba(var(--cj-acrgb),.06)":"rgba(var(--cj-acrgb),.02)",borderRadius:14,padding:12,border:"1px solid "+(isColOver?"rgba(var(--cj-purgb),.6)":isO?K.ac+"55":K.brd),boxShadow:isO?"0 0 20px rgba(var(--cj-acrgb),.12)":isColOver?"0 0 20px rgba(var(--cj-purgb),.15)":"none",transition:"all .2s",opacity:colDragIdx===colIdx?0.5:1}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,padding:"0 4px",alignItems:"center",cursor:"grab"}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <GripVertical size={12} color={K.dim2}/>
-              <span style={{fontSize:11,fontWeight:700,color:K.txt,letterSpacing:".2px"}}>{ph}</span>
+              <span style={{fontSize:12,fontWeight:700,color:K.txt,letterSpacing:".2px"}}>{ph}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:10,fontWeight:700,color:K.dim,fontFamily:"'JetBrains Mono',monospace",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"2px 8px"}}>{col.length}</span>
+              <span style={{fontSize:12,fontWeight:700,color:K.dim,fontFamily:"'JetBrains Mono',monospace",background:"rgba(var(--cj-acrgb),.08)",border:"1px solid rgba(var(--cj-acrgb),.15)",borderRadius:10,padding:"2px 8px"}}>{col.length}</span>
               <button onClick={function(){removeCol(ph);}} style={{background:"none",border:"none",color:K.dim2,cursor:"pointer",padding:"2px",lineHeight:1}} title="Remover coluna"><X size={10}/></button>
             </div>
           </div>
           <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,minHeight:60}}>
             {col.map(function(p){var pcor=getPecaCor(p.tipoPeca);return(
               <div key={p.id} draggable onDragStart={function(e){sDid(p.id);sColDragIdx(null);e.dataTransfer.effectAllowed="move";e.stopPropagation();}} onDragEnd={function(){sDid(null);}} style={{opacity:did===p.id?0.35:1,cursor:"grab",transition:"opacity .15s"}}>
-                <div onClick={function(){ss(p);}} style={{background:K.card,border:"1px solid "+K.brd,borderRadius:12,padding:"10px 12px",borderLeft:"3px solid "+uC(p.diasRestantes),transition:"all .2s",boxShadow:"0 4px 12px rgba(0,0,0,.2)"}} onMouseEnter={function(e){e.currentTarget.style.background=K.cardH;e.currentTarget.style.boxShadow="0 0 14px rgba(0,229,255,.08), 0 4px 16px rgba(0,0,0,.3)";}} onMouseLeave={function(e){e.currentTarget.style.background=K.card;e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.2)";}}>
+                <div onClick={function(){ss(p);}} style={{background:K.card,border:"1px solid "+K.brd,borderRadius:12,padding:"10px 12px",borderLeft:"3px solid "+uC(p.diasRestantes),transition:"all .2s",boxShadow:"0 4px 12px rgba(0,0,0,.2)"}} onMouseEnter={function(e){e.currentTarget.style.background=K.cardH;e.currentTarget.style.boxShadow="0 0 14px rgba(var(--cj-acrgb),.08), 0 4px 16px rgba(0,0,0,.3)";}} onMouseLeave={function(e){e.currentTarget.style.background=K.card;e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.2)";}}>
                   <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
                     <GripVertical size={12} color={K.dim2}/>
-                    <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"Novo"}</span>
-                    <div style={{marginLeft:"auto",padding:"1px 5px",borderRadius:4,background:pcor+"18",color:pcor,fontSize:8,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
+                    <span style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"Novo"}</span>
+                    <div style={{marginLeft:"auto",padding:"1px 5px",borderRadius:4,background:pcor+"18",color:pcor,fontSize:11,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
                   </div>
-                  <div style={{fontSize:12,fontWeight:600,color:K.txt,marginBottom:6,lineHeight:1.4}}>{p.assunto||"Sem assunto"}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:K.txt,marginBottom:6,lineHeight:1.4}}>{p.assunto||"Sem assunto"}</div>
                   <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><SB s={p.score}/><DoneBtn small onClick={function(){dp({type:"COMPLETE_P",id:p.id});}}/></div>
                 </div>
               </div>
             );})}
-            {!col.length&&<div style={{padding:"20px 10px",textAlign:"center",color:K.dim2,fontSize:11,border:"1px dashed "+(isO?"rgba(0,229,255,.4)":"rgba(0,229,255,.1)"),borderRadius:10,background:isO?"rgba(0,229,255,.04)":"transparent",transition:"all .2s"}}>Arraste processos aqui</div>}
+            {!col.length&&<div style={{padding:"20px 10px",textAlign:"center",color:K.dim2,fontSize:12,border:"1px dashed "+(isO?"rgba(var(--cj-acrgb),.4)":"rgba(var(--cj-acrgb),.1)"),borderRadius:10,background:isO?"rgba(var(--cj-acrgb),.04)":"transparent",transition:"all .2s"}}>Arraste processos aqui</div>}
           </div>
         </div>
       );})}
@@ -4708,17 +4868,17 @@ const KanbanV=({items,dp,ss,colKey})=>{
 
 /* FILTER PANEL */
 const FP=({f,sf,isJ})=>{const[op,sOp]=useState(false);const ac=Object.values(f).filter(v=>v&&v!=="all"&&v!=="").length;return(
-  <div style={{position:"relative"}}><button onClick={()=>sOp(!op)} style={{...btnGhost,borderColor:ac?K.ac:K.brd,color:ac?K.ac:K.dim}}><Filter size={14}/>Filtros{ac>0&&<span style={{background:K.ac,color:"#fff",borderRadius:10,padding:"0 6px",fontSize:10,fontWeight:700}}>{ac}</span>}</button>
+  <div style={{position:"relative"}}><button onClick={()=>sOp(!op)} style={{...btnGhost,borderColor:ac?K.ac:K.brd,color:ac?K.ac:K.dim}}><Filter size={14}/>Filtros{ac>0&&<span style={{background:K.ac,color:"var(--cj-tx0)",borderRadius:10,padding:"0 6px",fontSize:12,fontWeight:700}}>{ac}</span>}</button>
     {op&&<div className="cj-sc" style={{position:"absolute",top:"100%",right:0,marginTop:8,background:K.modal,border:`1px solid ${K.brd}`,borderRadius:14,padding:16,zIndex:50,width:320,boxShadow:"0 20px 40px rgba(0,0,0,.5)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><span style={{fontSize:13,fontWeight:600,color:K.txt}}>Filtros</span><button onClick={()=>sf({})} style={{background:"none",border:"none",color:K.ac,fontSize:11,cursor:"pointer"}}>Limpar</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><span style={{fontSize:14,fontWeight:600,color:K.txt}}>Filtros</span><button onClick={()=>sf({})} style={{background:"none",border:"none",color:K.ac,fontSize:12,cursor:"pointer"}}>Limpar</button></div>
       {[{k:"urg",l:"Urgência",o:["all","Crítico","Intermediário","Normal"]},{k:"st",l:"Status",o:["all",...STS]},{k:"ph",l:"Fase",o:["all",...PHS]},{k:"peca",l:"Tipo de Peça",o:["all",...TIPOS_PECA]},...(isJ?[{k:"tr",l:"Tribunal",o:["all",...TRIBS]}]:[]),{k:"dep",l:"Terceiros",o:["all","Sim","Não"]},{k:"reun",l:"Reunião Vinculada",o:["all","Sim","Não"]},{k:"sust",l:"Sustentação Vinculada",o:["all","Sim","Não"]},{k:"semAcao",l:"Sem Próxima Providência",o:["all","Sim","Não"]},{k:"semResp",l:"Sem Responsável",o:["all","Sim","Não"]}].map(x=><div key={x.k} style={{marginBottom:10}}><label style={lblSt}>{x.l}</label><select style={inpSt} value={f[x.k]||"all"} onChange={e=>sf({...f,[x.k]:e.target.value})}>{x.o.map(v=><option key={v} value={v} style={{background:K.modal}}>{v==="all"?"Todos":v}</option>)}</select></div>)}
       <div style={{marginBottom:10}}><label style={lblSt}>Responsável</label><input style={inpSt} value={f.resp||""} onChange={e=>sf({...f,resp:e.target.value})} placeholder="Filtrar responsável"/></div>
       <div style={{marginBottom:10}}>
         <label style={lblSt}>Prazo Final — Intervalo</label>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <input type="date" style={{...inpSt,flex:1,fontSize:11}} value={f.dtIni||""} onChange={function(e){sf({...f,dtIni:e.target.value});}} placeholder="De"/>
-          <span style={{color:K.dim,fontSize:11}}>até</span>
-          <input type="date" style={{...inpSt,flex:1,fontSize:11}} value={f.dtFim||""} onChange={function(e){sf({...f,dtFim:e.target.value});}} placeholder="Até"/>
+          <input type="date" style={{...inpSt,flex:1,fontSize:12}} value={f.dtIni||""} onChange={function(e){sf({...f,dtIni:e.target.value});}} placeholder="De"/>
+          <span style={{color:K.dim,fontSize:12}}>até</span>
+          <input type="date" style={{...inpSt,flex:1,fontSize:12}} value={f.dtFim||""} onChange={function(e){sf({...f,dtFim:e.target.value});}} placeholder="Até"/>
         </div>
       </div>
       <div style={{marginBottom:10}}>
@@ -4733,7 +4893,7 @@ const FP=({f,sf,isJ})=>{const[op,sOp]=useState(false);const ac=Object.values(f).
   </div>
 )};
 /* ═══ FUZZY SEARCH ═══ */
-const fuzzyMatch=(text,query)=>{if(!query||!text)return false;const t=text.toLowerCase(),q=query.toLowerCase();if(t.includes(q))return true;let ti=0;for(let qi=0;qi<q.length;qi++){const c=q[qi];let found=false;while(ti<t.length){if(t[ti]===c){found=true;ti++;break;}ti++;}if(!found)return false;}return true;};
+const fuzzyMatch=(text,query)=>{if(!query||!text)return false;const t=String(text).toLowerCase(),q=String(query).toLowerCase();if(t.includes(q))return true;let ti=0;for(let qi=0;qi<q.length;qi++){const c=q[qi];let found=false;while(ti<t.length){if(t[ti]===c){found=true;ti++;break;}ti++;}if(!found)return false;}return true;};
 
 const applyF=(items,f)=>{let r=items;if(f.urg&&f.urg!=="all")r=r.filter(p=>uL(p.diasRestantes)===f.urg);if(f.st&&f.st!=="all")r=r.filter(p=>p.status===f.st);if(f.ph&&f.ph!=="all")r=r.filter(p=>p.fase===f.ph);if(f.peca&&f.peca!=="all")r=r.filter(p=>p.tipoPeca===f.peca);if(f.tr&&f.tr!=="all")r=r.filter(p=>p.tribunal===f.tr);if(f.dtIni)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))>=f.dtIni);if(f.dtFim)r=r.filter(p=>p.prazoFinal&&toISO(toD(p.prazoFinal))<=f.dtFim);if(f.semMov)r=r.filter(p=>(p.semMov||0)>=Number(f.semMov));if(f.dep==="Sim")r=r.filter(p=>p.depTerc);if(f.dep==="Não")r=r.filter(p=>!p.depTerc);if(f.reun==="Sim")r=r.filter(p=>p.reuniao);if(f.reun==="Não")r=r.filter(p=>!p.reuniao);if(f.sust==="Sim")r=r.filter(p=>p.sustentacao);if(f.sust==="Não")r=r.filter(p=>!p.sustentacao);if(f.semAcao==="Sim")r=r.filter(p=>!p.proxProv);if(f.semAcao==="Não")r=r.filter(p=>!!p.proxProv);if(f.semResp==="Sim")r=r.filter(p=>!p.responsavel);if(f.semResp==="Não")r=r.filter(p=>!!p.responsavel);if(f.resp){const q=f.resp.toLowerCase();r=r.filter(p=>(p.responsavel||"").toLowerCase().includes(q))}if(f.sq){const q=f.sq;r=r.filter(p=>fuzzyMatch(p.num||"",q)||fuzzyMatch(p.numeroSEI||"",q)||fuzzyMatch(p.assunto||"",q)||fuzzyMatch(p.responsavel||"",q)||fuzzyMatch(p.orgao||"",q)||fuzzyMatch(p.interessado||"",q)||fuzzyMatch(p.parteContraria||"",q)||fuzzyMatch(p.tipoPeca||"",q)||fuzzyMatch(p.tribunal||"",q)||fuzzyMatch((p.tags||[]).join(" "),q))}return r};
 
@@ -4743,10 +4903,10 @@ function ConfirmDialog({title,msg,onConfirm,onCancel,danger}){
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",backdropFilter:"blur(8px)",zIndex:2000,display:"flex",justifyContent:"center",alignItems:"center",padding:20}} onClick={function(e){if(e.target===e.currentTarget)onCancel();}}>
       <div className="cj-sc" style={{background:K.modal,border:"1px solid "+(danger?K.cr:K.ac)+"33",borderRadius:20,padding:24,maxWidth:420,width:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.7)"}}>
         <h3 style={{margin:"0 0 8px",fontSize:16,fontWeight:800,color:danger?K.cr:K.txt}}>{title}</h3>
-        <div style={{fontSize:13,color:K.dim,lineHeight:1.6,marginBottom:20}}>{msg}</div>
+        <div style={{fontSize:14,color:K.dim,lineHeight:1.6,marginBottom:20}}>{msg}</div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-          <button onClick={onCancel} style={{...btnGhost,padding:"8px 16px",fontSize:12}}>Cancelar</button>
-          <button onClick={onConfirm} style={{...btnPrim,padding:"8px 16px",fontSize:12,color:danger?K.cr:K.ac,borderColor:danger?K.cr+"55":K.ac+"55",background:danger?K.crG:K.acG}}>{danger?"Confirmar exclusão":"Confirmar"}</button>
+          <button onClick={onCancel} style={{...btnGhost,padding:"8px 16px",fontSize:13}}>Cancelar</button>
+          <button onClick={onConfirm} style={{...btnPrim,padding:"8px 16px",fontSize:13,color:danger?K.cr:K.ac,borderColor:danger?K.cr+"55":K.ac+"55",background:danger?K.crG:K.acG}}>{danger?"Confirmar exclusão":"Confirmar"}</button>
         </div>
       </div>
     </div>
@@ -4775,18 +4935,18 @@ function QuickAddModal({dp,onClose,st}){
       <div className="cj-sc" style={{background:K.modal,border:"1px solid "+K.ac+"33",borderRadius:22,padding:24,maxWidth:480,width:"100%",maxHeight:"calc(100vh - 80px)",overflowY:"auto",overflowX:"hidden",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
           <Zap size={20} color={K.ac}/><h3 style={{margin:0,fontSize:16,fontWeight:800,color:K.ac,fontFamily:"Orbitron,sans-serif"}}>Cadastro Rápido</h3>
-          <span style={{marginLeft:"auto",fontSize:10,color:K.dim,background:"rgba(255,255,255,.05)",padding:"2px 8px",borderRadius:6,fontFamily:"monospace"}}>Cmd+N</span>
+          <span style={{marginLeft:"auto",fontSize:12,color:K.dim,background:"rgba(var(--cj-fgrgb),.05)",padding:"2px 8px",borderRadius:6,fontFamily:"monospace"}}>Cmd+N</span>
           <button onClick={onClose} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={18}/></button>
         </div>
         <div style={{display:"flex",gap:8,marginBottom:12}}>
-          <button onClick={function(){setTipo("jud");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="jud"?K.pu+"55":K.brd),background:tipo==="jud"?K.puG:"transparent",color:tipo==="jud"?K.pu:K.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Judicial</button>
-          <button onClick={function(){setTipo("adm");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="adm"?K.ac+"55":K.brd),background:tipo==="adm"?K.acG:"transparent",color:tipo==="adm"?K.ac:K.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Administrativo</button>
+          <button onClick={function(){setTipo("jud");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="jud"?K.pu+"55":K.brd),background:tipo==="jud"?K.puG:"transparent",color:tipo==="jud"?K.pu:K.dim,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Judicial</button>
+          <button onClick={function(){setTipo("adm");}} style={{flex:1,padding:"8px",borderRadius:10,border:"1px solid "+(tipo==="adm"?K.ac+"55":K.brd),background:tipo==="adm"?K.acG:"transparent",color:tipo==="adm"?K.ac:K.dim,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Administrativo</button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div><label style={lblSt}>Número do processo</label><input style={inpSt} value={num} onChange={function(e){checkDup(e.target.value);}} placeholder="0000000-00.0000.0.00.0000"/></div>
-          {dup&&<div style={{padding:"8px 12px",borderRadius:8,background:K.waG,border:"1px solid "+K.wa+"44",fontSize:11,color:K.wa}}>Processo já cadastrado: {dup.assunto} ({dup.status})</div>}
+          {dup&&<div style={{padding:"8px 12px",borderRadius:8,background:K.waG,border:"1px solid "+K.wa+"44",fontSize:12,color:K.wa}}>Processo já cadastrado: {dup.assunto} ({dup.status})</div>}
           <div><label style={lblSt}>Assunto</label><input style={inpSt} value={ass} onChange={function(e){setAss(e.target.value);}} placeholder="Descrição breve do processo"/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:10}}>
             <div><label style={lblSt}>Tipo de peça</label><select style={inpSt} value={peca} onChange={function(e){setPeca(e.target.value);}}>{TIPOS_PECA.map(function(t){return <option key={t} value={t} style={{background:K.modal}}>{t}</option>;})}</select></div>
             <div><label style={lblSt}>Prazo (dias úteis)</label><input type="number" style={inpSt} value={prazo} onChange={function(e){setPrazo(Number(e.target.value)||30);}} min="1" max="365"/></div>
           </div>
@@ -4819,19 +4979,19 @@ function BulkActionBar({selected,onClear,dp,items}){
   };
   return(
     <div className="cj-sc" style={{position:"fixed",bottom:60,left:"50%",transform:"translateX(-50%)",zIndex:500,display:"flex",alignItems:"center",gap:12,padding:"10px 20px",borderRadius:16,background:K.modal,border:"1px solid "+K.ac+"44",boxShadow:"0 12px 40px rgba(0,0,0,.6),0 0 20px "+K.ac+"22",backdropFilter:"blur(14px)"}}>
-      <div style={{fontSize:13,fontWeight:700,color:K.ac,fontFamily:"Orbitron,monospace"}}>{selected.length}</div>
-      <span style={{fontSize:12,color:K.dim}}>selecionado{selected.length>1?"s":""}</span>
-      <select style={{...inpSt,width:120,padding:"6px 8px",fontSize:11}} value={action} onChange={function(e){setAction(e.target.value);setValue("");}}>
+      <div style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"Orbitron,monospace"}}>{selected.length}</div>
+      <span style={{fontSize:13,color:K.dim}}>selecionado{selected.length>1?"s":""}</span>
+      <select style={{...inpSt,width:120,padding:"6px 8px",fontSize:12}} value={action} onChange={function(e){setAction(e.target.value);setValue("");}}>
         <option value="" style={{background:K.modal}}>Ação...</option>
         <option value="status" style={{background:K.modal}}>Alterar Status</option>
         <option value="fase" style={{background:K.modal}}>Alterar Fase</option>
         <option value="responsavel" style={{background:K.modal}}>Responsável</option>
       </select>
-      {action==="status"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{STS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
-      {action==="fase"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{PHS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
-      {action==="responsavel"&&<input style={{...inpSt,width:140,padding:"6px 8px",fontSize:11}} value={value} onChange={function(e){setValue(e.target.value);}} placeholder="Nome"/>}
-      <button onClick={aplicar} disabled={!action||!value} style={{...btnPrim,padding:"6px 14px",fontSize:11,opacity:(!action||!value)?0.4:1}}>Aplicar</button>
-      <button onClick={onClear} style={{...btnGhost,padding:"6px 10px",fontSize:11}}>Limpar</button>
+      {action==="status"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:12}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{STS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
+      {action==="fase"&&<select style={{...inpSt,width:140,padding:"6px 8px",fontSize:12}} value={value} onChange={function(e){setValue(e.target.value);}}><option value="">Selecione...</option>{PHS.map(function(s){return <option key={s} value={s} style={{background:K.modal}}>{s}</option>;})}</select>}
+      {action==="responsavel"&&<input style={{...inpSt,width:140,padding:"6px 8px",fontSize:12}} value={value} onChange={function(e){setValue(e.target.value);}} placeholder="Nome"/>}
+      <button onClick={aplicar} disabled={!action||!value} style={{...btnPrim,padding:"6px 14px",fontSize:12,opacity:(!action||!value)?0.4:1}}>Aplicar</button>
+      <button onClick={onClear} style={{...btnGhost,padding:"6px 10px",fontSize:12}}>Limpar</button>
     </div>
   );
 }
@@ -4846,16 +5006,16 @@ const AuditLogPg=({st})=>{
     <div className="cj-pg">
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
         <History size={22} color={K.ac}/><h2 style={{margin:0,fontSize:22,fontWeight:800,color:K.txt}}>Log de Auditoria</h2>
-        <span style={{fontSize:12,color:K.dim,fontFamily:"monospace"}}>{filtered.length} registros</span>
-        <input style={{...inpSt,maxWidth:200,padding:"6px 12px",fontSize:12,marginLeft:"auto"}} value={filter} onChange={function(e){setFilter(e.target.value);}} placeholder="Filtrar ações..."/>
+        <span style={{fontSize:13,color:K.dim,fontFamily:"monospace"}}>{filtered.length} registros</span>
+        <input style={{...inpSt,maxWidth:200,padding:"6px 12px",fontSize:13,marginLeft:"auto"}} value={filter} onChange={function(e){setFilter(e.target.value);}} placeholder="Filtrar ações..."/>
       </div>
       {!filtered.length&&<EmptyState icon="clock" color={K.dim2} title="Nenhum registro de auditoria" sub="As ações no app serão registradas automaticamente aqui"/>}
       <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:600,overflowY:"auto"}}>
         {filtered.slice(0,100).map(function(e,i){return(
-          <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"8px 14px",borderRadius:10,background:i%2===0?"rgba(255,255,255,.02)":"transparent",border:"1px solid "+K.brd}}>
-            <div style={{fontSize:9,color:K.dim,fontFamily:"'JetBrains Mono',monospace",minWidth:130}}>{new Date(e.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>
-            <div style={{padding:"2px 8px",borderRadius:6,background:K.acG,color:K.ac,fontSize:10,fontWeight:700,minWidth:90,textAlign:"center"}}>{actionLabel(e.action)}</div>
-            <div style={{fontSize:11,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={e.detail}>{e.detail||"—"}</div>
+          <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"8px 14px",borderRadius:10,background:i%2===0?"rgba(var(--cj-fgrgb),.02)":"transparent",border:"1px solid "+K.brd}}>
+            <div style={{fontSize:11,color:K.dim,fontFamily:"'JetBrains Mono',monospace",minWidth:130}}>{new Date(e.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>
+            <div style={{padding:"2px 8px",borderRadius:6,background:K.acG,color:K.ac,fontSize:12,fontWeight:700,minWidth:90,textAlign:"center"}}>{actionLabel(e.action)}</div>
+            <div style={{fontSize:12,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={e.detail}>{e.detail||"—"}</div>
           </div>
         );})}
       </div>
@@ -4874,20 +5034,20 @@ function ProcessLinkPanel({proc,st,dp,ss}){
       <div style={{...lblSt,marginBottom:6}}>Processos vinculados</div>
       {linked.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:8}}>
         {linked.map(function(lp){return(
-          <div key={lp.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,background:"rgba(0,229,255,.04)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){ss(lp);}}>
+          <div key={lp.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,background:"rgba(var(--cj-acrgb),.04)",border:"1px solid "+K.brd,cursor:"pointer"}} onClick={function(){ss(lp);}}>
             <Link size={12} color={K.ac}/>
-            <span style={{fontSize:11,color:K.ac,fontFamily:"monospace"}}>{lp.num||"—"}</span>
-            <span style={{fontSize:11,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lp.assunto}</span>
+            <span style={{fontSize:12,color:K.ac,fontFamily:"monospace"}}>{lp.num||"—"}</span>
+            <span style={{fontSize:12,color:K.txt,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lp.assunto}</span>
             <button onClick={function(e){e.stopPropagation();dp({type:"UNLINK_P",id1:proc.id,id2:lp.id});}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:2}}><X size={12}/></button>
           </div>
         );})}
       </div>}
       <div style={{display:"flex",gap:6}}>
-        <input style={{...inpSt,flex:1,padding:"6px 10px",fontSize:11}} value={sq} onChange={function(e){setSq(e.target.value);}} placeholder="Buscar processo para vincular..."/>
+        <input style={{...inpSt,flex:1,padding:"6px 10px",fontSize:12}} value={sq} onChange={function(e){setSq(e.target.value);}} placeholder="Buscar processo para vincular..."/>
       </div>
       {results.length>0&&<div style={{marginTop:4,border:"1px solid "+K.brd,borderRadius:8,overflow:"hidden"}}>
         {results.map(function(rp){return(
-          <div key={rp.id} onClick={function(){dp({type:"LINK_P",id1:proc.id,id2:rp.id});setSq("");}} style={{padding:"6px 10px",fontSize:11,cursor:"pointer",display:"flex",gap:8,alignItems:"center",borderBottom:"1px solid "+K.brd}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(0,229,255,.06)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+          <div key={rp.id} onClick={function(){dp({type:"LINK_P",id1:proc.id,id2:rp.id});setSq("");}} style={{padding:"6px 10px",fontSize:12,cursor:"pointer",display:"flex",gap:8,alignItems:"center",borderBottom:"1px solid "+K.brd}} onMouseEnter={function(e){e.currentTarget.style.background="rgba(var(--cj-acrgb),.06)";}} onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
             <Plus size={10} color={K.su}/><span style={{color:K.ac,fontFamily:"monospace"}}>{rp.num||"—"}</span><span style={{color:K.txt}}>{rp.assunto}</span>
           </div>
         );})}
@@ -4898,20 +5058,25 @@ function ProcessLinkPanel({proc,st,dp,ss}){
 
 /* ═══ PDF FICHA EXPORT ═══ */
 var exportProcessPDF=function(p){
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ficha - '+((p.num||p.assunto)||"Processo")+'</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;color:#1a1a1a;font-size:13px;line-height:1.6}h1{font-size:18px;border-bottom:2px solid #0284c7;padding-bottom:8px;color:#0284c7}h2{font-size:14px;margin-top:16px;color:#334155;border-bottom:1px solid #e2e8f0;padding-bottom:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.field{padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}.field-l{font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600}.field-v{font-size:13px;margin-top:2px}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}ul{padding-left:20px}li{margin-bottom:4px}.footer{margin-top:24px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}@media print{body{margin:0}}</style></head><body>';
+  /* v44 FIX (XSS): campos de caso (assunto, obs, proxProv [parte gerada por IA],
+     destaque, parte contraria, checklist, historico) eram concatenados CRUS no
+     HTML e injetados via document.write. Conteudo vindo de e-mail/IA/parte
+     adversa podia executar script. Escapamos TODO valor interpolado. */
+  var esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(m){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[m];});};
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ficha - '+esc((p.num||p.assunto)||"Processo")+'</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;color:#1a1a1a;font-size:14px;line-height:1.6}h1{font-size:18px;border-bottom:2px solid #0284c7;padding-bottom:8px;color:#0284c7}h2{font-size:14px;margin-top:16px;color:#334155;border-bottom:1px solid #e2e8f0;padding-bottom:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.field{padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}.field-l{font-size:12px;color:#64748b;text-transform:uppercase;font-weight:600}.field-v{font-size:14px;margin-top:2px}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600}ul{padding-left:20px}li{margin-bottom:4px}.footer{margin-top:24px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;text-align:center}@media print{body{margin:0}}</style></head><body>';
   html+='<h1>COJUR/CFM — Ficha do Processo</h1>';
   html+='<div class="grid">';
   var fields=[["Número",p.num||"—"],["SEI",p.numeroSEI||"—"],["Assunto",p.assunto||"—"],["Status",p.status||"—"],["Tipo",p.tipo==="jud"?"Judicial":"Administrativo"],["Tipo de Peça",p.tipoPeca||"—"],["Responsável",p.responsavel||"—"],["Fase",p.fase||"—"]];
   if(p.tipo==="jud"){fields.push(["Tribunal",p.tribunal||"—"],["Tipo de Ação",p.tipoAcao||"—"],["Parte Contrária",p.parteContraria||"—"]);}
   else{fields.push(["Órgão",p.orgao||"—"],["Interessado",p.interessado||"—"]);}
   fields.push(["Prazo Final",p.prazoFinal?fmt(toD(p.prazoFinal)):"—"],["Dias Úteis Restantes",(p.diasRestantes||0)+"du"],["Score",p.score||0],["Impacto",p.impacto||3],["Complexidade",p.complexidade||3]);
-  fields.forEach(function(f){html+='<div class="field"><div class="field-l">'+f[0]+'</div><div class="field-v">'+f[1]+'</div></div>';});
+  fields.forEach(function(f){html+='<div class="field"><div class="field-l">'+esc(f[0])+'</div><div class="field-v">'+esc(f[1])+'</div></div>';});
   html+='</div>';
-  if(p.proxProv){html+='<h2>Próxima Providência</h2><p>'+p.proxProv+'</p>';}
-  if(p.obs){html+='<h2>Observações</h2><p>'+p.obs.replace(/\n/g,"<br>")+'</p>';}
-  if(p.destaque){html+='<h2>Destaque</h2><p>'+p.destaque+'</p>';}
-  if(p.checklist&&p.checklist.length){html+='<h2>Checklist de Elaboração</h2><ul>';p.checklist.forEach(function(c){var t=typeof c==="string"?c:c.text;var d=typeof c==="object"&&c.done;html+='<li style="'+(d?"text-decoration:line-through;color:#94a3b8":"")+'">'+t+'</li>';});html+='</ul>';}
-  if(p.hist&&p.hist.length){html+='<h2>Histórico de Movimentações</h2><ul>';p.hist.slice().reverse().forEach(function(h){html+='<li><strong>'+(h.data||h.d?fmt(toD(h.data||h.d)):"—")+'</strong> — '+(h.txt||h.e||"—")+'</li>';});html+='</ul>';}
+  if(p.proxProv){html+='<h2>Próxima Providência</h2><p>'+esc(p.proxProv)+'</p>';}
+  if(p.obs){html+='<h2>Observações</h2><p>'+esc(p.obs).replace(/\n/g,"<br>")+'</p>';}
+  if(p.destaque){html+='<h2>Destaque</h2><p>'+esc(p.destaque)+'</p>';}
+  if(p.checklist&&p.checklist.length){html+='<h2>Checklist de Elaboração</h2><ul>';p.checklist.forEach(function(c){var t=typeof c==="string"?c:c.text;var d=typeof c==="object"&&c.done;html+='<li style="'+(d?"text-decoration:line-through;color:#94a3b8":"")+'">'+esc(t)+'</li>';});html+='</ul>';}
+  if(p.hist&&p.hist.length){html+='<h2>Histórico de Movimentações</h2><ul>';p.hist.slice().reverse().forEach(function(h){html+='<li><strong>'+((h.data||h.d)?fmt(toD(h.data||h.d)):"—")+'</strong> — '+esc(h.txt||h.e||"—")+'</li>';});html+='</ul>';}
   html+='<div class="footer">Gerado pelo COJUR Nexus em '+new Date().toLocaleDateString("pt-BR")+" às "+new Date().toLocaleTimeString("pt-BR")+'</div>';
   html+='</body></html>';
   var w=window.open("","_blank");if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);}
@@ -5834,8 +5999,8 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{fontSize:20,color:"#ff8060",filter:"drop-shadow(0 0 10px rgba(255,128,96,.8))"}}>⚛</div>
           <div>
-            <div style={{fontSize:13,fontWeight:900,color:"#bbd5ec",fontFamily:"Orbitron,sans-serif",letterSpacing:".25em",textShadow:"0 0 12px rgba(127,184,216,.6)"}}>TOKAMAK COJUR</div>
-            <div style={{fontSize:9,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:1}}>{all.length} processos · confinamento magnético · clique no anel ou partícula</div>
+            <div style={{fontSize:14,fontWeight:900,color:"#bbd5ec",fontFamily:"Orbitron,sans-serif",letterSpacing:".25em",textShadow:"0 0 12px rgba(127,184,216,.6)"}}>TOKAMAK COJUR</div>
+            <div style={{fontSize:11,color:"rgba(190,215,235,.45)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".05em",marginTop:1}}>{all.length} processos · confinamento magnético · clique no anel ou partícula</div>
           </div>
         </div>
       </div>
@@ -5856,7 +6021,7 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
                 borderRadius:6,
                 cursor:"pointer",
                 minWidth:160,
-                background: isHov ? `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.18)` : 'rgba(8,4,12,0.55)',
+                background: isHov ? `rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.18)` : 'rgba(var(--cj-panelrgb),0.55)',
                 border: `1px solid rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},${isHov?0.65:0.25})`,
                 backdropFilter:"blur(6px)",
                 boxShadow: isHov ? `0 0 14px rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.35)` : 'none',
@@ -5869,14 +6034,14 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
               }}/>
               <div style={{flex:1}}>
                 <div style={{
-                  fontSize:9,
+                  fontSize:11,
                   color:`rgb(${cat.color[0]},${cat.color[1]},${cat.color[2]})`,
                   fontWeight:800,
                   letterSpacing:".15em",
                   lineHeight:1.1,
                 }}>{cat.name}</div>
                 <div style={{
-                  fontSize:8,
+                  fontSize:11,
                   color:`rgba(${cat.color[0]},${cat.color[1]},${cat.color[2]},0.55)`,
                   letterSpacing:".05em",
                   marginTop:1,
@@ -5895,14 +6060,14 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
       </div>
 
       {/* HUD bottom-left telemetry */}
-      <div style={{position:"absolute",bottom:14,left:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",lineHeight:1.5}}>
+      <div style={{position:"absolute",bottom:14,left:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",lineHeight:1.5}}>
         <div>FLUX MAGNÉTICO: 1.42 T</div>
         <div>TEMP CORE: 9.8e6 K</div>
         <div>CONFINEMENT: STABLE</div>
       </div>
 
       {/* HUD bottom-right */}
-      <div style={{position:"absolute",bottom:14,right:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",textAlign:"right",lineHeight:1.5}}>
+      <div style={{position:"absolute",bottom:14,right:18,zIndex:3,pointerEvents:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"rgba(127,174,204,0.6)",letterSpacing:".1em",textAlign:"right",lineHeight:1.5}}>
         <div>PARTÍCULAS: {all.length}</div>
         <div>NÚCLEO: {categories[0].processes.length} CRIT</div>
         <div>STATUS: <span style={{color:"#5fb260"}}>● ATIVO</span></div>
@@ -5916,7 +6081,7 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
           transform:"translate(-50%, 130px)",
           padding:"10px 16px",
           borderRadius:8,
-          background:"rgba(8,4,12,.94)",
+          background:"rgba(var(--cj-panelrgb),.94)",
           border:`1px solid rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.55)`,
           boxShadow:`0 6px 18px rgba(0,0,0,.55), 0 0 24px rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.28)`,
           backdropFilter:"blur(10px)",
@@ -5927,12 +6092,12 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
           animation:"tokFadeIn .2s ease-out",
         }}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-            <div style={{fontSize:9,color:`rgb(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]})`,fontWeight:800,letterSpacing:".1em",fontFamily:"Orbitron,sans-serif"}}>
+            <div style={{fontSize:11,color:`rgb(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]})`,fontWeight:800,letterSpacing:".1em",fontFamily:"Orbitron,sans-serif"}}>
               ◈ {(hovered.proc.num||"").slice(-9)}
             </div>
-            <div style={{fontSize:9,color:`rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.65)`}}>· {hovered.proc.diasRestantes>=0?hovered.proc.diasRestantes+'du':'—'}</div>
+            <div style={{fontSize:11,color:`rgba(${categories[hovered.ci].color[0]},${categories[hovered.ci].color[1]},${categories[hovered.ci].color[2]},.65)`}}>· {hovered.proc.diasRestantes>=0?hovered.proc.diasRestantes+'du':'—'}</div>
           </div>
-          <div style={{fontSize:11,color:"rgba(220,235,250,.92)",fontWeight:600,maxWidth:480,lineHeight:1.4}}>
+          <div style={{fontSize:12,color:"rgba(220,235,250,.92)",fontWeight:600,maxWidth:480,lineHeight:1.4}}>
             {(hovered.proc.assunto||"").slice(0, 100)}{(hovered.proc.assunto||"").length>100?"…":""}
           </div>
         </div>
@@ -5954,6 +6119,10 @@ const TokamakOverview = ({ st, dp, sp, ss }) => {
 
 
 const DashPg=({st,dp,sp,ss})=>{
+  /* v44 PERF: todo este bloco (~12 passagens O(n) sobre os processos +
+     construcao de alerts + ordenacoes) rodava no corpo do componente a CADA
+     render e a cada tick de 60s. Memoizamos por `st` (que muda no RECALC_ALL). */
+  const __dash=useMemo(function(){
   const all=[...st.adm,...st.jud],crit=all.filter(p=>p.diasRestantes<=10);
   const urgData=[{name:"Crítico",value:crit.length,color:K.cr},{name:"Intermediário",value:all.filter(p=>p.diasRestantes>10&&p.diasRestantes<30).length,color:K.wa},{name:"Normal",value:all.filter(p=>p.diasRestantes>=30).length,color:K.su}];
   const wkD=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);return{dia:d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".",""),n:all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),d)===0).length}});
@@ -5995,57 +6164,60 @@ const DashPg=({st,dp,sp,ss})=>{
       tipo: tipo, urg: urg, proc: p.num || p.numeroSEI || "—",
     };
   });
+  return {all,crit,urgData,wkD,todayDue,next3,noAction,stale,alerts,cnDnaItems};
+  },[st]);
+  const {all,crit,urgData,wkD,todayDue,next3,noAction,stale,alerts,cnDnaItems}=__dash;
 
   return(
     <div className="cj-pg">
       <TokamakOverview st={st} dp={dp} sp={sp} ss={ss}/>
-      {React.createElement(function(){var s=useState(false);var showR=s[0],sShowR=s[1];return React.createElement(React.Fragment,null,React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8,flexWrap:"wrap"}},React.createElement("button",{onClick:function(){sp("timeline");},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📅 Timeline"),React.createElement("button",{onClick:function(){sShowR(true);},style:{...btnGhost,padding:"6px 12px",fontSize:11,color:"#00e5ff",borderColor:"rgba(0,229,255,.22)"}},"📊 Relatório")),showR&&React.createElement(RelatorioModal,{st:st,onClose:function(){sShowR(false);}}));},null)}
+      {React.createElement(CjInline,{fn:function(){var s=useState(false);var showR=s[0],sShowR=s[1];return React.createElement(React.Fragment,null,React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8,flexWrap:"wrap"}},React.createElement("button",{onClick:function(){sp("timeline");},style:{...btnGhost,padding:"6px 12px",fontSize:12,color:"var(--cj-ac)",borderColor:"rgba(var(--cj-acrgb),.22)"}},"📅 Timeline"),React.createElement("button",{onClick:function(){sShowR(true);},style:{...btnGhost,padding:"6px 12px",fontSize:12,color:"var(--cj-ac)",borderColor:"rgba(var(--cj-acrgb),.22)"}},"📊 Relatório")),showR&&React.createElement(RelatorioModal,{st:st,onClose:function(){sShowR(false);}}));}})}
       {/* ═══ v10 — CONFLICT DETECTION ALERT ═══ */}
       {React.createElement(ConflictAlert,{st:st,sp:sp})}
       {/* ═══ PROTOCOLAR / CORREÇÃO — top alert strip ═══ */}
       {(function(){var prot=all.filter(p=>isProtocolar(p));var corr=all.filter(p=>isCorrecao(p));if(!prot.length&&!corr.length)return null;return(
         <div style={{marginBottom:16,display:"grid",gridTemplateColumns:prot.length&&corr.length?"1fr 1fr":prot.length?"1fr":"1fr",gap:12}}>
-          {prot.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(0,255,136,.12),rgba(0,255,136,.05))",border:"1px solid rgba(0,255,136,.45)",animation:"cjProtocolar 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("protocolar")}>
+          {prot.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(var(--cj-surgb),.12),rgba(var(--cj-surgb),.05))",border:"1px solid rgba(var(--cj-surgb),.45)",animation:"cjProtocolar 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("protocolar")}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <span style={{fontSize:22}}>📤</span>
-              <div><div style={{fontSize:11,color:"#00ff88",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px",textShadow:"0 0 8px rgba(0,255,136,.7)"}}>PROTOCOLAR NO TRIBUNAL</div>
-              <div style={{fontSize:10,color:K.dim,marginTop:2}}>Aprovados pelo chefe do contencioso — aguardando protocolo</div></div>
-              <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(0,255,136,.8)"}}>{prot.length}</div>
+              <div><div style={{fontSize:12,color:"var(--cj-su)",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px",textShadow:"0 0 8px rgba(var(--cj-surgb),.7)"}}>PROTOCOLAR NO TRIBUNAL</div>
+              <div style={{fontSize:12,color:K.dim,marginTop:2}}>Aprovados pelo chefe do contencioso — aguardando protocolo</div></div>
+              <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"var(--cj-su)",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(var(--cj-surgb),.8)"}}>{prot.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(0,255,136,.1)",border:"1px solid rgba(0,255,136,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#00ff88",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{prot.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(var(--cj-surgb),.1)",border:"1px solid rgba(var(--cj-surgb),.25)",cursor:"pointer"}}><div style={{fontSize:12,color:"var(--cj-su)",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:12,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{prot.length>4&&<span style={{fontSize:12,color:K.dim,padding:"5px 8px"}}>+{prot.length-4} mais</span>}</div>
           </div>}
-          {corr.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(255,184,0,.12),rgba(255,184,0,.05))",border:"1px solid rgba(255,184,0,.45)",animation:"cjCorrecao 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("correcao")}>
+          {corr.length>0&&<div className="cj-hud-tl cj-hud-br" style={{padding:"14px 18px",borderRadius:16,background:"linear-gradient(135deg,rgba(var(--cj-wargb),.12),rgba(var(--cj-wargb),.05))",border:"1px solid rgba(var(--cj-wargb),.45)",animation:"cjCorrecao 1.8s ease-in-out infinite",cursor:"pointer"}} onClick={()=>sp("correcao")}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <span style={{fontSize:22}}>✏️</span>
-              <div><div style={{fontSize:11,color:"#ffb800",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px",textShadow:"0 0 8px rgba(255,184,0,.7)"}}>EM CORREÇÃO</div>
-              <div style={{fontSize:10,color:K.dim,marginTop:2}}>Retornados pelo chefe para revisão antes do protocolo</div></div>
-              <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(255,184,0,.8)"}}>{corr.length}</div>
+              <div><div style={{fontSize:12,color:"var(--cj-wa)",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px",textShadow:"0 0 8px rgba(var(--cj-wargb),.7)"}}>EM CORREÇÃO</div>
+              <div style={{fontSize:12,color:K.dim,marginTop:2}}>Retornados pelo chefe para revisão antes do protocolo</div></div>
+              <div style={{marginLeft:"auto",fontSize:28,fontWeight:800,color:"var(--cj-wa)",fontFamily:"Orbitron,monospace",textShadow:"0 0 16px rgba(var(--cj-wargb),.8)"}}>{corr.length}</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(255,184,0,.1)",border:"1px solid rgba(255,184,0,.25)",cursor:"pointer"}}><div style={{fontSize:10,color:"#ffb800",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:11,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:10,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{corr.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p);}} style={{padding:"5px 10px",borderRadius:8,background:"rgba(var(--cj-wargb),.1)",border:"1px solid rgba(var(--cj-wargb),.25)",cursor:"pointer"}}><div style={{fontSize:12,color:"var(--cj-wa)",fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"—"}</div><div style={{fontSize:12,color:K.txt,maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div>)}{corr.length>4&&<span style={{fontSize:12,color:K.dim,padding:"5px 8px"}}>+{corr.length-4} mais</span>}</div>
           </div>}
         </div>
       );})()}
 
       <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>
         {/* ═══ CARD TOTAL — destaque diferenciado ═══ */}
-        <div className="cj-hud-tl cj-hud-br cj-border-glow" role="button" tabIndex={0} onClick={()=>sp("priorities")} style={{background:"linear-gradient(135deg, rgba(6,12,34,.98), rgba(2,5,20,.99))",border:"2px solid rgba(0,229,255,.45)",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:6,position:"relative",overflow:"hidden",transition:"all .28s",cursor:"pointer",boxShadow:"0 0 28px rgba(0,229,255,.18), 0 0 60px rgba(184,77,255,.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(0,229,255,.15)",gridColumn:"span 1"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-5px)";e.currentTarget.style.boxShadow="0 0 40px rgba(0,229,255,.3), 0 0 80px rgba(184,77,255,.15), 0 22px 50px rgba(0,0,0,.55)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 0 28px rgba(0,229,255,.18), 0 0 60px rgba(184,77,255,.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(0,229,255,.15)";}}>
+        <div className="cj-hud-tl cj-hud-br cj-border-glow" role="button" tabIndex={0} onClick={()=>sp("priorities")} style={{background:"linear-gradient(135deg, rgba(var(--cj-panelrgb),.98), rgba(var(--cj-panelrgb),.99))",border:"2px solid rgba(var(--cj-acrgb),.45)",borderRadius:20,padding:"18px 18px 16px",display:"flex",flexDirection:"column",gap:6,position:"relative",overflow:"hidden",transition:"all .28s",cursor:"pointer",boxShadow:"0 0 28px rgba(var(--cj-acrgb),.18), 0 0 60px rgba(var(--cj-purgb),.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(var(--cj-acrgb),.15)",gridColumn:"span 1"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-5px)";e.currentTarget.style.boxShadow="0 0 40px rgba(var(--cj-acrgb),.3), 0 0 80px rgba(var(--cj-purgb),.15), 0 22px 50px rgba(0,0,0,.55)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 0 28px rgba(var(--cj-acrgb),.18), 0 0 60px rgba(var(--cj-purgb),.08), 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(var(--cj-acrgb),.15)";}}>
           <div style={{position:"absolute",inset:"0 0 auto 0",height:2,background:"linear-gradient(90deg, transparent, #00e5ff, #b84dff, transparent)",opacity:.9,pointerEvents:"none"}}/>
           <div style={{position:"absolute",inset:"auto 0 0 0",height:2,background:"linear-gradient(90deg, transparent, #b84dff, #00e5ff, transparent)",opacity:.5,pointerEvents:"none"}}/>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(135deg, rgba(0,229,255,.2), rgba(184,77,255,.15))",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(0,229,255,.3), 0 0 30px rgba(184,77,255,.15), inset 0 1px 0 rgba(255,255,255,.08)",border:"1px solid rgba(0,229,255,.35)"}}><Layers size={20} color="#00e5ff" style={{filter:"drop-shadow(0 0 8px rgba(0,229,255,.9))"}}/></div>
-              <span style={{fontSize:10,color:"rgba(148,163,184,.9)",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px"}}>Total Acervo</span>
+              <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(135deg, rgba(var(--cj-acrgb),.2), rgba(var(--cj-purgb),.15))",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(var(--cj-acrgb),.3), 0 0 30px rgba(var(--cj-purgb),.15), inset 0 1px 0 rgba(var(--cj-fgrgb),.08)",border:"1px solid rgba(var(--cj-acrgb),.35)"}}><Layers size={20} color="var(--cj-ac)" style={{filter:"drop-shadow(0 0 8px rgba(var(--cj-acrgb),.9))"}}/></div>
+              <span style={{fontSize:12,color:"rgba(148,163,184,.9)",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px"}}>Total Acervo</span>
             </div>
-            <div className="cj-pulse" style={{width:10,height:10,borderRadius:"50%",background:"linear-gradient(135deg, #00e5ff, #b84dff)",boxShadow:"0 0 12px #00e5ff, 0 0 24px rgba(184,77,255,.5)"}}/>
+            <div className="cj-pulse" style={{width:10,height:10,borderRadius:"50%",background:"linear-gradient(135deg, #00e5ff, #b84dff)",boxShadow:"0 0 12px #00e5ff, 0 0 24px rgba(var(--cj-purgb),.5)"}}/>
           </div>
           <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
-            <div style={{fontSize:40,fontWeight:900,background:"linear-gradient(135deg, #00e5ff, #b84dff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,filter:"drop-shadow(0 0 12px rgba(0,229,255,.4))"}}>{all.length}</div>
+            <div style={{fontSize:40,fontWeight:900,background:"linear-gradient(135deg, #00e5ff, #b84dff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"'Orbitron','JetBrains Mono',monospace",lineHeight:1,filter:"drop-shadow(0 0 12px rgba(var(--cj-acrgb),.4))"}}>{all.length}</div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-              <span style={{fontSize:10,color:K.ac,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.adm.length} adm</span>
-              <span style={{fontSize:10,color:K.pu,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.jud.length} jud</span>
+              <span style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.adm.length} adm</span>
+              <span style={{fontSize:12,color:K.pu,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{st.jud.length} jud</span>
             </div>
           </div>
-          <span style={{fontSize:10,color:"rgba(78,106,138,.85)",fontFamily:"'JetBrains Mono',monospace"}}>processos ativos comigo</span>
+          <span style={{fontSize:12,color:"rgba(78,106,138,.85)",fontFamily:"'JetBrains Mono',monospace"}}>processos ativos comigo</span>
         </div>
         <SC icon={Upload} label="Protocolar" value={all.filter(p=>isProtocolar(p)).length} color={K.su} sub="Aprovado pelo chefe" onClick={()=>sp("protocolar")}/>
         <SC icon={PenLine} label="Em Correção" value={all.filter(p=>isCorrecao(p)).length} color={K.wa} sub="Retornado p/ revisão" onClick={()=>sp("correcao")}/>
@@ -6067,37 +6239,37 @@ const DashPg=({st,dp,sp,ss})=>{
         <PrazoHeatmap items={all}/>
       </div>
       {(function(){var procs=[...st.adm,...st.jud].map(function(p){return Object.assign({},p,{iaS:iaScore(p)});}).sort(function(a,b){return b.iaS-a.iaS;});var top=procs[0];if(!top)return null;var b=iaBadge(top.iaS);var sug=iaSugestao(top);return(
-        <div onClick={function(){sp("ia");}} style={{marginBottom:16,padding:"10px 18px",borderRadius:14,background:"linear-gradient(135deg, rgba(168,85,247,.12), rgba(0,212,255,.07))",border:"1px solid rgba(168,85,247,.25)",display:"flex",alignItems:"center",gap:14,cursor:"pointer",transition:"all .2s"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.25)";}}>
+        <div onClick={function(){sp("ia");}} style={{marginBottom:16,padding:"10px 18px",borderRadius:14,background:"linear-gradient(135deg, rgba(var(--cj-purgb),.12), rgba(0,212,255,.07))",border:"1px solid rgba(var(--cj-purgb),.25)",display:"flex",alignItems:"center",gap:14,cursor:"pointer",transition:"all .2s"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-purgb),.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-purgb),.25)";}}>
           <span style={{fontSize:22}}>🧠</span>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,marginBottom:2,letterSpacing:".5px",textTransform:"uppercase"}}>IA Nexus · Prioridade #1</div>
-            <div title={top.assunto||""} style={{fontSize:13,fontWeight:700,color:K.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{top.assunto}</div>
-            <div style={{fontSize:11,color:K.dim,marginTop:1}}>{sug.emoji} {sug.txt}</div>
+            <div style={{fontSize:12,color:"#a78bfa",fontWeight:700,marginBottom:2,letterSpacing:".5px",textTransform:"uppercase"}}>IA Nexus · Prioridade #1</div>
+            <div title={top.assunto||""} style={{fontSize:14,fontWeight:700,color:K.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{top.assunto}</div>
+            <div style={{fontSize:12,color:K.dim,marginTop:1}}>{sug.emoji} {sug.txt}</div>
           </div>
           <span className={b.cls}>{b.emoji} {b.txt}</span>
-          <span style={{fontSize:11,color:K.dim,flexShrink:0}}>Ver painel →</span>
+          <span style={{fontSize:12,color:K.dim,flexShrink:0}}>Ver painel →</span>
         </div>
       );})()}
             {(function(){
         var sust48=[...st.adm,...st.jud].filter(isSustAlerta);
         if(!sust48.length) return null;
         return(
-          <div style={{marginBottom:14,padding:"12px 18px",borderRadius:14,background:"rgba(255,46,91,.12)",border:"2px solid rgba(255,46,91,.7)",display:"flex",alignItems:"center",gap:12,animation:"neonBlink .9s ease-in-out infinite"}}>
+          <div style={{marginBottom:14,padding:"12px 18px",borderRadius:14,background:"rgba(var(--cj-crrgb),.12)",border:"2px solid rgba(var(--cj-crrgb),.7)",display:"flex",alignItems:"center",gap:12,animation:"neonBlink .9s ease-in-out infinite"}}>
             <span style={{fontSize:20,animation:"textBlink .9s ease-in-out infinite",flexShrink:0}}>🎤</span>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:900,color:"#ff2e5b",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:4}}>ALERTA — SUSTENTAÇÃO ORAL</div>
+              <div style={{fontSize:13,fontWeight:900,color:"var(--cj-cr)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",marginBottom:4}}>ALERTA — SUSTENTAÇÃO ORAL</div>
               {sust48.map(function(p){
                 var cd=getSustCountdown(p);
                 return(
                   <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
-                    <span title={p.assunto||""} style={{fontSize:11,color:"rgba(255,150,160,.9)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
-                    {cd&&<span style={{fontSize:11,fontWeight:800,color:"#ff2e5b",fontFamily:"Orbitron,monospace",flexShrink:0}}>{cd}</span>}
-                    {!cd&&p.dataSustentacao&&<span style={{fontSize:10,color:"rgba(255,100,120,.8)",flexShrink:0}}>{new Date(p.dataSustentacao).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
+                    <span title={p.assunto||""} style={{fontSize:12,color:"rgba(255,150,160,.9)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
+                    {cd&&<span style={{fontSize:12,fontWeight:800,color:"var(--cj-cr)",fontFamily:"Orbitron,monospace",flexShrink:0}}>{cd}</span>}
+                    {!cd&&p.dataSustentacao&&<span style={{fontSize:12,color:"rgba(255,100,120,.8)",flexShrink:0}}>{new Date(p.dataSustentacao).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>}
                   </div>
                 );
               })}
             </div>
-            <div style={{textAlign:"right",fontSize:10,color:"rgba(255,100,120,.9)",flexShrink:0}}>
+            <div style={{textAlign:"right",fontSize:12,color:"rgba(255,100,120,.9)",flexShrink:0}}>
               <div style={{fontWeight:800,marginBottom:2}}>⚡ ENVIE AGORA:</div>
               <div>📹 Vídeo virtual</div>
               <div>📄 Memoriais</div>
@@ -6106,30 +6278,25 @@ const DashPg=({st,dp,sp,ss})=>{
           </div>
         );
       })()}
-      <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:24}}>
-        <Bx onClick={()=>sp("today")} title="Abrir página Hoje"><SH icon={Target} title="Painel Operacional de Hoje"/><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+      <div className="cj-rgrid" style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:24}}>
+        <Bx onClick={()=>sp("today")} title="Abrir página Hoje"><SH icon={Target} title="Painel Operacional de Hoje"/><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
           <SC icon={Flame} label="Vence Hoje" value={todayDue.length} color={K.cr} onClick={()=>sp("today")}/>
           <SC icon={CalendarDays} label="Próx. 3 dias" value={next3.length} color={K.wa} onClick={()=>sp("today")}/>
           <SC icon={Calendar} label="Reuniões Hoje" value={st.reun.filter(r=>diffD(toD(r.data),NOW)===0).length} color={K.ac} onClick={()=>sp("agenda")}/>
           <SC icon={Gavel} label="Sustentações 7 dias" value={st.sust.filter(s=>{const d=diffD(toD(s.data),NOW);return d>=0&&d<=7}).length} color={K.pu} onClick={()=>sp("agenda")}/>
         </div></Bx>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Tudo com próxima providência</div>}</div></Bx>
-        <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando/parados"><SH icon={Timer} title="Parados 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{stale.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Sem parados relevantes</div>}</div></Bx>
-        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:12}}>Nenhuma pendência externa</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem ação"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{noAction.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.03)"}}><div style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:13,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:13}}>Tudo com próxima providência</div>}</div></Bx>
+        <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando/parados"><SH icon={Timer} title="Parados 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{stale.slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.03)"}}><div style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:13,color:K.txt}}>{p.assunto}</div><div style={{fontSize:12,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:13}}>Sem parados relevantes</div>}</div></Bx>
+        <Bx onClick={()=>sp("waiting")} title="Abrir aguardando terceiros"><SH icon={Users} title="Aguardando Terceiros"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:180,overflowY:"auto"}}>{all.filter(p=>p.depTerc).slice(0,4).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.03)"}}><div style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:13,color:K.txt}}>{p.assunto}</div></div>)}{!all.filter(p=>p.depTerc).length&&<div style={{padding:18,textAlign:"center",color:K.dim2,fontSize:13}}>Nenhuma pendência externa</div>}</div></Bx>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
-        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
-        <Bx onClick={()=>sp("judicial")} title="Abrir prazos judiciais"><SH icon={Scale} title="Prazos Judiciais" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:11}} onClick={e=>{e.stopPropagation();sp("judicial")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.jud].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:20,marginBottom:24}}>
+        <Bx onClick={()=>sp("admin")} title="Abrir administrativos"><SH icon={FolderOpen} title="Admin SEI" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:12}} onClick={e=>{e.stopPropagation();sp("admin")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.adm].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
+        <Bx onClick={()=>sp("judicial")} title="Abrir prazos judiciais"><SH icon={Scale} title="Prazos Judiciais" right={<button style={{...btnGhost,padding:"4px 12px",fontSize:12}} onClick={e=>{e.stopPropagation();sp("judicial")}}>Ver todos<ChevronRight size={12}/></button>}/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{[...st.jud].sort((a,b)=>b.score-a.score).slice(0,4).map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}</div></Bx>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
-        <Bx onClick={()=>sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Alertas Inteligentes"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:260,overflowY:"auto"}}>{alerts.slice(0,8).map((a,i)=><AC key={i} {...a}/>)}{!alerts.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Tudo em dia</div>}</div></Bx>
-        <Bx onClick={()=>sp("analytics")} title="Abrir analytics"><SH icon={BarChart3} title="Urgência"/><div style={{display:"flex",alignItems:"center",gap:16}}><ResponsiveContainer width="50%" height={160}><PieChart><Pie data={urgData} cx="50%" cy="50%" innerRadius={36} outerRadius={58} dataKey="value" strokeWidth={0}>{urgData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie></PieChart></ResponsiveContainer><div style={{flex:1}}>{urgData.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{width:10,height:10,borderRadius:"50%",background:d.color}}/><span style={{fontSize:12,color:K.dim,flex:1}}>{d.name}</span><span style={{fontSize:14,fontWeight:700,color:d.color,fontFamily:"'JetBrains Mono',monospace"}}>{d.value}</span></div>)}</div></div></Bx>
-        <Bx onClick={()=>sp("week")} title="Abrir semana"><SH icon={TrendingUp} title="Carga Semanal"/><ResponsiveContainer width="100%" height={160}><BarChart data={wkD} barSize={18}><XAxis dataKey="dia" tick={{fill:K.dim2,fontSize:11}} axisLine={false} tickLine={false}/><YAxis hide/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="n" fill={K.ac} radius={[4,4,0,0]} name="Tarefas"/></BarChart></ResponsiveContainer></Bx>
-      </div>
-      {/* v41 · DNANexus interativo · hover mostra ficha tecnica, click abre processo */}
-      <div style={{marginTop:24}}>
-        <div className="cn-section-tag">▣ DNA NEXUS · GENOMA DO ACERVO · INSPEÇÃO INTERATIVA</div>
-        <DNANexus processos={cnDnaItems} h={460} onSelect={ss}/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
+        <Bx onClick={()=>sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Alertas Inteligentes"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8,maxHeight:260,overflowY:"auto"}}>{alerts.slice(0,8).map((a,i)=><AC key={i} {...a}/>)}{!alerts.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Tudo em dia</div>}</div></Bx>
+        <Bx onClick={()=>sp("analytics")} title="Abrir analytics"><SH icon={BarChart3} title="Urgência"/><div style={{display:"flex",alignItems:"center",gap:16}}><ResponsiveContainer width="50%" height={160}><PieChart><Pie data={urgData} cx="50%" cy="50%" innerRadius={36} outerRadius={58} dataKey="value" strokeWidth={0}>{urgData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie></PieChart></ResponsiveContainer><div style={{flex:1}}>{urgData.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{width:10,height:10,borderRadius:"50%",background:d.color}}/><span style={{fontSize:13,color:K.dim,flex:1}}>{d.name}</span><span style={{fontSize:14,fontWeight:700,color:d.color,fontFamily:"'JetBrains Mono',monospace"}}>{d.value}</span></div>)}</div></div></Bx>
+        <Bx onClick={()=>sp("week")} title="Abrir semana"><SH icon={TrendingUp} title="Carga Semanal"/><ResponsiveContainer width="100%" height={160}><BarChart data={wkD} barSize={18}><XAxis dataKey="dia" tick={{fill:K.dim2,fontSize:12}} axisLine={false} tickLine={false}/><YAxis hide/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:13}}/><Bar dataKey="n" fill={K.ac} radius={[4,4,0,0]} name="Tarefas"/></BarChart></ResponsiveContainer></Bx>
       </div>
     </div>
   );
@@ -6143,7 +6310,10 @@ const ProcList=({type,st,dp,ss,compact,bulkSelected=[],setBulkSelected,savedFilt
   const selectAll=function(ids){if(!setBulkSelected)return;setBulkSelected(ids);};
   const[vw,sVw]=useState("cards"),[sb,sSb]=useState("score"),[fil,sFil]=useState({}),[showForm,sSF]=useState(null);
   const isA=type==="admin",isJ=!isA,raw=isA?st.adm:st.jud;
-  const filtered=applyF(raw,fil),sorted=[...filtered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal));
+  /* v44 PERF: filtro e ordenacao memoizados — antes re-rodavam applyF+sort sobre
+     TODOS os processos a cada render (toggle de modo, troca de view, etc.). */
+  const filtered=useMemo(()=>applyF(raw,fil),[raw,fil]);
+  const sorted=useMemo(()=>[...filtered].sort((a,b)=>sb==="score"?b.score-a.score:sb==="urgency"?a.diasRestantes-b.diasRestantes:toD(a.prazoFinal)-toD(b.prazoFinal)),[filtered,sb]);
   const doSave=form=>{if(showForm==="new")dp({type:isA?"ADD_A":"ADD_J",d:form});else dp({type:"UPD",id:showForm.id,isAdm:isA,ch:form});sSF(null)};
   const doDelete=()=>{dp({type:"DEL_P",id:showForm.id});sSF(null)};
 
@@ -6154,27 +6324,27 @@ const ProcList=({type,st,dp,ss,compact,bulkSelected=[],setBulkSelected,savedFilt
         <Bd color={K.ac}>{filtered.length}/{raw.length}</Bd>
         <button style={btnPrim} onClick={()=>sSF("new")}><Plus size={14}/>Novo {isA?"Processo":"Prazo"}</button>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="crit"?K.cr:K.brd,color:fil.quick==="crit"?K.cr:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="crit"?"":"crit",urg:fil.quick==="crit"?fil.urg:"Crítico"})}>Críticos</button>
-          <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="reun"?K.ac:K.brd,color:fil.quick==="reun"?K.ac:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="reun"?"":"reun",reun:fil.quick==="reun"?"all":"Sim"})}>Reunião</button>
-          <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="sust"?K.pu:K.brd,color:fil.quick==="sust"?K.pu:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="sust"?"":"sust",sust:fil.quick==="sust"?"all":"Sim"})}>Sustentação</button>
-          <button style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:fil.quick==="wait"?K.wa:K.brd,color:fil.quick==="wait"?K.wa:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="wait"?"":"wait",dep:fil.quick==="wait"?"all":"Sim"})}>Aguardando</button>
+          <button style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:fil.quick==="crit"?K.cr:K.brd,color:fil.quick==="crit"?K.cr:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="crit"?"":"crit",urg:fil.quick==="crit"?fil.urg:"Crítico"})}>Críticos</button>
+          <button style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:fil.quick==="reun"?K.ac:K.brd,color:fil.quick==="reun"?K.ac:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="reun"?"":"reun",reun:fil.quick==="reun"?"all":"Sim"})}>Reunião</button>
+          <button style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:fil.quick==="sust"?K.pu:K.brd,color:fil.quick==="sust"?K.pu:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="sust"?"":"sust",sust:fil.quick==="sust"?"all":"Sim"})}>Sustentação</button>
+          <button style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:fil.quick==="wait"?K.wa:K.brd,color:fil.quick==="wait"?K.wa:K.dim}} onClick={()=>sFil({...fil,quick:fil.quick==="wait"?"":"wait",dep:fil.quick==="wait"?"all":"Sim"})}>Aguardando</button>
         </div>
         <div style={{flex:1}}/>
-        <input style={{...inpSt,width:180,padding:"6px 12px",fontSize:12}} placeholder="Buscar nº, SEI, assunto, parte ou órgão..." value={fil.sq||""} onChange={e=>sFil({...fil,sq:e.target.value})}/>
+        <input style={{...inpSt,width:180,padding:"6px 12px",fontSize:13}} placeholder="Buscar nº, SEI, assunto, parte ou órgão..." value={fil.sq||""} onChange={e=>sFil({...fil,sq:e.target.value})}/>
         <FP f={fil} sf={sFil} isJ={isJ}/>
-        <div style={{display:"flex",gap:4}}>{[["score","Score"],["urgency","Urgência"],["date","Data"]].map(([k,l])=><button key={k} onClick={()=>sSb(k)} style={{...btnGhost,padding:"5px 12px",fontSize:11,borderColor:sb===k?K.ac:K.brd,color:sb===k?K.ac:K.dim}}>{l}</button>)}</div>
-        <div style={{display:"flex",gap:4}}>{[["cards",LayoutGrid,"Cards"],["kanban",Columns3,"Kanban"],["table",Table2,"Tabela"]].map(([k,I,l])=><button key={k} onClick={()=>sVw(k)} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:vw===k?K.ac:K.brd,color:vw===k?K.ac:K.dim,display:"flex",alignItems:"center",gap:4}}><I size={13}/>{l}</button>)}</div>
+        <div style={{display:"flex",gap:4}}>{[["score","Score"],["urgency","Urgência"],["date","Data"]].map(([k,l])=><button key={k} onClick={()=>sSb(k)} style={{...btnGhost,padding:"5px 12px",fontSize:12,borderColor:sb===k?K.ac:K.brd,color:sb===k?K.ac:K.dim}}>{l}</button>)}</div>
+        <div style={{display:"flex",gap:4}}>{[["cards",LayoutGrid,"Cards"],["kanban",Columns3,"Kanban"],["table",Table2,"Tabela"]].map(([k,I,l])=><button key={k} onClick={()=>sVw(k)} style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:vw===k?K.ac:K.brd,color:vw===k?K.ac:K.dim,display:"flex",alignItems:"center",gap:4}}><I size={13}/>{l}</button>)}</div>
         {/* ═══ BATCH SELECT ═══ */}
-        <button onClick={function(){sSelMode(!selMode);if(selMode&&setBulkSelected)setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:11,borderColor:selMode?K.wa:K.brd,color:selMode?K.wa:K.dim,display:"flex",alignItems:"center",gap:4}}><ClipboardCheck size={13}/>{selMode?"Cancelar":"Selecionar"}</button>
-        {selMode&&<button onClick={function(){selectAll(sorted.map(function(p){return p.id;}));}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:K.ac,borderColor:K.ac+"33"}}>Todos ({sorted.length})</button>}
+        <button onClick={function(){sSelMode(!selMode);if(selMode&&setBulkSelected)setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:12,borderColor:selMode?K.wa:K.brd,color:selMode?K.wa:K.dim,display:"flex",alignItems:"center",gap:4}}><ClipboardCheck size={13}/>{selMode?"Cancelar":"Selecionar"}</button>
+        {selMode&&<button onClick={function(){selectAll(sorted.map(function(p){return p.id;}));}} style={{...btnGhost,padding:"5px 10px",fontSize:12,color:K.ac,borderColor:K.ac+"33"}}>Todos ({sorted.length})</button>}
         {/* ═══ COMPARAR (2-5 processos) ═══ */}
-        {selMode&&bulkSelected.length>=2&&bulkSelected.length<=5&&setComparadorIds&&<button onClick={function(){setComparadorIds(bulkSelected.slice(0,5));sSelMode(false);setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:K.pu,borderColor:K.pu+"33",display:"flex",alignItems:"center",gap:4}}>⚖️ Comparar ({bulkSelected.length})</button>}
+        {selMode&&bulkSelected.length>=2&&bulkSelected.length<=5&&setComparadorIds&&<button onClick={function(){setComparadorIds(bulkSelected.slice(0,5));sSelMode(false);setBulkSelected([]);}} style={{...btnGhost,padding:"5px 10px",fontSize:12,color:K.pu,borderColor:K.pu+"33",display:"flex",alignItems:"center",gap:4}}>⚖️ Comparar ({bulkSelected.length})</button>}
         {/* ═══ FILTROS SALVOS ═══ */}
-        {savedFilters.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{savedFilters.map(function(sf){return React.createElement("button",{key:sf.id,onClick:function(){sFil({...sf.filter,sq:""});},style:{...btnGhost,padding:"5px 10px",fontSize:11,color:"#a855f7",borderColor:"rgba(168,85,247,.3)",display:"flex",alignItems:"center",gap:4}},"⭐ ",sf.name,React.createElement("span",{onClick:function(e){e.stopPropagation();if(confirm("Excluir filtro '"+sf.name+"'?"))setSavedFilters(function(prev){var next=prev.filter(function(x){return x.id!==sf.id;});try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});},style:{marginLeft:4,opacity:.5,cursor:"pointer"}},"×"));})}</div>}
+        {savedFilters.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{savedFilters.map(function(sf){return React.createElement("button",{key:sf.id,onClick:function(){sFil({...sf.filter,sq:""});},style:{...btnGhost,padding:"5px 10px",fontSize:12,color:"var(--cj-pu)",borderColor:"rgba(var(--cj-purgb),.3)",display:"flex",alignItems:"center",gap:4}},"⭐ ",sf.name,React.createElement("span",{onClick:function(e){e.stopPropagation();if(confirm("Excluir filtro '"+sf.name+"'?"))setSavedFilters(function(prev){var next=prev.filter(function(x){return x.id!==sf.id;});try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});},style:{marginLeft:4,opacity:.5,cursor:"pointer"}},"×"));})}</div>}
         {/* ═══ SALVAR FILTRO ATUAL ═══ */}
-        {(fil.urg||fil.st||fil.ph||fil.peca||fil.tr||fil.dep==="Sim"||fil.reun==="Sim"||fil.sust==="Sim")&&setSavedFilters&&<button onClick={function(){var name=prompt("Nome do filtro:");if(!name)return;var newF={id:"f_"+Date.now(),name:name,filter:{...fil,sq:""}};setSavedFilters(function(prev){var next=[...prev,newF];try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});}} style={{...btnGhost,padding:"5px 10px",fontSize:11,color:"#a855f7",borderColor:"rgba(168,85,247,.3)"}}>⭐ Salvar Filtro</button>}
+        {(fil.urg||fil.st||fil.ph||fil.peca||fil.tr||fil.dep==="Sim"||fil.reun==="Sim"||fil.sust==="Sim")&&setSavedFilters&&<button onClick={function(){var name=prompt("Nome do filtro:");if(!name)return;var newF={id:"f_"+Date.now(),name:name,filter:{...fil,sq:""}};setSavedFilters(function(prev){var next=[...prev,newF];try{localStorage.setItem("cojur_filters",JSON.stringify(next));}catch(e){}return next;});}} style={{...btnGhost,padding:"5px 10px",fontSize:12,color:"var(--cj-pu)",borderColor:"rgba(var(--cj-purgb),.3)"}}>⭐ Salvar Filtro</button>}
       </div>
-      {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>{sorted.map(p=><div key={p.id} style={{position:"relative"}}>{selMode&&<div onClick={function(e){e.stopPropagation();toggleBulk(p.id);}} style={{position:"absolute",top:10,left:10,zIndex:5,width:22,height:22,borderRadius:6,border:"2px solid "+(bulkSelected.includes(p.id)?K.ac:K.dim),background:bulkSelected.includes(p.id)?K.ac+"30":"rgba(0,0,0,.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>{bulkSelected.includes(p.id)&&<CheckCircle size={14} color={K.ac}/>}</div>}<PC item={p} onClick={selMode?function(){toggleBulk(p.id);}:ss} dp={dp} compact={compact}/></div>)}</div>}
+      {vw==="cards"&&<div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(380px,100%),1fr))",gap:12}}>{sorted.map(p=><div key={p.id} style={{position:"relative"}}>{selMode&&<div onClick={function(e){e.stopPropagation();toggleBulk(p.id);}} style={{position:"absolute",top:10,left:10,zIndex:5,width:22,height:22,borderRadius:6,border:"2px solid "+(bulkSelected.includes(p.id)?K.ac:K.dim),background:bulkSelected.includes(p.id)?K.ac+"30":"rgba(0,0,0,.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>{bulkSelected.includes(p.id)&&<CheckCircle size={14} color={K.ac}/>}</div>}<PC item={p} onClick={selMode?function(){toggleBulk(p.id);}:ss} dp={dp} compact={compact}/></div>)}</div>}
       {vw==="kanban"&&<KanbanV items={sorted} dp={dp} ss={ss}/>}
       {vw==="table"&&(function(){
         var tSortKeys={"Nº / SEI":"num","Assunto":"assunto","Prazo":"prazoFinal","Dias":"diasRestantes","Score":"score","Status":"status","Fase":"fase"};
@@ -6195,10 +6365,10 @@ const ProcList=({type,st,dp,ss,compact,bulkSelected=[],setBulkSelected,savedFilt
           if(fil._tCol===key) sFil({...fil,_tDir:fil._tDir==="asc"?"desc":"asc"});
           else sFil({...fil,_tCol:key,_tDir:"asc"});
         };
-        return <Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:12}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} className={(tSortKeys[h]?"cj-sortable":"")+(fil._tCol===tSortKeys[h]?" cj-sorted":"")} onClick={function(){toggleSort(h);}} style={{padding:"12px 14px",textAlign:"left",color:fil._tCol===tSortKeys[h]?K.ac:K.dim,fontWeight:fil._tCol===tSortKeys[h]?700:500,fontSize:11,textTransform:"uppercase",cursor:tSortKeys[h]?"pointer":"default"}}>{h}{fil._tCol===tSortKeys[h]?(fil._tDir==="asc"?" ↑":" ↓"):""}</th>)}</tr></thead><tbody>{tSorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-        <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
+        return <Bx style={{padding:0,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table className="cj-table" style={{width:"100%",fontSize:13}}><thead><tr style={{borderBottom:`1px solid ${K.brd}`}}>{["Nº / SEI","Assunto","Resumo","Prazo","Dias","Score","Status","Fase","Ações"].map(h=><th key={h} className={(tSortKeys[h]?"cj-sortable":"")+(fil._tCol===tSortKeys[h]?" cj-sorted":"")} onClick={function(){toggleSort(h);}} style={{padding:"12px 14px",textAlign:"left",color:fil._tCol===tSortKeys[h]?K.ac:K.dim,fontWeight:fil._tCol===tSortKeys[h]?700:500,fontSize:12,textTransform:"uppercase",cursor:tSortKeys[h]?"pointer":"default"}}>{h}{fil._tCol===tSortKeys[h]?(fil._tDir==="asc"?" ↑":" ↓"):""}</th>)}</tr></thead><tbody>{tSorted.map(p=><tr key={p.id} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(var(--cj-fgrgb),.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <td style={{padding:"10px 14px",cursor:"pointer"}}><div style={{fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</div>{p.numeroSEI&&<div style={{fontSize:12,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>SEI {p.numeroSEI}</div>}</td>
         <td title={p.assunto||""} style={{padding:"10px 14px",color:K.txt,maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{p.assunto||"—"}</td>
-        <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div title={isA?(p.interessado||""):(p.tribunal||"")} style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div title={isA?(p.orgao||""):(p.parteContraria||"")} style={{fontSize:10,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
+        <td style={{padding:"10px 14px",color:K.dim,maxWidth:220}}><div title={isA?(p.interessado||""):(p.tribunal||"")} style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isA?(p.interessado||"—"):(p.tribunal||"—")}</div><div title={isA?(p.orgao||""):(p.parteContraria||"")} style={{fontSize:12,color:K.dim2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:2}}>{isA?(p.orgao||"—"):(p.parteContraria||"—")}</div></td>
         <td style={{padding:"10px 14px",color:K.dim}}>{fmt(p.prazoFinal)}</td>
         <td style={{padding:"10px 14px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:uC(p.diasRestantes)}}>{p.diasRestantes}</td>
         <td style={{padding:"10px 14px"}}><SB s={p.score}/></td>
@@ -6250,12 +6420,12 @@ const TodayPg=({st,dp,ss,sp})=>{
       </div>
     )}
     {/* v41 · Heatmap de produtividade · 14 colunas x 7 linhas (estilo GitHub) */}
-    <div style={{marginBottom:20,padding:"16px 18px",borderRadius:14,background:"linear-gradient(135deg,rgba(8,12,28,.6),rgba(2,5,15,.8))",border:"1px solid rgba(0,229,255,.15)"}}>
+    <div style={{marginBottom:20,padding:"16px 18px",borderRadius:14,background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.6),rgba(var(--cj-panelrgb),.8))",border:"1px solid rgba(var(--cj-acrgb),.15)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div className="cn-section-tag" style={{margin:0}}>▣ HEATMAP · ATIVIDADES POR DIA · 14 SEMANAS</div>
-        <div style={{display:"flex",gap:8,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--cn-dim2)",alignItems:"center"}}>
+        <div style={{display:"flex",gap:8,fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"var(--cn-dim2)",alignItems:"center"}}>
           <span>menos</span>
-          {[0.1,0.3,0.55,0.8,1].map(function(v,i){return <span key={i} style={{width:11,height:11,borderRadius:3,background:"color-mix(in srgb,var(--cn-ac) "+(v*100)+"%,rgba(255,255,255,.03))"}}/>;})}
+          {[0.1,0.3,0.55,0.8,1].map(function(v,i){return <span key={i} style={{width:11,height:11,borderRadius:3,background:"color-mix(in srgb,var(--cn-ac) "+(v*100)+"%,rgba(var(--cj-fgrgb),.03))"}}/>;})}
           <span>mais</span>
         </div>
       </div>
@@ -6272,38 +6442,112 @@ const TodayPg=({st,dp,ss,sp})=>{
         return cells;
       })()} cols={14}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
-      <SC icon={Flame} label="Vence Hoje" value={dueToday.length} color={K.cr} onClick={()=>dueToday[0]&&ss(dueToday[0])||sp("priorities")}/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}}>
+      <SC icon={Flame} label="Vence Hoje" value={dueToday.length} color={K.cr} onClick={()=>dueToday[0]?ss(dueToday[0]):sp("priorities")}/>
       <SC icon={CalendarDays} label="Próx. 3 dias" value={next3.length} color={K.wa} onClick={()=>sp("today")}/>
       <SC icon={Calendar} label="Reuniões Hoje" value={tdM.length} color={K.ac} onClick={()=>sp("agenda")}/>
       <SC icon={Gavel} label="Sustentações 7 dias" value={nextS.length} color={K.pu} onClick={()=>sp("agenda")}/>
-      <SC icon={AlertTriangle} label="Sem ação" value={noAction.length} color={K.wa} onClick={()=>noAction[0]&&ss(noAction[0])||sp("priorities")}/>
+      <SC icon={AlertTriangle} label="Sem ação" value={noAction.length} color={K.wa} onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr 1fr",gap:20}}>
+    <div className="cj-rgrid" style={{display:"grid",gridTemplateColumns:"1.3fr 1fr 1fr",gap:20}}>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         <Bx><SH icon={Target} title="Providências do Dia"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{tdI.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}{!tdI.length&&<div style={{textAlign:"center",padding:30,color:K.dim2}}>Nenhuma providência para hoje</div>}</div></Bx>
         <Bx><SH icon={Flame} title="Prazos até 3 dias corridos"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{next3.map(p=><PC key={p.id} item={p} onClick={ss} dp={dp}/>)}{!next3.length&&<div style={{textAlign:"center",padding:24,color:K.dim2}}>Sem prazos críticos imediatos</div>}</div></Bx>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <Bx onClick={()=>sp("agenda")} title="Abrir agenda"><SH icon={Calendar} title="Reuniões de Hoje"/>{tdM.map(r=><div key={r.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.acG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</div><div style={{fontSize:13,fontWeight:600,color:K.txt,marginTop:4}}>{r.titulo}</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>{r.local}</div>{r.checklist&&<div style={{marginTop:8}}><CL items={r.checklist} onToggle={i=>dp({type:"TCL",ky:"reun",eid:r.id,idx:i})}/></div>}</div>)}{!tdM.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Sem reuniões hoje</div>}</Bx>
-        <Bx><SH icon={Gavel} title="Sustentações próximas"/>{nextS.map(s=><div key={s.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.puG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</div><div style={{fontSize:13,fontWeight:600,color:K.txt,marginTop:4}}>{s.tema}</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>{s.tribunal} · {fmt(toD(s.data))}</div></div>)}{!nextS.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Sem sustentações próximas</div>}</Bx>
+        <Bx onClick={()=>sp("agenda")} title="Abrir agenda"><SH icon={Calendar} title="Reuniões de Hoje"/>{tdM.map(r=><div key={r.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.acG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginTop:4}}>{r.titulo}</div><div style={{fontSize:12,color:K.dim,marginTop:2}}>{r.local}</div>{r.checklist&&<div style={{marginTop:8}}><CL items={r.checklist} onToggle={i=>dp({type:"TCL",ky:"reun",eid:r.id,idx:i})}/></div>}</div>)}{!tdM.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Sem reuniões hoje</div>}</Bx>
+        <Bx><SH icon={Gavel} title="Sustentações próximas"/>{nextS.map(s=><div key={s.id} onClick={()=>sp("agenda")} style={{marginBottom:12,padding:12,background:K.puG,borderRadius:10,cursor:"pointer"}}><div style={{fontSize:16,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginTop:4}}>{s.tema}</div><div style={{fontSize:12,color:K.dim,marginTop:2}}>{s.tribunal} · {fmt(toD(s.data))}</div></div>)}{!nextS.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Sem sustentações próximas</div>}</Bx>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum processo sem ação</div>}</div></Bx>
-        <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando"><SH icon={Timer} title="Parados há 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{stale.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.03)"}}><div style={{fontSize:11,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:12,color:K.txt}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nada parado acima do limite</div>}</div></Bx>
+        <Bx onClick={()=>noAction[0]?ss(noAction[0]):sp("priorities")} title="Abrir prioridades"><SH icon={AlertTriangle} title="Sem próxima providência"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{noAction.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.03)"}}><div style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:13,color:K.txt}}>{p.assunto}</div></div>)}{!noAction.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Nenhum processo sem ação</div>}</div></Bx>
+        <Bx onClick={()=>stale[0]?ss(stale[0]):sp("waiting")} title="Abrir aguardando"><SH icon={Timer} title="Parados há 7+ dias"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{stale.slice(0,6).map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{cursor:"pointer",padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.03)"}}><div style={{fontSize:12,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{p.num||"Sem nº"}</div><div style={{fontSize:13,color:K.txt}}>{p.assunto}</div><div style={{fontSize:12,color:K.dim}}>{p.semMov} dias sem movimentação</div></div>)}{!stale.length&&<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Nada parado acima do limite</div>}</div></Bx>
       </div>
     </div>
   </div>
 )};
 
 /* WEEK */
-const WeekPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const wI=all.filter(p=>p.diasRestantes<=7).sort((a,b)=>b.score-a.score);const wM=st.reun.filter(r=>{const d=diffD(toD(r.data),NOW);return d>=0&&d<=7});const dL=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);const it=all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),d)===0);return{day:d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit"}),h:it.reduce((s,p)=>s+(parseFloat(p.estTempo)||2),0)}});return(
+/* ═══ v43 · PLANEJADOR DE CAPACIDADE SEMANAL ═══
+   Soma estTempo dos prazos da janela de 7 dias contra a capacidade semanal
+   configurável (localStorage cojur_cap_h). Aponta sobrecarga, distribui horas
+   por dia de prazo e sugere o que antecipar/renegociar. */
+const parseEstH=s=>{if(!s)return null;var m=String(s).toLowerCase().replace(",",".");var h=0,ok=false;var mh=m.match(/(\d+(?:\.\d+)?)\s*h/);if(mh){h+=parseFloat(mh[1]);ok=true;}var mm=m.match(/(\d+)\s*min/);if(mm){h+=parseInt(mm[1],10)/60;ok=true;}if(!ok){var mn=m.match(/^(\d+(?:\.\d+)?)$/);if(mn){h=parseFloat(mn[1]);ok=true;}}return ok?Math.max(0,h):null;};
+const CapacityPlanner=({st,ss})=>{
+  const [cap,setCap]=useState(()=>{try{var v=parseFloat(localStorage.getItem("cojur_cap_h"));return v>0?v:40;}catch(e){return 40;}});
+  const setCapSave=v=>{var n=Math.max(1,Math.min(120,parseFloat(v)||40));setCap(n);try{localStorage.setItem("cojur_cap_h",String(n));}catch(e){}};
+  const data=useMemo(()=>{
+    const off=["Concluído","Arquivado","Suspenso"];
+    const win=[...st.adm,...st.jud].filter(p=>!off.includes(p.status)&&p.prazoFinal&&p.diasRestantes<7);
+    let total=0;const noEst=[];const items=[];
+    win.forEach(p=>{const h=parseEstH(p.estTempo);if(h==null){noEst.push(p);}else{total+=h;items.push({p,h});}});
+    const days=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);const hs=items.filter(it=>it.p.diasRestantes>=0&&diffD(toD(it.p.prazoFinal),d)===0).reduce((s,it)=>s+it.h,0);return{lbl:i===0?"Hoje":d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".",""),iso:toISO(d)+"-"+i,h:hs};});
+    const late=items.filter(it=>it.p.diasRestantes<0).reduce((s,it)=>s+it.h,0);
+    items.sort((a,b)=>(b.p.diasRestantes-a.p.diasRestantes)||(a.p.score-b.p.score));
+    return{total,noEst,items,days,late};
+  },[st.adm,st.jud]);
+  const pct=cap>0?(data.total/cap)*100:0;
+  const stCol=pct>100?K.cr:pct>=80?K.wa:K.su;
+  const stLbl=pct>100?"Sobrecarga":pct>=80?"No limite":"Dentro da capacidade";
+  const excess=Math.max(0,data.total-cap);
+  const sugest=(()=>{if(excess<=0)return[];const r=[];let s=0;for(const it of data.items){if(it.p.diasRestantes<3)continue;r.push(it);s+=it.h;if(s>=excess)break;}return r;})();
+  const maxDay=Math.max(1,...data.days.map(d=>d.h),data.late);
+  const fmtH=h=>Math.round(h*10)/10;
+  return(
+  <Bx className="cj-up" style={{marginBottom:20}}>
+    <SH icon={Timer} title="Planejador de Capacidade" right={
+      <div style={{display:"flex",alignItems:"center",gap:8}} onClick={e=>e.stopPropagation()}>
+        <span style={{fontSize:12,color:K.dim}}>Capacidade semanal</span>
+        <input type="number" min={1} max={120} value={cap} onChange={e=>setCapSave(e.target.value)} aria-label="Capacidade semanal em horas" style={{width:64,padding:"5px 8px",borderRadius:8,border:`1px solid ${K.brd}`,background:"rgba(var(--cj-fgrgb),.04)",color:K.txt,fontSize:13,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
+        <span style={{fontSize:12,color:K.dim}}>h</span>
+      </div>}/>
+    <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap",marginBottom:10}}>
+      <span style={{fontSize:28,fontWeight:800,color:stCol,fontFamily:"'JetBrains Mono',monospace"}}>{fmtH(data.total)}h</span>
+      <span style={{fontSize:13,color:K.dim}}>de {cap}h · {data.items.length+data.noEst.length} prazos em 7 dias</span>
+      <Bd color={stCol}>{stLbl} · {Math.round(pct)}%</Bd>
+      {data.late>0&&<Bd color={K.cr}>{fmtH(data.late)}h já vencidas</Bd>}
+    </div>
+    <div style={{position:"relative",height:12,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",overflow:"hidden",marginBottom:16}} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div style={{height:"100%",width:Math.min(100,pct)+"%",borderRadius:999,background:stCol,opacity:.85,transition:"width .5s ease"}}/>
+      {pct>100&&<div style={{position:"absolute",right:0,top:0,bottom:0,width:Math.min(28,pct-100)+"%",background:`repeating-linear-gradient(45deg,${K.cr},${K.cr} 4px,transparent 4px,transparent 8px)`,opacity:.7}} title={`Excedente: ${fmtH(excess)}h`}/>}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+      <div>
+        <div style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:8}}>Horas por dia de prazo</div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:6,height:78}}>
+          {data.late>0&&<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}} title={`Vencidos: ${fmtH(data.late)}h`}><div style={{width:"100%",borderRadius:"6px 6px 0 0",background:K.cr,opacity:.8,height:Math.max(4,(data.late/maxDay)*54)}}/><span style={{fontSize:11,color:K.cr}}>Venc.</span></div>}
+          {data.days.map(d=><div key={d.iso} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}} title={`${d.lbl}: ${fmtH(d.h)}h`}><div style={{width:"100%",borderRadius:"6px 6px 0 0",background:d.h>cap/5?K.wa:K.ac,opacity:d.h?.8:.25,height:Math.max(4,(d.h/maxDay)*54)}}/><span style={{fontSize:11,color:K.dim2}}>{d.lbl}</span></div>)}
+        </div>
+        <div style={{fontSize:11,color:K.dim2,marginTop:6}}>Referência diária: {fmtH(cap/5)}h · barras âmbar excedem o dia</div>
+      </div>
+      <div>
+        <div style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:8}}>{excess>0?`Antecipe ou renegocie (${fmtH(excess)}h excedentes)`:"Maiores cargas da janela"}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {(excess>0?sugest:data.items.slice().sort((a,b)=>b.h-a.h).slice(0,3)).map(it=>(
+            <div key={it.p.id} onClick={e=>{e.stopPropagation();ss&&ss(it.p);}} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ss&&ss(it.p);}}} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:10,background:"rgba(var(--cj-fgrgb),.03)",border:`1px solid ${K.brd}`,cursor:"pointer"}}>
+              <span style={{fontSize:12,fontWeight:800,color:excess>0?K.wa:K.ac,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{fmtH(it.h)}h</span>
+              <span style={{fontSize:12,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}} title={it.p.assunto}>{it.p.assunto}</span>
+              <UB d={it.p.diasRestantes} prazoFinal={it.p.prazoFinal}/>
+            </div>))}
+          {excess>0&&!sugest.length&&<div style={{fontSize:12,color:K.dim}}>Todos os prazos excedentes estão a menos de 3 dias. Redistribua peças ou renegocie prazos.</div>}
+          {excess<=0&&!data.items.length&&<div style={{fontSize:12,color:K.dim}}>Nenhuma peça com estimativa de tempo na janela.</div>}
+        </div>
+        {data.noEst.length>0&&<div style={{marginTop:10,padding:"8px 10px",borderRadius:10,background:K.waG,border:`1px solid ${K.wa}33`}}>
+          <div style={{fontSize:11,fontWeight:700,color:K.wa,marginBottom:4}}>{data.noEst.length} prazo{data.noEst.length>1?"s":""} sem estimativa (fora da soma)</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{data.noEst.slice(0,4).map(p=><span key={p.id} onClick={e=>{e.stopPropagation();ss&&ss(p);}} style={{fontSize:11,color:K.wa,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}}>{(p.num||p.assunto||"").slice(0,24)}</span>)}{data.noEst.length>4&&<span style={{fontSize:11,color:K.dim}}>+{data.noEst.length-4}</span>}</div>
+        </div>}
+      </div>
+    </div>
+  </Bx>);
+};
+
+const WeekPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const wI=all.filter(p=>p.diasRestantes<=7).sort((a,b)=>b.score-a.score);const wM=st.reun.filter(r=>{const d=diffD(toD(r.data),NOW);return d>=0&&d<=7});const dL=Array.from({length:7},(_,i)=>{const d=addD(NOW,i);const it=all.filter(p=>p.dataProv&&diffD(toD(p.dataProv),d)===0);return{day:d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit"}),h:it.reduce((s,p)=>{var eh=parseEstH(p.estTempo);return s+(eh==null?2:eh);},0)}});return(
   <div className="cj-pg">
     <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Esta Semana</h2><Bd color={K.ac}>{wI.length} vencimentos</Bd><Bd color={K.wa}>{wM.length} reuniões</Bd></div>
-    <Bx className="cj-up" style={{marginBottom:20}} onClick={()=>sp("calendar")} title="Abrir calendário"><SH icon={Activity} title="Carga Diária"/><div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10}}>{dL.map((d,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:11,color:K.dim,marginBottom:6}}>{d.day}</div><div style={{height:80,background:"rgba(255,255,255,.03)",borderRadius:6,display:"flex",flexDirection:"column",justifyContent:"flex-end",overflow:"hidden"}}><div style={{height:`${Math.min(100,(d.h/8)*100)}%`,background:d.h>6?`linear-gradient(180deg,${K.cr},${K.cr}88)`:`linear-gradient(180deg,${K.ac},${K.ac}66)`,borderRadius:"4px 4px 0 0",transition:"height .6s ease"}}/></div><div style={{fontSize:13,fontWeight:700,color:d.h>6?K.cr:K.txt,marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>{d.h}h</div></div>)}</div></Bx>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-      <Bx onClick={()=>wI[0]?ss(wI[0]):sp("priorities")} title="Abrir ranking/prioridades"><SH icon={Flame} title="Ranking"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{wI.slice(0,8).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:i===0?K.crG:"transparent",borderRadius:10,cursor:"pointer"}} onMouseEnter={e=>{if(i)e.currentTarget.style.background="rgba(255,255,255,.03)"}} onMouseLeave={e=>{if(i)e.currentTarget.style.background="transparent"}}><div style={{width:24,height:24,borderRadius:6,background:i<3?K.cr+"20":K.ac+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:i<3?K.cr:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>#{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/></div></div>)}</div></Bx>
-      <Bx onClick={()=>sp("agenda")} title="Abrir agenda"><SH icon={Calendar} title="Compromissos da Semana"/>{wM.map(r=><div key={r.id} onClick={e=>{e.stopPropagation();sp("agenda")}} style={{padding:"10px 0",borderBottom:`1px solid ${K.brd}`,display:"flex",gap:12,alignItems:"center",cursor:"pointer"}}><div style={{textAlign:"center",minWidth:50}}><div style={{fontSize:11,color:K.dim}}>{fmtS(toD(r.data))}</div><div style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</div></div><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:K.txt}}>{r.titulo}</div><div style={{fontSize:11,color:K.dim}}>{r.local}</div></div></div>)}</Bx>
+    <CapacityPlanner st={st} ss={ss}/>
+    <Bx className="cj-up" style={{marginBottom:20}} onClick={()=>sp("calendar")} title="Abrir calendário"><SH icon={Activity} title="Carga Diária"/><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10}}>{dL.map((d,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:12,color:K.dim,marginBottom:6}}>{d.day}</div><div style={{height:80,background:"rgba(var(--cj-fgrgb),.03)",borderRadius:6,display:"flex",flexDirection:"column",justifyContent:"flex-end",overflow:"hidden"}}><div style={{height:`${Math.min(100,(d.h/8)*100)}%`,background:d.h>6?`linear-gradient(180deg,${K.cr},${K.cr}88)`:`linear-gradient(180deg,${K.ac},${K.ac}66)`,borderRadius:"4px 4px 0 0",transition:"height .6s ease"}}/></div><div style={{fontSize:14,fontWeight:700,color:d.h>6?K.cr:K.txt,marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>{d.h}h</div></div>)}</div></Bx>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:20}}>
+      <Bx onClick={()=>wI[0]?ss(wI[0]):sp("priorities")} title="Abrir ranking/prioridades"><SH icon={Flame} title="Ranking"/><div className="cj-st" style={{display:"flex",flexDirection:"column",gap:8}}>{wI.slice(0,8).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:i===0?K.crG:"transparent",borderRadius:10,cursor:"pointer"}} onMouseEnter={e=>{if(i)e.currentTarget.style.background="rgba(var(--cj-fgrgb),.03)"}} onMouseLeave={e=>{if(i)e.currentTarget.style.background="transparent"}}><div style={{width:24,height:24,borderRadius:6,background:i<3?K.cr+"20":K.ac+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:i<3?K.cr:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>#{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/></div></div>)}</div></Bx>
+      <Bx onClick={()=>sp("agenda")} title="Abrir agenda"><SH icon={Calendar} title="Compromissos da Semana"/>{wM.map(r=><div key={r.id} onClick={e=>{e.stopPropagation();sp("agenda")}} style={{padding:"10px 0",borderBottom:`1px solid ${K.brd}`,display:"flex",gap:12,alignItems:"center",cursor:"pointer"}}><div style={{textAlign:"center",minWidth:50}}><div style={{fontSize:12,color:K.dim}}>{fmtS(toD(r.data))}</div><div style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</div></div><div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:K.txt}}>{r.titulo}</div><div style={{fontSize:12,color:K.dim}}>{r.local}</div></div></div>)}</Bx>
     </div>
   </div>
 )};
@@ -6312,8 +6556,8 @@ const WeekPg=({st,dp,ss,sp})=>{const all=[...st.adm,...st.jud];const wI=all.filt
 const PrioPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].sort((a,b)=>b.score-a.score);return(
   <div className="cj-pg"><div className="cj-up" style={{marginBottom:24}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Prioridades Estratégicas</h2></div>
     <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{all.slice(0,15).map((p,i)=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:K.card,border:`1px solid ${K.brd}`,borderRadius:12,borderLeft:`3px solid ${uC(p.diasRestantes)}`,cursor:"pointer",transition:"all .25s"}} onMouseEnter={e=>{e.currentTarget.style.background=K.cardH;e.currentTarget.style.transform="translateX(4px)"}} onMouseLeave={e=>{e.currentTarget.style.background=K.card;e.currentTarget.style.transform="none"}}>
-      <div style={{width:32,height:32,borderRadius:8,background:i<3?K.crG:i<7?K.waG:K.acG,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:i<3?K.cr:i<7?K.wa:K.ac,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>#{i+1}</div>
-      <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:8,marginBottom:4}}><span style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</span><Bd>{p.tipo==="jud"?"Judicial":"Admin"}</Bd>{p.tipo==="jud"&&<Bd color={K.pu}>{p.tribunal}</Bd>}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{p.assunto}</div><div style={{fontSize:11,color:K.dim2}}>Próxima: {p.proxProv}</div></div>
+      <div style={{width:32,height:32,borderRadius:8,background:i<3?K.crG:i<7?K.waG:K.acG,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:i<3?K.cr:i<7?K.wa:K.ac,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>#{i+1}</div>
+      <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:8,marginBottom:4}}><span style={{fontSize:13,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</span><Bd>{p.tipo==="jud"?"Judicial":"Admin"}</Bd>{p.tipo==="jud"&&<Bd color={K.pu}>{p.tribunal}</Bd>}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{p.assunto}</div><div style={{fontSize:12,color:K.dim2}}>Próxima: {p.proxProv}</div></div>
       <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}} onClick={e=>e.stopPropagation()}><SB s={p.score}/><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/><IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{fase:v}})} color={K.ac}/></div>
     </div>)}</div>
   </div>
@@ -6323,8 +6567,8 @@ const PrioPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].sort((a,b)=>b.score-
 const WaitPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].filter(p=>p.depTerc).sort((a,b)=>b.semMov-a.semMov);return(
   <div className="cj-pg"><div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Aguardando Terceiros</h2><Bd color={K.wa}>{all.length}</Bd></div>
     <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{all.map(p=><div key={p.id} onClick={e=>{e.stopPropagation();ss(p)}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:K.card,border:`1px solid ${K.brd}`,borderRadius:12,borderLeft:`3px solid ${p.semMov>=15?K.cr:K.wa}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=K.cardH} onMouseLeave={e=>e.currentTarget.style.background=K.card}>
-      <div style={{width:48,height:48,borderRadius:10,background:p.semMov>=15?K.crG:K.waG,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{fontSize:18,fontWeight:800,color:p.semMov>=15?K.cr:K.wa,fontFamily:"'JetBrains Mono',monospace"}}>{p.semMov}</div><div style={{fontSize:9,color:K.dim,textTransform:"uppercase"}}>dias</div></div>
-      <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginTop:2}}>{p.assunto}</div></div>
+      <div style={{width:48,height:48,borderRadius:10,background:p.semMov>=15?K.crG:K.waG,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{fontSize:18,fontWeight:800,color:p.semMov>=15?K.cr:K.wa,fontFamily:"'JetBrains Mono',monospace"}}>{p.semMov}</div><div style={{fontSize:11,color:K.dim,textTransform:"uppercase"}}>dias</div></div>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num}</div><div style={{fontSize:14,fontWeight:600,color:K.txt,marginTop:2}}>{p.assunto}</div></div>
       <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}} onClick={e=>e.stopPropagation()}><UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><DoneBtn small onClick={()=>dp({type:"COMPLETE_P",id:p.id})}/>{p.semMov>=10&&<Bd color={K.cr}><AlertTriangle size={10}/>Cobrar</Bd>}<IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:v}})}/></div>
     </div>)}</div>
   </div>
@@ -6334,28 +6578,28 @@ const WaitPg=({st,dp,ss})=>{const all=[...st.adm,...st.jud].filter(p=>p.depTerc)
 const InboxPg=({st,dp})=>{const[nt,sNt]=useState(""),[np,sNp]=useState("Média");const add=()=>{if(!nt.trim())return;dp({type:"ADD_I",d:{desc:nt,origem:"Manual",data:NOW,prio:np}});sNt("")};return(
   <div className="cj-pg"><div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}><h2 style={{margin:0,fontSize:22,fontWeight:700,color:K.txt}}>Caixa de Entrada</h2><Bd color={K.ac}>{st.inbox.length}</Bd></div>
     <Bx className="cj-up" style={{marginBottom:20}}><div style={{display:"flex",gap:10}}><input style={inpSt} value={nt} onChange={e=>sNt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Nova demanda..."/><select style={{...inpSt,width:100}} value={np} onChange={e=>sNp(e.target.value)}><option value="Alta">Alta</option><option value="Média">Média</option><option value="Baixa">Baixa</option></select><button style={btnPrim} onClick={add}><Plus size={14}/>Adicionar</button></div></Bx>
-    <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.inbox.map(ce=><Bx key={ce.id} style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14}}><div style={{width:10,height:10,borderRadius:"50%",background:ce.prio==="Alta"?K.cr:ce.prio==="Média"?K.wa:K.dim2,flexShrink:0}}/><div style={{flex:1}}><div style={{fontSize:14,fontWeight:500,color:K.txt}}>{ce.desc}</div><div style={{fontSize:11,color:K.dim,marginTop:4}}>{ce.origem} · {fmt(toD(ce.data))}</div></div><Bd color={ce.prio==="Alta"?K.cr:ce.prio==="Média"?K.wa:K.dim2}>{ce.prio}</Bd><button onClick={()=>dp({type:"DEL_I",id:ce.id})} style={{...btnGhost,padding:"4px 8px"}}><Trash2 size={12}/></button></Bx>)}</div>
+    <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.inbox.map(ce=><Bx key={ce.id} style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14}}><div style={{width:10,height:10,borderRadius:"50%",background:ce.prio==="Alta"?K.cr:ce.prio==="Média"?K.wa:K.dim2,flexShrink:0}}/><div style={{flex:1}}><div style={{fontSize:14,fontWeight:500,color:K.txt}}>{ce.desc}</div><div style={{fontSize:12,color:K.dim,marginTop:4}}>{ce.origem} · {fmt(toD(ce.data))}</div></div><Bd color={ce.prio==="Alta"?K.cr:ce.prio==="Média"?K.wa:K.dim2}>{ce.prio}</Bd><button onClick={()=>dp({type:"DEL_I",id:ce.id})} style={{...btnGhost,padding:"4px 8px"}}><Trash2 size={12}/></button></Bx>)}</div>
   </div>
 )};
 
 /* AGENDA */
 const AgendaPg=({st,dp,sp})=>{const[sR,sSR]=useState(null),[sS,sSS]=useState(null),[sV,sSV]=useState(null);return(
-  <div className="cj-pg"><div className="cj-up" style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><CFMMark size={34}/><div><h2 style={{margin:0,fontSize:22,fontWeight:800,color:K.txt}}>Agenda Institucional</h2><div style={{fontSize:11,color:K.dim}}>Reuniões, sustentações e viagens em formato executivo</div></div></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
-      <div><SH icon={Calendar} title="Reuniões" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:11}} onClick={()=>sSR("new")}><Plus size={12}/>Nova</button>}/>
-        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.reun.map(r=><Bx key={r.id} onClick={()=>sSR(r)} title="Abrir reunião" style={{borderLeft:`3px solid ${K.ac}`,borderRadius:18,background:"linear-gradient(180deg,rgba(6,182,212,.09),rgba(255,255,255,.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();sSR(r)}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><PenLine size={12}/></button><span style={{fontSize:11,color:K.dim}}>{fmt(toD(r.data))}</span></div></div>
-          <div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{r.titulo}</div><div style={{fontSize:11,color:K.dim,marginBottom:8}}>{r.local}</div>
+  <div className="cj-pg"><div className="cj-up" style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><CFMMark size={34}/><div><h2 style={{margin:0,fontSize:22,fontWeight:800,color:K.txt}}>Agenda Institucional</h2><div style={{fontSize:12,color:K.dim}}>Reuniões, sustentações e viagens em formato executivo</div></div></div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
+      <div><SH icon={Calendar} title="Reuniões" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:12}} onClick={()=>sSR("new")}><Plus size={12}/>Nova</button>}/>
+        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.reun.map(r=><Bx key={r.id} onClick={()=>sSR(r)} title="Abrir reunião" style={{borderLeft:`3px solid ${K.ac}`,borderRadius:18,background:"linear-gradient(180deg,rgba(6,182,212,.09),rgba(var(--cj-fgrgb),.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:700,color:K.ac,fontFamily:"'JetBrains Mono',monospace"}}>{r.hora}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();sSR(r)}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><PenLine size={12}/></button><span style={{fontSize:12,color:K.dim}}>{fmt(toD(r.data))}</span></div></div>
+          <div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{r.titulo}</div><div style={{fontSize:12,color:K.dim,marginBottom:8}}>{r.local}</div>
           {r.checklist&&r.checklist.length>0&&<div style={{borderTop:`1px solid ${K.brd}`,paddingTop:8}}><CL items={r.checklist} onToggle={i=>dp({type:"TCL",ky:"reun",eid:r.id,idx:i})}/></div>}
         </Bx>)}</div>
       </div>
-      <div><SH icon={Gavel} title="Sustentações" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:11}} onClick={()=>sSS("new")}><Plus size={12}/>Nova</button>}/>
-        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.sust.map(s=><Bx key={s.id} onClick={()=>sSS(s)} title="Abrir sustentação" style={{borderLeft:`3px solid ${K.pu}`,borderRadius:18,background:"linear-gradient(180deg,rgba(139,92,246,.09),rgba(255,255,255,.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();sSS(s)}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><PenLine size={12}/></button><Bd color={K.pu}>{diffD(toD(s.data),NOW)}d</Bd></div></div>
-          <div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{s.tema}</div><div style={{fontSize:11,color:K.dim,marginBottom:8}}>{s.tribunal}</div>
+      <div><SH icon={Gavel} title="Sustentações" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:12}} onClick={()=>sSS("new")}><Plus size={12}/>Nova</button>}/>
+        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.sust.map(s=><Bx key={s.id} onClick={()=>sSS(s)} title="Abrir sustentação" style={{borderLeft:`3px solid ${K.pu}`,borderRadius:18,background:"linear-gradient(180deg,rgba(139,92,246,.09),rgba(var(--cj-fgrgb),.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:700,color:K.pu,fontFamily:"'JetBrains Mono',monospace"}}>{s.hora}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();sSS(s)}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><PenLine size={12}/></button><Bd color={K.pu}>{diffD(toD(s.data),NOW)}d</Bd></div></div>
+          <div style={{fontSize:14,fontWeight:600,color:K.txt,marginBottom:4}}>{s.tema}</div><div style={{fontSize:12,color:K.dim,marginBottom:8}}>{s.tribunal}</div>
           {s.checklist&&s.checklist.length>0&&<div style={{borderTop:`1px solid ${K.brd}`,paddingTop:8}}><CL items={s.checklist} onToggle={i=>dp({type:"TCL",ky:"sust",eid:s.id,idx:i})}/></div>}
         </Bx>)}</div>
       </div>
-      <div><SH icon={Plane} title="Viagens" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:11}} onClick={()=>sSV("new")}><Plus size={12}/>Nova</button>}/>
-        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.viag.map(v=><Bx key={v.id} onClick={()=>sSV(v)} title="Abrir viagem" style={{borderLeft:`3px solid ${K.su}`,borderRadius:18,background:"linear-gradient(180deg,rgba(16,185,129,.09),rgba(255,255,255,.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><Bd color={K.su}><MapPin size={10}/>{v.destino}</Bd><button onClick={e=>{e.stopPropagation();dp({type:"DEL_V",id:v.id})}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><Trash2 size={12}/></button></div><div style={{fontSize:12,color:K.txt,marginTop:8}}>{v.motivo}</div><div style={{fontSize:11,color:K.dim,marginTop:4}}>{fmt(toD(v.dataIda))} → {fmt(toD(v.dataVolta))}</div></Bx>)}</div>
+      <div><SH icon={Plane} title="Viagens" right={<button style={{...btnPrim,padding:"4px 12px",fontSize:12}} onClick={()=>sSV("new")}><Plus size={12}/>Nova</button>}/>
+        <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:10}}>{st.viag.map(v=><Bx key={v.id} onClick={()=>sSV(v)} title="Abrir viagem" style={{borderLeft:`3px solid ${K.su}`,borderRadius:18,background:"linear-gradient(180deg,rgba(16,185,129,.09),rgba(var(--cj-fgrgb),.02))"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><Bd color={K.su}><MapPin size={10}/>{v.destino}</Bd><button onClick={e=>{e.stopPropagation();dp({type:"DEL_V",id:v.id})}} style={{background:"none",border:"none",color:K.dim,cursor:"pointer"}}><Trash2 size={12}/></button></div><div style={{fontSize:13,color:K.txt,marginTop:8}}>{v.motivo}</div><div style={{fontSize:12,color:K.dim,marginTop:4}}>{fmt(toD(v.dataIda))} → {fmt(toD(v.dataVolta))}</div></Bx>)}</div>
       </div>
     </div>
     {sR!==null&&<FM key={sR==="new"?"nr":sR.id} title={sR==="new"?"Nova Reunião":"Editar Reunião"} fields={F_REUN} initial={sR==="new"?{data:addD(NOW,1),hora:"14:00"}:sR} onClose={()=>sSR(null)} onSave={f=>{if(sR==="new")dp({type:"ADD_R",d:f});else dp({type:"UPD_R",id:sR.id,ch:f});sSR(null)}} onDelete={sR!=="new"?()=>{dp({type:"DEL_R",id:sR.id});sSR(null)}:undefined}/>}
@@ -6366,13 +6610,13 @@ const AgendaPg=({st,dp,sp})=>{const[sR,sSR]=useState(null),[sS,sSS]=useState(nul
 
 /* CALENDAR */
 const CAL_TIPOS = {
-  "reuniao":    {emoji:"📅", cor:"#00e5ff",  bg:"rgba(0,229,255,.18)",  brd:"rgba(0,229,255,.6)",  label:"Reunião"},
-  "sust":       {emoji:"⚖️",  cor:"#b84dff",  bg:"rgba(184,77,255,.18)", brd:"rgba(184,77,255,.6)",  label:"Sustentação Oral"},
-  "viagem":     {emoji:"✈️",  cor:"#00ff88",  bg:"rgba(0,255,136,.18)",  brd:"rgba(0,255,136,.5)",  label:"Viagem"},
-  "lembrete":   {emoji:"⏰",  cor:"#ffb800",  bg:"rgba(255,184,0,.18)",  brd:"rgba(255,184,0,.55)", label:"Lembrete"},
-  "prazo_crit": {emoji:"🔥",  cor:"#ff2e5b",  bg:"rgba(255,46,91,.18)",  brd:"rgba(255,46,91,.6)",  label:"Prazo Crítico"},
-  "prazo_med":  {emoji:"⚡",  cor:"#ffb800",  bg:"rgba(255,184,0,.12)",  brd:"rgba(255,184,0,.4)",  label:"Prazo"},
-  "prazo_ok":   {emoji:"📋",  cor:"#00e5ff",  bg:"rgba(0,229,255,.08)",  brd:"rgba(0,229,255,.3)",  label:"Prazo"},
+  "reuniao":    {emoji:"📅", cor:"var(--cj-ac)",  bg:"rgba(var(--cj-acrgb),.18)",  brd:"rgba(var(--cj-acrgb),.6)",  label:"Reunião"},
+  "sust":       {emoji:"⚖️",  cor:"var(--cj-pu)",  bg:"rgba(var(--cj-purgb),.18)", brd:"rgba(var(--cj-purgb),.6)",  label:"Sustentação Oral"},
+  "viagem":     {emoji:"✈️",  cor:"var(--cj-su)",  bg:"rgba(var(--cj-surgb),.18)",  brd:"rgba(var(--cj-surgb),.5)",  label:"Viagem"},
+  "lembrete":   {emoji:"⏰",  cor:"var(--cj-wa)",  bg:"rgba(var(--cj-wargb),.18)",  brd:"rgba(var(--cj-wargb),.55)", label:"Lembrete"},
+  "prazo_crit": {emoji:"🔥",  cor:"var(--cj-cr)",  bg:"rgba(var(--cj-crrgb),.18)",  brd:"rgba(var(--cj-crrgb),.6)",  label:"Prazo Crítico"},
+  "prazo_med":  {emoji:"⚡",  cor:"var(--cj-wa)",  bg:"rgba(var(--cj-wargb),.12)",  brd:"rgba(var(--cj-wargb),.4)",  label:"Prazo"},
+  "prazo_ok":   {emoji:"📋",  cor:"var(--cj-ac)",  bg:"rgba(var(--cj-acrgb),.08)",  brd:"rgba(var(--cj-acrgb),.3)",  label:"Prazo"},
 };
 
 function CalPg({st}){
@@ -6391,9 +6635,11 @@ function CalPg({st}){
     all.forEach(function(p){
       var pf=toD(p.prazoFinal);
       if(sameDay(pf,d)){
-        var dr=p.diasRestantes||0;
-        var tipo=dr<=5?"prazo_crit":dr<=15?"prazo_med":"prazo_ok";
-        ev.push({tipo:tipo,l:p.assunto,c:CAL_TIPOS[tipo].cor,emoji:CAL_TIPOS[tipo].emoji,destaque:dr<=5});
+        /* v44 FIX: ||0 pintava processo SEM diasRestantes como critico (🔥).
+           Sem info de dias -> tratamos como neutro (prazo_ok). */
+        var dr=(typeof p.diasRestantes==="number"&&isFinite(p.diasRestantes))?p.diasRestantes:null;
+        var tipo=dr===null?"prazo_ok":dr<=5?"prazo_crit":dr<=15?"prazo_med":"prazo_ok";
+        ev.push({tipo:tipo,l:p.assunto,c:CAL_TIPOS[tipo].cor,emoji:CAL_TIPOS[tipo].emoji,destaque:dr!==null&&dr<=5});
       }
     });
     // Reuniões
@@ -6433,10 +6679,10 @@ function CalPg({st}){
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:sd?"1fr 300px":"1fr",gap:16,alignItems:"start"}}>
-        <div style={{background:"linear-gradient(135deg,rgba(2,5,20,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.1)",borderRadius:20,overflow:"auto",boxShadow:"0 20px 50px rgba(0,0,0,.5)"}}>
+        <div style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.1)",borderRadius:20,overflow:"auto",boxShadow:"0 20px 50px rgba(0,0,0,.5)"}}>
           <div style={{minWidth:560}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
-              {DAYS.map(function(d){return <div key={d} style={{padding:"10px 6px",textAlign:"center",fontSize:10,fontWeight:700,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1px solid rgba(0,229,255,.12)",background:"rgba(0,229,255,.025)"}}>{d}</div>;})}
+              {DAYS.map(function(d){return <div key={d} style={{padding:"10px 6px",textAlign:"center",fontSize:12,fontWeight:700,color:K.dim,textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1px solid rgba(var(--cj-acrgb),.12)",background:"rgba(var(--cj-acrgb),.025)"}}>{d}</div>;})}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(70px,1fr))"}}>
               {Array.from({length:fd},function(_,i){return <div key={"e"+i} style={{padding:4,minHeight:90,borderBottom:"1px solid "+K.brd,borderRight:"1px solid "+K.brd,background:"rgba(0,0,0,.15)"}}/>;})}
@@ -6446,16 +6692,16 @@ function CalPg({st}){
                 var isS=sd===day;
                 var hasDest=ev.some(function(e){return e.destaque;});
                 var topEv=ev[0]||null;
-                var cellBg=isS?"rgba(0,229,255,.18)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].bg:"transparent";
-                var cellBrd=isS?"rgba(0,229,255,.5)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].brd:K.brd;
+                var cellBg=isS?"rgba(var(--cj-acrgb),.18)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].bg:"transparent";
+                var cellBrd=isS?"rgba(var(--cj-acrgb),.5)":hasDest&&topEv?CAL_TIPOS[topEv.tipo].brd:K.brd;
                 var cellShadow=hasDest&&topEv?"inset 0 0 0 2px "+CAL_TIPOS[topEv.tipo].brd+", 0 0 18px "+topEv.c+"30":"none";
                 return(
                   <div key={day} className="cj-cal-cell" onClick={function(){sSd(day===sd?null:day);}} style={{padding:"4px 5px 5px",minHeight:90,borderBottom:"1px solid "+cellBrd,borderRight:"1px solid "+K.brd,background:cellBg,boxSizing:"border-box",boxShadow:cellShadow,transition:"all .18s",position:"relative",overflow:"hidden"}}>
                     {hasDest&&topEv&&<div style={{position:"absolute",inset:"0 0 auto 0",height:"3px",background:topEv.c,boxShadow:"0 0 8px "+topEv.c,borderRadius:"2px 2px 0 0",pointerEvents:"none"}}/>}
-                    <div style={{fontSize:11,fontWeight:isT?800:400,color:isT?K.ac:hasDest&&topEv?topEv.c:K.txt,marginBottom:2,display:"flex",alignItems:"center",gap:2}}>
+                    <div style={{fontSize:12,fontWeight:isT?800:400,color:isT?K.ac:hasDest&&topEv?topEv.c:K.txt,marginBottom:2,display:"flex",alignItems:"center",gap:2}}>
                       {isT&&<div style={{width:7,height:7,borderRadius:"50%",background:K.ac,boxShadow:"0 0 8px "+K.ac,flexShrink:0}}/>}
                       <span>{day}</span>
-                      {ev.length>0&&<span style={{marginLeft:"auto",fontSize:9,fontWeight:800,color:hasDest&&topEv?topEv.c:K.dim,background:"rgba(0,0,0,.3)",borderRadius:5,padding:"0 4px",lineHeight:"14px"}}>{ev.length}</span>}
+                      {ev.length>0&&<span style={{marginLeft:"auto",fontSize:11,fontWeight:800,color:hasDest&&topEv?topEv.c:K.dim,background:"rgba(0,0,0,.3)",borderRadius:5,padding:"0 4px",lineHeight:"14px"}}>{ev.length}</span>}
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:2}}>
                       {ev.slice(0,3).map(function(e,ei){
@@ -6463,7 +6709,7 @@ function CalPg({st}){
                         var isBig=e.destaque&&ei===0;
                         return <div key={ei} style={{fontSize:isBig?9:8,padding:isBig?"2px 4px":"1px 3px",borderRadius:4,background:isBig?tp.bg:e.c+"18",color:e.c,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:isBig?800:600,borderLeft:(isBig?"3px":"2px")+" solid "+e.c,lineHeight:"14px",boxShadow:isBig?"0 0 6px "+e.c+"40":"none"}}>{e.emoji+" "+e.l}</div>;
                       })}
-                      {ev.length>3&&<div style={{fontSize:8,color:K.dim2,paddingLeft:2}}>+{ev.length-3}</div>}
+                      {ev.length>3&&<div style={{fontSize:11,color:K.dim2,paddingLeft:2}}>+{ev.length-3}</div>}
                     </div>
                   </div>
                 );
@@ -6482,18 +6728,18 @@ function CalPg({st}){
               <div key={i} style={{padding:"12px 14px",marginBottom:8,borderRadius:12,background:t.bg,border:"1px solid "+t.brd,boxShadow:"0 0 14px "+e.c+"20"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
                   <span style={{fontSize:18}}>{e.emoji}</span>
-                  <span style={{fontSize:10,fontWeight:800,color:e.c,textTransform:"uppercase",letterSpacing:".5px",fontFamily:"Orbitron,sans-serif"}}>{t.label}</span>
+                  <span style={{fontSize:12,fontWeight:800,color:e.c,textTransform:"uppercase",letterSpacing:".5px",fontFamily:"Orbitron,sans-serif"}}>{t.label}</span>
                 </div>
-                <div style={{fontSize:13,fontWeight:700,color:K.txt,lineHeight:1.4}}>{e.l}</div>
+                <div style={{fontSize:14,fontWeight:700,color:K.txt,lineHeight:1.4}}>{e.l}</div>
               </div>
             );
-          }):<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:12}}>Nenhum evento neste dia</div>}
+          }):<div style={{textAlign:"center",padding:20,color:K.dim2,fontSize:13}}>Nenhum evento neste dia</div>}
         </Bx>}
       </div>
       <div style={{display:"flex",gap:14,marginTop:16,justifyContent:"center",flexWrap:"wrap"}}>
         {[["reuniao","Reunião"],["sust","Sustentação Oral"],["viagem","Viagem"],["lembrete","Lembrete"],["prazo_crit","Prazo Crítico"],["prazo_med","Prazo"]].map(function(item){
           var t=CAL_TIPOS[item[0]];
-          return <div key={item[0]} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:K.dim}}>
+          return <div key={item[0]} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:K.dim}}>
             <div style={{width:18,height:12,borderRadius:3,background:t.bg,border:"2px solid "+t.brd,boxShadow:"0 0 6px "+t.cor+"40"}}/>
             <span>{t.emoji} {item[1]}</span>
           </div>;
@@ -6523,39 +6769,39 @@ const AnalPg=({st})=>{
     });
   return(
   <div className="cj-pg"><h2 className="cj-up" style={{margin:"0 0 24px",fontSize:22,fontWeight:700,color:K.txt}}>Analytics</h2>
-    <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",gap:12,marginBottom:24}}>{mt.map((m,i)=><Bx key={i} style={{padding:"14px 16px"}}><div style={{fontSize:11,color:K.dim,marginBottom:8,fontWeight:500,textTransform:"uppercase"}}>{m.l}</div><div style={{fontSize:26,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div></Bx>)}</div>
+    <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",gap:12,marginBottom:24}}>{mt.map((m,i)=><Bx key={i} style={{padding:"14px 16px"}}><div style={{fontSize:12,color:K.dim,marginBottom:8,fontWeight:500,textTransform:"uppercase"}}>{m.l}</div><div style={{fontSize:26,fontWeight:700,color:m.c,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div></Bx>)}</div>
     {/* v41 · TorresPrazo no Analytics · topografia 3D dos top 8 mais urgentes */}
     {cnTorres.length>0 && (
       <div style={{marginBottom:24}}>
         <TorresPrazo data={cnTorres}/>
       </div>
     )}
-    <Bx><SH icon={BarChart3} title="Por Fase de Trabalho"/><ResponsiveContainer width="100%" height={250}><BarChart data={phD} layout="vertical" barSize={14}><XAxis type="number" tick={{fill:K.dim2,fontSize:10}} axisLine={false} tickLine={false}/><YAxis dataKey="name" type="category" tick={{fill:K.dim,fontSize:10}} width={100} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:12}}/><Bar dataKey="adm" fill={K.ac} name="Admin" radius={[0,4,4,0]}/><Bar dataKey="jud" fill={K.pu} name="Judicial" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></Bx>
+    <Bx><SH icon={BarChart3} title="Por Fase de Trabalho"/><ResponsiveContainer width="100%" height={250}><BarChart data={phD} layout="vertical" barSize={14}><XAxis type="number" tick={{fill:K.dim2,fontSize:12}} axisLine={false} tickLine={false}/><YAxis dataKey="name" type="category" tick={{fill:K.dim,fontSize:12}} width={100} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:K.modal,border:`1px solid ${K.brd}`,borderRadius:8,color:K.txt,fontSize:13}}/><Bar dataKey="adm" fill={K.ac} name="Admin" radius={[0,4,4,0]}/><Bar dataKey="jud" fill={K.pu} name="Judicial" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></Bx>
   </div>
 )};
 
 /* DETAIL MODAL */
 function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=dProps.onEdit,setDjeProc=dProps.setDjeProc,st=dProps.st,ss=dProps.ss;if(!p)return null;const isJ=p.tipo==="jud",isA=p.tipo==="adm";const accent=uC(p.diasRestantes);return(
-  <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(2,6,23,.78)",backdropFilter:"blur(10px)",zIndex:1000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"34px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)oc()}}>
-    <div className="cj-sc cj-soft" style={{background:"linear-gradient(180deg,rgba(13,18,35,.98),rgba(8,12,24,.98))",border:`1px solid ${accent}28`,borderRadius:28,width:"100%",maxWidth:1080,padding:0,position:"relative",overflow:"hidden"}}>
+  <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(var(--cj-panelrgb),.78)",backdropFilter:"blur(10px)",zIndex:1000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"34px 20px",overflowY:"auto"}} onClick={e=>{if(e.target===e.currentTarget)oc()}}>
+    <div className="cj-sc cj-soft" style={{background:"linear-gradient(180deg,rgba(var(--cj-panelrgb),.98),rgba(var(--cj-panelrgb),.98))",border:`1px solid ${accent}28`,borderRadius:28,width:"100%",maxWidth:1080,padding:0,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:"0 0 auto 0",height:1,background:`linear-gradient(90deg,transparent,${accent},transparent)`}}/>
-      <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${K.brd}55`,background:"rgba(2,6,16,.45)",display:"flex",justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap",gap:8}}>
+      <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${K.brd}55`,background:"rgba(var(--cj-panelrgb),.45)",display:"flex",justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <DoneBtn onClick={()=>{dp({type:"COMPLETE_P",id:p.id});oc();}}/>
-        {p.linkSEI&&<button onClick={function(){window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(0,229,255,.3)",background:"rgba(0,229,255,.08)",color:"#00e5ff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 14px rgba(0,229,255,.18)",textShadow:"0 0 6px rgba(0,229,255,.6)",fontFamily:"inherit"}}>🗂️ Processo SEI</button>}
-        {!isJ&&React.createElement(function(){var[showP,sShowP]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(){sShowP(true);},style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(184,77,255,.32)",background:"rgba(184,77,255,.08)",color:"#b84dff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(184,77,255,.16)",fontFamily:"inherit"}},"📋 Elaborar Parecer"),showP&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShowP(false);}}));},null)}
-        {React.createElement(function(){var[showTpl,sShowTpl]=useState(false);return(<><button onClick={()=>sShowTpl(true)} style={{...btnGhost,padding:"8px 12px",color:"#b84dff",borderColor:"rgba(184,77,255,.3)"}}><Zap size={14}/>IA Estrutura</button>{showTpl&&<IATplModal proc={p} onClose={()=>sShowTpl(false)}/>}</>);})}
+        {p.linkSEI&&<button onClick={function(){window.open(p.linkSEI,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(var(--cj-acrgb),.3)",background:"rgba(var(--cj-acrgb),.08)",color:"var(--cj-ac)",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 0 14px rgba(var(--cj-acrgb),.18)",textShadow:"0 0 6px rgba(var(--cj-acrgb),.6)",fontFamily:"inherit"}}>🗂️ Processo SEI</button>}
+        {!isJ&&React.createElement(CjInline,{fn:function(){var[showP,sShowP]=useState(false);return React.createElement(React.Fragment,null,React.createElement("button",{onClick:function(){sShowP(true);},style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:12,border:"1px solid rgba(var(--cj-purgb),.32)",background:"rgba(var(--cj-purgb),.08)",color:"var(--cj-pu)",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(var(--cj-purgb),.16)",fontFamily:"inherit"}},"📋 Elaborar Parecer"),showP&&React.createElement(ParecerModal,{proc:p,onClose:function(){sShowP(false);}}));}})}
+        {React.createElement(CjInline,{fn:function(){var[showTpl,sShowTpl]=useState(false);return(<><button onClick={()=>sShowTpl(true)} style={{...btnGhost,padding:"8px 12px",color:"var(--cj-pu)",borderColor:"rgba(var(--cj-purgb),.3)"}}><Zap size={14}/>IA Estrutura</button>{showTpl&&<IATplModal proc={p} onClose={()=>sShowTpl(false)}/>}</>);}})}
         <button onClick={()=>onEdit(p)} style={{...btnGhost,padding:"8px 12px"}}><PenLine size={14}/>Editar</button>
         {/* ═══ DUPLICAR PROCESSO ═══ */}
-        {React.createElement(function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();dp({type:"DUP_P",id:p.id});oc();},style:{...btnGhost,padding:"8px 12px",color:"#22d3ee",borderColor:"rgba(34,211,238,.3)"}},React.createElement(Copy,{size:14}),"Duplicar");},null)}
+        {React.createElement(CjInline,{fn:function(){return React.createElement("button",{onClick:function(e){e.stopPropagation();dp({type:"DUP_P",id:p.id});oc();},style:{...btnGhost,padding:"8px 12px",color:"#22d3ee",borderColor:"rgba(34,211,238,.3)"}},React.createElement(Copy,{size:14}),"Duplicar");}})}
         {/* ═══ RESUMO EXECUTIVO IA ═══ */}
-        {React.createElement(function(){var[loading,sLoad]=useState(false);var[resumo,sResumo]=useState("");var[copied,sCopied]=useState(false);var gerar=function(){sLoad(true);sResumo("");var ctx="Processo: "+(p.num||"N/I")+" | SEI: "+(p.numeroSEI||"—")+" | Assunto: "+(p.assunto||"—")+" | Tipo: "+(p.tipoPeca||"—")+" | Tribunal: "+(p.tribunal||p.orgao||"—")+" | Parte contrária: "+(p.parteContraria||p.interessado||"—")+" | Prazo: "+fmt(p.prazoFinal)+" ("+p.diasRestantes+"du) | Status: "+p.status+" | Fase: "+p.fase+" | Próxima providência: "+(p.proxProv||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:"Gere um RESUMO EXECUTIVO de 3 a 5 linhas deste processo para compartilhar por email com um colega advogado. Seja conciso e objetivo. Sem travessão. Inclua: número, assunto, próxima providência e prazo.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();sResumo(t||"Sem resultado.");sLoad(false);}).catch(function(){sResumo("Erro ao gerar.");sLoad(false);});};if(resumo)return React.createElement("div",{style:{position:"absolute",top:60,right:18,zIndex:10,width:380,padding:16,borderRadius:14,background:K.modal,border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.7)"}},React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Resumo Executivo"),React.createElement("div",{style:{fontSize:12,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:10}},resumo),React.createElement("div",{style:{display:"flex",gap:6}},React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(resumo);sCopied(true);setTimeout(function(){sCopied(false);},2000);}catch(e){}},style:{...btnPrim,flex:1,justifyContent:"center",padding:"8px",fontSize:11,color:copied?"#00ff88":"#00e5ff"}},copied?"✅ Copiado!":"📋 Copiar"),React.createElement("button",{onClick:function(){sResumo("");},style:{...btnGhost,padding:"8px 12px",fontSize:11}},"Fechar")));return React.createElement("button",{onClick:loading?null:gerar,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#ffb800",borderColor:"rgba(255,184,0,.3)"}},loading?"⏳":"📝","Resumo IA");},null)}
+        {React.createElement(CjInline,{fn:function(){var[loading,sLoad]=useState(false);var[resumo,sResumo]=useState("");var[copied,sCopied]=useState(false);var gerar=function(){sLoad(true);sResumo("");var ctx="Processo: "+(p.num||"N/I")+" | SEI: "+(p.numeroSEI||"—")+" | Assunto: "+(p.assunto||"—")+" | Tipo: "+(p.tipoPeca||"—")+" | Tribunal: "+(p.tribunal||p.orgao||"—")+" | Parte contrária: "+(p.parteContraria||p.interessado||"—")+" | Prazo: "+fmt(p.prazoFinal)+" ("+p.diasRestantes+"du) | Status: "+p.status+" | Fase: "+p.fase+" | Próxima providência: "+(p.proxProv||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:"Gere um RESUMO EXECUTIVO de 3 a 5 linhas deste processo para compartilhar por email com um colega advogado. Seja conciso e objetivo. Sem travessão. Inclua: número, assunto, próxima providência e prazo.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();sResumo(t||"Sem resultado.");sLoad(false);}).catch(function(){sResumo("Erro ao gerar.");sLoad(false);});};if(resumo)return React.createElement("div",{style:{position:"absolute",top:60,right:18,zIndex:10,width:380,padding:16,borderRadius:14,background:K.modal,border:"1px solid "+K.brd,boxShadow:"0 20px 50px rgba(0,0,0,.7)"}},React.createElement("div",{style:{fontSize:12,color:K.ac,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Resumo Executivo"),React.createElement("div",{style:{fontSize:13,color:K.txt,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:10}},resumo),React.createElement("div",{style:{display:"flex",gap:6}},React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(resumo);sCopied(true);setTimeout(function(){sCopied(false);},2000);}catch(e){}},style:{...btnPrim,flex:1,justifyContent:"center",padding:"8px",fontSize:12,color:copied?"var(--cj-su)":"var(--cj-ac)"}},copied?"✅ Copiado!":"📋 Copiar"),React.createElement("button",{onClick:function(){sResumo("");},style:{...btnGhost,padding:"8px 12px",fontSize:12}},"Fechar")));return React.createElement("button",{onClick:loading?null:gerar,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"var(--cj-wa)",borderColor:"rgba(var(--cj-wargb),.3)"}},loading?"⏳":"📝","Resumo IA");}})}
         {/* ═══ IA SUGESTÃO DE PROVIDÊNCIA ═══ */}
-        {!p.proxProv&&React.createElement(function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"#a855f7",borderColor:"rgba(168,85,247,.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");},null)}
+        {!p.proxProv&&React.createElement(CjInline,{fn:function(){var[loading,sLoad]=useState(false);var sugerir=function(){sLoad(true);var ctx="Tipo: "+(p.tipoPeca||"—")+" | Fase: "+p.fase+" | Status: "+p.status+" | Tribunal: "+(p.tribunal||"—")+" | Assunto: "+(p.assunto||"—")+" | Obs: "+(p.obs||"—");fetch("/api/llm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:"Voce e advogado da COJUR/CFM. Baseado no contexto abaixo, sugira UMA próxima providência concisa (máx 1 frase) para este processo. Sem travessão.\n\n"+ctx}]})}).then(function(r){return r.json();}).then(function(d){var t=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").trim();if(t)dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{proxProv:t}});sLoad(false);}).catch(function(){sLoad(false);});};return React.createElement("button",{onClick:loading?null:sugerir,disabled:loading,style:{...btnGhost,padding:"8px 12px",color:"var(--cj-pu)",borderColor:"rgba(var(--cj-purgb),.3)",animation:"cjPulse 2s ease infinite"}},loading?"⏳ Analisando...":"🤖 IA Sugerir Providência");}})}
         <button onClick={function(){exportProcessPDF(p);}} style={{...btnGhost,padding:"8px 12px",color:K.su,borderColor:K.su+"33"}}><FileText size={14}/>PDF</button>
         <button onClick={oc} style={{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:10,marginLeft:4}}><X size={20}/></button>
       </div>
 
-      <div style={{padding:"28px 28px 20px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0))"}}>
+      <div style={{padding:"28px 28px 20px",borderBottom:`1px solid ${K.brd}`,background:"linear-gradient(180deg,rgba(var(--cj-fgrgb),.035),rgba(var(--cj-fgrgb),0))"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
           <CFMMark size={44}/>
           <div style={{minWidth:0,flex:1}}>
@@ -6566,7 +6812,7 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
               {isJ&&<Bd color={K.pu}>{p.tribunal}</Bd>}
               {p.tipoPeca&&<Bd>{p.tipoPeca}</Bd>}
             </div>
-            <div style={{fontSize:16,fontWeight:800,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{p.num||"Sem nº principal"}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{p.num||"Sem nº principal"}</div>
             <h2 style={{margin:0,fontSize:26,fontWeight:800,color:K.txt,lineHeight:1.28}}>{p.assunto||"Sem assunto"}</h2>
           </div>
         </div>
@@ -6574,20 +6820,20 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
           <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/><SB s={p.score}/>
           <IS value={p.status} options={STS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}})}/>
           <IS value={p.fase} options={PHS} onChange={v=>dp({type:"UPD",id:p.id,isAdm:isA,ch:{fase:v}})} color={K.ac}/>
-          {p.linkRef&&<button onClick={e=>{e.stopPropagation();openRef(p.linkRef)}} style={{...btnGhost,padding:"6px 10px",fontSize:11,color:K.ac,borderColor:K.ac+"44"}}>Abrir link</button>}
+          {p.linkRef&&<button onClick={e=>{e.stopPropagation();openRef(p.linkRef)}} style={{...btnGhost,padding:"6px 10px",fontSize:12,color:K.ac,borderColor:K.ac+"44"}}>Abrir link</button>}
         </div>
         {hasCustas(p)&&<div className="cj-custas-blink" style={{marginTop:12,display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:"rgba(245,158,11,.14)",border:"1px solid rgba(245,158,11,.5)"}}>
-          <DollarSign size={16} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:11,fontWeight:800,color:K.wa}}>RECOLHIMENTO DE CUSTAS OBRIGATÓRIO</div><div style={{fontSize:10,color:"#fde68a",marginTop:2}}>O recurso "{p.tipoAcao}" exige preparo judicial. Providencie GRU/DARF antes de protocolar, sob pena de deserção.</div>
-          {(function(){var ci=getCustasInfo(p.tribunal);return ci?(<div style={{marginTop:6,padding:"6px 10px",borderRadius:8,background:"rgba(255,184,0,.12)",border:"1px solid rgba(255,184,0,.25)",fontSize:10}}>
-            <div style={{color:"#fde68a",fontWeight:700}}>{ci.label}</div>
+          <DollarSign size={16} color={K.wa}/><div style={{flex:1}}><div style={{fontSize:12,fontWeight:800,color:K.wa}}>RECOLHIMENTO DE CUSTAS OBRIGATÓRIO</div><div style={{fontSize:12,color:"var(--cj-wa-soft)",marginTop:2}}>O recurso "{p.tipoAcao}" exige preparo judicial. Providencie GRU/DARF antes de protocolar, sob pena de deserção.</div>
+          {(function(){var ci=getCustasInfo(p.tribunal);return ci?(<div style={{marginTop:6,padding:"6px 10px",borderRadius:8,background:"rgba(var(--cj-wargb),.12)",border:"1px solid rgba(var(--cj-wargb),.25)",fontSize:12}}>
+            <div style={{color:"var(--cj-wa-soft)",fontWeight:700}}>{ci.label}</div>
             <div style={{color:"#fbbf24",marginTop:2}}>Valor estimado: {ci.valor}</div>
-            {ci.url&&<a href={ci.url} target="_blank" rel="noopener noreferrer" className="cj-link" style={{fontSize:10,color:"#fbbf24",marginTop:3,display:"inline-block"}}>Acessar sistema de GRU</a>}
+            {ci.url&&<a href={ci.url} target="_blank" rel="noopener noreferrer" className="cj-link" style={{fontSize:12,color:"#fbbf24",marginTop:3,display:"inline-block"}}>Acessar sistema de GRU</a>}
           </div>):null;})()}
           </div>
         </div>}
-        {p.tipoPeca==="Sustentação Oral"&&<div className="cj-pulse" style={{marginTop:12,display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:"rgba(184,77,255,.12)",border:"1px solid rgba(184,77,255,.45)",animation:"cjPulse 2s ease-in-out infinite"}}>
-          <Gavel size={16} color="#b84dff"/><div><div style={{fontSize:11,fontWeight:800,color:"#b84dff"}}>INSCRIÇÃO PARA SUSTENTAÇÃO ORAL</div><div style={{fontSize:10,color:"#d8b4fe",marginTop:2}}>Verifique se a inscrição para sustentação oral foi realizada no tribunal. A inscrição deve ser feita antes do prazo limite de 48h úteis da sessão de julgamento.</div>
-          {p.dataSustentacao&&<div style={{fontSize:10,color:"#c084fc",marginTop:4,fontWeight:700}}>Sessão: {(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} — Deadline de envio: {getSustDeadlineStr(p)||"definir data"}</div>}
+        {p.tipoPeca==="Sustentação Oral"&&<div className="cj-pulse" style={{marginTop:12,display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:"rgba(var(--cj-purgb),.12)",border:"1px solid rgba(var(--cj-purgb),.45)",animation:"cjPulse 2s ease-in-out infinite"}}>
+          <Gavel size={16} color="var(--cj-pu)"/><div><div style={{fontSize:12,fontWeight:800,color:"var(--cj-pu)"}}>INSCRIÇÃO PARA SUSTENTAÇÃO ORAL</div><div style={{fontSize:12,color:"#d8b4fe",marginTop:2}}>Verifique se a inscrição para sustentação oral foi realizada no tribunal. A inscrição deve ser feita antes do prazo limite de 48h úteis da sessão de julgamento.</div>
+          {p.dataSustentacao&&<div style={{fontSize:12,color:"#c084fc",marginTop:4,fontWeight:700}}>Sessão: {(new Date(p.dataSustentacao)).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} — Deadline de envio: {getSustDeadlineStr(p)||"definir data"}</div>}
           </div>
         </div>}
       </div>
@@ -6595,21 +6841,21 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
         <StatusStepper current={p.status} onSet={function(v){dp({type:"UPD",id:p.id,isAdm:isA,ch:{status:v}});}}/>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1.15fr .85fr",gap:0}}>
+      <div className="cj-rgrid" style={{display:"grid",gridTemplateColumns:"1.15fr .85fr",gap:0}}>
         <div style={{padding:"24px 28px",borderRight:`1px solid ${K.brd}`}}>
           <div style={{marginBottom:22}}>
             <div style={lblSt}>Resumo executivo</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div style={{padding:"14px 16px",borderRadius:16,background:"rgba(255,255,255,.025)",border:`1px solid ${K.brd}`}}>
-                <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Próxima providência</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
+              <div style={{padding:"14px 16px",borderRadius:16,background:"rgba(var(--cj-fgrgb),.025)",border:`1px solid ${K.brd}`}}>
+                <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Próxima providência</div>
                 <div style={{fontSize:14,color:K.txt,fontWeight:800,lineHeight:1.45}}>{p.proxProv||"Não definida"}</div>
-                <div style={{fontSize:11,color:K.dim,marginTop:6}}>Data: {p.dataProv?fmt(toD(p.dataProv)):"—"} · Estimativa: {p.estTempo||"—"}</div>
+                <div style={{fontSize:12,color:K.dim,marginTop:6}}>Data: {p.dataProv?fmt(toD(p.dataProv)):"—"} · Estimativa: {p.estTempo||"—"}</div>
               </div>
-              <div style={{padding:"14px 16px",borderRadius:16,background:`linear-gradient(180deg,${accent}12,rgba(255,255,255,.02))`,border:`1px solid ${accent}22`}}>
-                <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Risco e prazo</div>
+              <div style={{padding:"14px 16px",borderRadius:16,background:`linear-gradient(180deg,${accent}12,rgba(var(--cj-fgrgb),.02))`,border:`1px solid ${accent}22`}}>
+                <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Risco e prazo</div>
                 <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:8}}>
                   <span style={{fontSize:28,fontWeight:800,color:accent,fontFamily:"'JetBrains Mono',monospace"}}>{p.diasRestantes}</span>
-                  <span style={{fontSize:12,color:K.dim}}>dias corridos</span>
+                  <span style={{fontSize:13,color:K.dim}}>dias corridos</span>
                 </div>
                 <PB value={Math.max(0,60-p.diasRestantes)} max={60} color={accent}/>
               </div>
@@ -6618,12 +6864,12 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
 
           {p.destaque&&<div style={{marginBottom:22}}>
             <div style={lblSt}>Destaque do processo</div>
-            <div className="cj-soft" style={{fontSize:13,color:K.txt,lineHeight:1.7,padding:16,background:`linear-gradient(180deg,${K.acG},rgba(255,255,255,.02))`,border:`1px solid ${K.ac}22`,borderRadius:18}}>{p.destaque}</div>
+            <div className="cj-soft" style={{fontSize:14,color:K.txt,lineHeight:1.7,padding:16,background:`linear-gradient(180deg,${K.acG},rgba(var(--cj-fgrgb),.02))`,border:`1px solid ${K.ac}22`,borderRadius:18}}>{p.destaque}</div>
           </div>}
 
           {p.obs&&<div style={{marginBottom:22}}>
             <div style={lblSt}>Observações</div>
-            <div style={{fontSize:13,color:K.txt,lineHeight:1.7,padding:16,background:"rgba(255,255,255,.025)",border:`1px solid ${K.brd}`,borderRadius:18}}>{p.obs}</div>
+            <div style={{fontSize:14,color:K.txt,lineHeight:1.7,padding:16,background:"rgba(var(--cj-fgrgb),.025)",border:`1px solid ${K.brd}`,borderRadius:18}}>{p.obs}</div>
           </div>}
 
           {p.hist&&p.hist.length>0&&<div style={{marginBottom:22}}>
@@ -6635,18 +6881,18 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                 <div key={i} style={{position:"relative",paddingBottom:14,paddingLeft:16}}>
                   {/* Timeline dot */}
                   <div style={{position:"absolute",left:-4,top:6,width:10,height:10,borderRadius:"50%",background:isFirst?K.ac:K.dim2,border:"2px solid "+(isFirst?K.ac+"88":K.brd),boxShadow:isFirst?"0 0 10px "+K.ac+"55":"none",zIndex:1}}/>
-                  <div style={{padding:"10px 14px",borderRadius:12,background:isFirst?"rgba(0,229,255,.06)":"rgba(255,255,255,.02)",border:"1px solid "+(isFirst?"rgba(0,229,255,.18)":"rgba(255,255,255,.06)"),transition:"all .2s"}}>
+                  <div style={{padding:"10px 14px",borderRadius:12,background:isFirst?"rgba(var(--cj-acrgb),.06)":"rgba(var(--cj-fgrgb),.02)",border:"1px solid "+(isFirst?"rgba(var(--cj-acrgb),.18)":"rgba(var(--cj-fgrgb),.06)"),transition:"all .2s"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <div style={{fontSize:9,color:isFirst?K.ac:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{h.data||h.d?fmt(toD(h.data||h.d)):"—"}</div>
-                      <div style={{fontSize:9,color:K.dim2,background:"rgba(255,255,255,.04)",padding:"1px 6px",borderRadius:4}}>{h.user||"COJUR"}</div>
+                      <div style={{fontSize:11,color:isFirst?K.ac:K.dim,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{h.data||h.d?fmt(toD(h.data||h.d)):"—"}</div>
+                      <div style={{fontSize:11,color:K.dim2,background:"rgba(var(--cj-fgrgb),.04)",padding:"1px 6px",borderRadius:4}}>{h.user||"COJUR"}</div>
                     </div>
-                    <div style={{fontSize:12,color:isFirst?K.txt:"#94a3b8",lineHeight:1.5}}>{h.txt||h.e||"—"}</div>
+                    <div style={{fontSize:13,color:isFirst?K.txt:"#94a3b8",lineHeight:1.5}}>{h.txt||h.e||"—"}</div>
                   </div>
                 </div>
               );})}
             </div>
             {/* Inline add movimentação */}
-            {React.createElement(function(){
+            {React.createElement(CjInline,{fn:function(){
               var s=useState("");var novoMov=s[0],setNovoMov=s[1];
               var s2=useState(false);var added=s2[0],setAdded=s2[1];
               return React.createElement("div",{style:{display:"flex",gap:8,marginTop:8}},
@@ -6655,20 +6901,20 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                   onChange:function(e){setNovoMov(e.target.value);setAdded(false);},
                   onKeyDown:function(e){if(e.key==="Enter"&&novoMov.trim()){dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);}},
                   placeholder:"Adicionar movimentação...",
-                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:11}
+                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:12}
                 }),
                 React.createElement("button",{
                   onClick:function(){if(!novoMov.trim())return;dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);},
-                  style:{...btnGhost,padding:"8px 12px",fontSize:11,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
+                  style:{...btnGhost,padding:"8px 12px",fontSize:12,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
                 },added?"✅ Adicionado":"+ Registrar")
               );
-            },null)}
+            }})}
           </div>}
           {/* Show add form even when hist is empty */}
           {(!p.hist||!p.hist.length)&&<div style={{marginBottom:22}}>
             <div style={{...lblSt,marginBottom:8}}>Histórico de Movimentações</div>
-            <div style={{padding:"16px",textAlign:"center",borderRadius:12,border:"1px dashed "+K.brd,color:K.dim2,fontSize:12,marginBottom:8}}>Nenhuma movimentação registrada</div>
-            {React.createElement(function(){
+            <div style={{padding:"16px",textAlign:"center",borderRadius:12,border:"1px dashed "+K.brd,color:K.dim2,fontSize:13,marginBottom:8}}>Nenhuma movimentação registrada</div>
+            {React.createElement(CjInline,{fn:function(){
               var s=useState("");var novoMov=s[0],setNovoMov=s[1];
               var s2=useState(false);var added=s2[0],setAdded=s2[1];
               return React.createElement("div",{style:{display:"flex",gap:8}},
@@ -6677,39 +6923,39 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                   onChange:function(e){setNovoMov(e.target.value);setAdded(false);},
                   onKeyDown:function(e){if(e.key==="Enter"&&novoMov.trim()){dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);}},
                   placeholder:"Primeira movimentação...",
-                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:11}
+                  style:{...inpSt,flex:1,padding:"8px 12px",fontSize:12}
                 }),
                 React.createElement("button",{
                   onClick:function(){if(!novoMov.trim())return;dp({type:"ADD_MOV",id:p.id,isAdm:isA,txt:novoMov.trim()});setNovoMov("");setAdded(true);setTimeout(function(){setAdded(false);},2000);},
-                  style:{...btnGhost,padding:"8px 12px",fontSize:11,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
+                  style:{...btnGhost,padding:"8px 12px",fontSize:12,color:added?K.su:K.ac,borderColor:added?K.su+"55":K.brd}
                 },added?"✅ Adicionado":"+ Registrar")
               );
-            },null)}
+            }})}
           </div>}
           {isJ&&(function(){var prazo=p.pubDJe?calcPrazoDJe(p.pubDJe,p.intersticio||15):null;var du=prazo?diffD(prazo,NOW):null;var sys=getTribSistema(p.tribunal);return(
             <div style={{marginBottom:22}}>
               <div style={{...lblSt,cursor:isJ?"pointer":"default"}} onClick={function(){if(setDjeProc&&isJ)setDjeProc(p);}} title="Clique para buscar DJe automaticamente">Sistema · DJe · Protocolo {isJ?"(clique p/ buscar DJe)":""}</div>
-              {p.num&&<div style={{marginBottom:8,padding:"8px 14px",borderRadius:10,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.2)",display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}}>Nº Judicial</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",color:"#00e5ff",fontWeight:700,fontSize:13}}>{p.num}</span>
-                  {React.createElement(function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(p.num).then(function(){sCk(true);setTimeout(function(){sCk(false);},2000);});}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);sCk(true);setTimeout(function(){sCk(false);},2000);}},style:{marginLeft:"auto",padding:"4px 12px",borderRadius:8,border:ck?"1px solid rgba(0,255,136,.5)":"1px solid rgba(0,229,255,.25)",background:ck?"rgba(0,255,136,.1)":"rgba(0,229,255,.06)",color:ck?"#00ff88":"#00e5ff",fontSize:10,fontWeight:700,cursor:"pointer",transition:"all .3s",fontFamily:"inherit"}},ck?"✅ Copiado!":"📋 Copiar nº");},null)}
+              {p.num&&<div style={{marginBottom:8,padding:"8px 14px",borderRadius:10,background:"rgba(var(--cj-acrgb),.07)",border:"1px solid rgba(var(--cj-acrgb),.2)",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px"}}>Nº Judicial</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--cj-ac)",fontWeight:700,fontSize:14}}>{p.num}</span>
+                  {React.createElement(CjInline,{fn:function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){try{navigator.clipboard.writeText(p.num).then(function(){sCk(true);setTimeout(function(){sCk(false);},2000);});}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);sCk(true);setTimeout(function(){sCk(false);},2000);}},style:{marginLeft:"auto",padding:"4px 12px",borderRadius:8,border:ck?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-acrgb),.25)",background:ck?"rgba(var(--cj-surgb),.1)":"rgba(var(--cj-acrgb),.06)",color:ck?"var(--cj-su)":"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .3s",fontFamily:"inherit"}},ck?"✅ Copiado!":"📋 Copiar nº");}})}
                 </div>}
               <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"stretch"}}>
                 {sys&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {React.createElement(function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){openTrib(p.tribunal,p.num);sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre o sistema e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(0,255,136,.5)":"1px solid rgba(0,229,255,.4)",background:ck?"linear-gradient(135deg,rgba(0,255,136,.14),rgba(0,255,136,.05))":"linear-gradient(135deg,rgba(0,229,255,.16),rgba(0,229,255,.06))",color:ck?"#00ff88":"#00e5ff",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:ck?"0 0 20px rgba(0,255,136,.25)":"0 0 20px rgba(0,229,255,.22)",textShadow:"0 0 8px currentColor",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"neonPulse 3s ease-in-out infinite",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":sys.icone+" "+sys.sistema+" — 2º Grau");},null)}
-                    {sys.url1g&&sys.url1g!==sys.url&&React.createElement(function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){if(p.num){try{navigator.clipboard.writeText(p.num);}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}}window.open(sys.url1g,"_blank","noopener,noreferrer");sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre o sistema e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(0,255,136,.5)":"1px solid rgba(168,85,247,.4)",background:ck?"linear-gradient(135deg,rgba(0,255,136,.12),rgba(0,255,136,.04))":"linear-gradient(135deg,rgba(168,85,247,.14),rgba(168,85,247,.06))",color:ck?"#00ff88":"#b84dff",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:ck?"0 0 18px rgba(0,255,136,.2)":"0 0 18px rgba(168,85,247,.2)",textShadow:"0 0 8px currentColor",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"neonPulse 4s ease-in-out infinite",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":sys.icone+" "+sys.sistema+" — 1º Grau");},null)}
-                    {sys.url2&&React.createElement(function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){if(p.num){try{navigator.clipboard.writeText(p.num);}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}}window.open(sys.url2,"_blank","noopener,noreferrer");sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre eProc e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(0,255,136,.5)":"1px solid rgba(0,255,136,.35)",background:ck?"linear-gradient(135deg,rgba(0,255,136,.14),rgba(0,255,136,.04))":"linear-gradient(135deg,rgba(0,255,136,.12),rgba(0,255,136,.05))",color:"#00ff88",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 0 14px rgba(0,255,136,.18)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":"⚙️ e-Proc");},null)}
+                    {React.createElement(CjInline,{fn:function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){openTrib(p.tribunal,p.num);sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre o sistema e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-acrgb),.4)",background:ck?"linear-gradient(135deg,rgba(var(--cj-surgb),.14),rgba(var(--cj-surgb),.05))":"linear-gradient(135deg,rgba(var(--cj-acrgb),.16),rgba(var(--cj-acrgb),.06))",color:ck?"var(--cj-su)":"var(--cj-ac)",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:ck?"0 0 20px rgba(var(--cj-surgb),.25)":"0 0 20px rgba(var(--cj-acrgb),.22)",textShadow:"0 0 8px currentColor",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"neonPulse 3s ease-in-out infinite",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":sys.icone+" "+sys.sistema+" — 2º Grau");}})}
+                    {sys.url1g&&sys.url1g!==sys.url&&React.createElement(CjInline,{fn:function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){if(p.num){try{navigator.clipboard.writeText(p.num);}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}}window.open(sys.url1g,"_blank","noopener,noreferrer");sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre o sistema e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-purgb),.4)",background:ck?"linear-gradient(135deg,rgba(var(--cj-surgb),.12),rgba(var(--cj-surgb),.04))":"linear-gradient(135deg,rgba(var(--cj-purgb),.14),rgba(var(--cj-purgb),.06))",color:ck?"var(--cj-su)":"var(--cj-pu)",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:ck?"0 0 18px rgba(var(--cj-surgb),.2)":"0 0 18px rgba(var(--cj-purgb),.2)",textShadow:"0 0 8px currentColor",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",animation:"neonPulse 4s ease-in-out infinite",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":sys.icone+" "+sys.sistema+" — 1º Grau");}})}
+                    {sys.url2&&React.createElement(CjInline,{fn:function(){var s=useState(false);var ck=s[0],sCk=s[1];return React.createElement("button",{onClick:function(){if(p.num){try{navigator.clipboard.writeText(p.num);}catch(e){var ta=document.createElement("textarea");ta.value=p.num;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}}window.open(sys.url2,"_blank","noopener,noreferrer");sCk(true);setTimeout(function(){sCk(false);},2000);},title:"Abre eProc e copia o nº judicial",style:{display:"inline-flex",alignItems:"center",gap:8,padding:"11px 16px",borderRadius:13,border:ck?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-surgb),.35)",background:ck?"linear-gradient(135deg,rgba(var(--cj-surgb),.14),rgba(var(--cj-surgb),.04))":"linear-gradient(135deg,rgba(var(--cj-surgb),.12),rgba(var(--cj-surgb),.05))",color:"var(--cj-su)",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 0 14px rgba(var(--cj-surgb),.18)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",transition:"all .3s"}},ck?"✅ Nº copiado! Abrindo...":"⚙️ e-Proc");}})}
                   </div>
-                  {sys.info&&<div style={{fontSize:10,color:K.dim,padding:"8px 12px",borderRadius:10,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.1)",lineHeight:1.6}}>ℹ️ {sys.info}</div>}
+                  {sys.info&&<div style={{fontSize:12,color:K.dim,padding:"8px 12px",borderRadius:10,background:"rgba(var(--cj-acrgb),.04)",border:"1px solid rgba(var(--cj-acrgb),.1)",lineHeight:1.6}}>ℹ️ {sys.info}</div>}
                 </div>}
-                {p.pubDJe&&prazo&&<div style={{padding:"12px 14px",borderRadius:14,background:du<=0?"rgba(255,46,91,.12)":du<=5?"rgba(255,184,0,.12)":"rgba(0,229,255,.08)",border:"1px solid "+(du<=0?"rgba(255,46,91,.4)":du<=5?"rgba(255,184,0,.4)":"rgba(0,229,255,.25)"),minWidth:160}}>
-                  <div style={{fontSize:9,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px",marginBottom:4}}>Prazo DJe ({p.intersticio||15}du)</div>
-                  <div style={{fontSize:18,fontWeight:800,color:du<=0?"#ff2e5b":du<=5?"#ffb800":"#00e5ff",fontFamily:"Orbitron,monospace",textShadow:"0 0 10px currentColor"}}>{du<=0?"VENCIDO":du+"du"}</div>
-                  <div style={{fontSize:10,color:K.dim,marginTop:2}}>Vence: {fmt(prazo)} · Pub: {fmt(toD(p.pubDJe))}</div>
+                {p.pubDJe&&prazo&&<div style={{padding:"12px 14px",borderRadius:14,background:du<=0?"rgba(var(--cj-crrgb),.12)":du<=5?"rgba(var(--cj-wargb),.12)":"rgba(var(--cj-acrgb),.08)",border:"1px solid "+(du<=0?"rgba(var(--cj-crrgb),.4)":du<=5?"rgba(var(--cj-wargb),.4)":"rgba(var(--cj-acrgb),.25)"),minWidth:160}}>
+                  <div style={{fontSize:11,color:K.dim,textTransform:"uppercase",fontWeight:700,letterSpacing:".5px",marginBottom:4}}>Prazo DJe ({p.intersticio||15}du)</div>
+                  <div style={{fontSize:18,fontWeight:800,color:du<=0?"var(--cj-cr)":du<=5?"var(--cj-wa)":"var(--cj-ac)",fontFamily:"Orbitron,monospace",textShadow:"0 0 10px currentColor"}}>{du<=0?"VENCIDO":du+"du"}</div>
+                  <div style={{fontSize:12,color:K.dim,marginTop:2}}>Vence: {fmt(prazo)} · Pub: {fmt(toD(p.pubDJe))}</div>
                 </div>}
-                {!p.pubDJe&&<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:K.dim}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
+                {!p.pubDJe&&<div style={{padding:"12px 14px",borderRadius:14,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-fgrgb),.08)",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:12,color:K.dim}}>Preencha a data de publicação no DJe no formulário de edição para calcular o prazo automaticamente.</span>
                 </div>}
               </div>
             </div>
@@ -6717,14 +6963,14 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
           <ProcessLinkPanel proc={p} st={st} dp={dp} ss={ss}/>
           <div style={{marginBottom:22}}>
             <div style={lblSt}>Identificação e vínculo</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[["Nº Principal",p.num||"—"],["Nº SEI",p.numeroSEI||"—"],[isJ?"Órgão / Gabinete":"Órgão / Unidade",p.orgao||"—"],["Responsável",p.responsavel||"—"],[isJ?"Parte Contrária":"Interessado",isJ?p.parteContraria:p.interessado],...(isJ?[["Tipo de Ação",p.tipoAcao||"—"]]:[]),["Prazo Final",fmt(p.prazoFinal)],["Sem Movimentação",`${p.semMov}d`]].map(([l,v])=><div key={l} style={{padding:"12px 14px",borderRadius:16,background:"rgba(255,255,255,.022)",border:`1px solid ${K.brd}`}}><div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:5}}>{l}</div><div style={{fontSize:13,color:K.txt,fontWeight:700,lineHeight:1.45,wordBreak:"break-word"}}>{v||"—"}</div></div>)}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:10}}>
+              {[["Nº Principal",p.num||"—"],["Nº SEI",p.numeroSEI||"—"],[isJ?"Órgão / Gabinete":"Órgão / Unidade",p.orgao||"—"],["Responsável",p.responsavel||"—"],[isJ?"Parte Contrária":"Interessado",isJ?p.parteContraria:p.interessado],...(isJ?[["Tipo de Ação",p.tipoAcao||"—"]]:[]),["Prazo Final",fmt(p.prazoFinal)],["Sem Movimentação",`${p.semMov}d`]].map(([l,v])=><div key={l} style={{padding:"12px 14px",borderRadius:16,background:"rgba(var(--cj-fgrgb),.022)",border:`1px solid ${K.brd}`}}><div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:5}}>{l}</div><div style={{fontSize:14,color:K.txt,fontWeight:700,lineHeight:1.45,wordBreak:"break-word"}}>{v||"—"}</div></div>)}
             </div>
           </div>
 
           {p.checklist&&p.checklist.length>0&&<div>
             <div style={lblSt}>Checklist da peça</div>
-            <div style={{padding:16,borderRadius:18,background:"rgba(255,255,255,.022)",border:`1px solid ${K.brd}`}}>
+            <div style={{padding:16,borderRadius:18,background:"rgba(var(--cj-fgrgb),.022)",border:`1px solid ${K.brd}`}}>
               <CL items={p.checklist} onToggle={i=>dp({type:"TCLP",id:p.id,isAdm:isA,idx:i})}/>
             </div>
           </div>}
@@ -6750,12 +6996,12 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
                   <div style={{width:10,height:10,borderRadius:"50%",background:i===0?accent:K.ac,boxShadow:`0 0 14px ${i===0?accent:K.ac}66`,marginTop:4}}/>
                   {i<(p.hist||[]).length-1&&<div style={{width:2,flex:1,background:`linear-gradient(180deg,${K.brd},transparent)`,marginTop:6}}/>}
                 </div>
-                <div style={{padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.022)",border:`1px solid ${K.brd}`}}>
-                  <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{fmt(toD(h.d))}</div>
-                  <div style={{fontSize:12,color:K.txt,lineHeight:1.55}}>{h.e}</div>
+                <div style={{padding:"10px 12px",borderRadius:14,background:"rgba(var(--cj-fgrgb),.022)",border:`1px solid ${K.brd}`}}>
+                  <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>{fmt(toD(h.d))}</div>
+                  <div style={{fontSize:13,color:K.txt,lineHeight:1.55}}>{h.e}</div>
                 </div>
               </div>)}
-              {(!p.hist||!p.hist.length)&&<div style={{padding:"18px 14px",borderRadius:16,background:"rgba(255,255,255,.02)",border:`1px solid ${K.brd}`,textAlign:"center",color:K.dim2,fontSize:12}}>Sem histórico registrado.</div>}
+              {(!p.hist||!p.hist.length)&&<div style={{padding:"18px 14px",borderRadius:16,background:"rgba(var(--cj-fgrgb),.02)",border:`1px solid ${K.brd}`,textAlign:"center",color:K.dim2,fontSize:13}}>Sem histórico registrado.</div>}
             </div>
           </div>
 
@@ -6766,19 +7012,19 @@ function DetMod(dProps){var p=dProps.item,oc=dProps.onClose,dp=dProps.dp,onEdit=
               var linkedBySEI = linked && linked.id !== p.id ? linked : null;
               if(!linkedBySEI) return null;
               return(
-                <div style={{padding:"10px 14px",borderRadius:12,background:"rgba(0,229,255,.07)",border:"1px solid rgba(0,229,255,.25)",marginBottom:8,cursor:"pointer"}} onClick={function(){if(ss)ss(linkedBySEI);}}>
-                  <div style={{fontSize:9,color:"#00e5ff",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Processo vinculado pelo SEI</div>
-                  <div style={{fontSize:12,fontWeight:700,color:K.txt}}>{linkedBySEI.assunto}</div>
-                  <div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>{linkedBySEI.num||linkedBySEI.numeroSEI}</div>
+                <div style={{padding:"10px 14px",borderRadius:12,background:"rgba(var(--cj-acrgb),.07)",border:"1px solid rgba(var(--cj-acrgb),.25)",marginBottom:8,cursor:"pointer"}} onClick={function(){if(ss)ss(linkedBySEI);}}>
+                  <div style={{fontSize:11,color:"var(--cj-ac)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Processo vinculado pelo SEI</div>
+                  <div style={{fontSize:13,fontWeight:700,color:K.txt}}>{linkedBySEI.assunto}</div>
+                  <div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>{linkedBySEI.num||linkedBySEI.numeroSEI}</div>
                 </div>
               );
             })()}
             <div style={lblSt}>Vínculo externo</div>
-            <div style={{padding:"14px 16px",borderRadius:18,background:"rgba(255,255,255,.022)",border:`1px solid ${K.brd}`}}>
-              <div style={{fontSize:10,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Link de referência</div>
-              {p.linkRef&&<div style={{marginBottom:8}}><div style={{fontSize:10,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Link de Referência</div><a className="cj-link" href={p.linkRef} target="_blank" rel="noreferrer" style={{fontSize:13,fontWeight:700,wordBreak:"break-all"}}>{p.linkRef}</a></div>}
-              {p.linkSEI&&<div style={{marginBottom:8}}><div style={{fontSize:10,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Processo SEI</div><a className="cj-link" href={p.linkSEI} target="_blank" rel="noreferrer" style={{fontSize:13,fontWeight:700,wordBreak:"break-all",color:"#00e5ff"}}>{p.linkSEI}</a></div>}
-              {!p.linkRef&&!p.linkSEI&&<div style={{fontSize:12,color:K.dim2}}>Sem links vinculados.</div>}
+            <div style={{padding:"14px 16px",borderRadius:18,background:"rgba(var(--cj-fgrgb),.022)",border:`1px solid ${K.brd}`}}>
+              <div style={{fontSize:12,color:K.dim,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Link de referência</div>
+              {p.linkRef&&<div style={{marginBottom:8}}><div style={{fontSize:12,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Link de Referência</div><a className="cj-link" href={safeHref(p.linkRef)} target="_blank" rel="noopener noreferrer" style={{fontSize:14,fontWeight:700,wordBreak:"break-all"}}>{p.linkRef}</a></div>}
+              {p.linkSEI&&<div style={{marginBottom:8}}><div style={{fontSize:12,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Processo SEI</div><a className="cj-link" href={safeHref(p.linkSEI)} target="_blank" rel="noopener noreferrer" style={{fontSize:14,fontWeight:700,wordBreak:"break-all",color:"var(--cj-ac)"}}>{p.linkSEI}</a></div>}
+              {!p.linkRef&&!p.linkSEI&&<div style={{fontSize:13,color:K.dim2}}>Sem links vinculados.</div>}
             </div>
           </div>
 
@@ -6801,14 +7047,14 @@ const DonePg=({st,ss})=>{const itens=[...(st.realizados||[])].sort((a,b)=>toD(b.
     </div>
     <Bx style={{padding:0,overflow:"hidden"}}>
       <div style={{overflowX:"auto"}}>
-        <table className="cj-table" style={{width:"100%",fontSize:12}}>
+        <table className="cj-table" style={{width:"100%",fontSize:13}}>
           <thead>
             <tr style={{borderBottom:`1px solid ${K.brd}`}}>
-              {["Nº","Assunto","Tipo","Tribunal / Interessado","Realizado em","Status"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:11,textTransform:"uppercase"}}>{h}</th>)}
+              {["Nº","Assunto","Tipo","Tribunal / Interessado","Realizado em","Status"].map(h=><th key={h} style={{padding:"12px 14px",textAlign:"left",color:K.dim,fontWeight:500,fontSize:12,textTransform:"uppercase"}}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
-            {itens.map(p=><tr key={p.id+"-"+toISO(p.realizadoEm)} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            {itens.map(p=><tr key={p.id+"-"+toISO(p.realizadoEm)} onClick={()=>ss(p)} style={{borderBottom:`1px solid ${K.brd}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(var(--cj-fgrgb),.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <td style={{padding:"10px 14px",fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"}</td>
               <td style={{padding:"10px 14px",color:K.txt}}>{p.assunto||"—"}</td>
               <td style={{padding:"10px 14px"}}><Bd color={p.tipo==="jud"?K.pu:K.ac}>{p.realizadoTipo|| (p.tipo==="jud"?"Judicial":"Administrativo")}</Bd></td>
@@ -6831,8 +7077,8 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
     <Bx style={{marginBottom:16}}>
       <SH icon={Bell} title="Notificações Push"/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
-        <div><div style={{fontSize:13,color:K.txt}}>Alertas de prazo no navegador</div><div style={{fontSize:11,color:K.dim,marginTop:2}}>Receba alertas mesmo com a aba em background</div></div>
-        <button onClick={function(){if(typeof Notification!=="undefined"){Notification.requestPermission().then(function(p){setNotifStatus(p);});}}} style={{...btnPrim,padding:"8px 16px",color:notifStatus==="granted"?"#00ff88":"#00e5ff",borderColor:notifStatus==="granted"?"rgba(0,255,136,.4)":"rgba(0,229,255,.4)"}}>
+        <div><div style={{fontSize:14,color:K.txt}}>Alertas de prazo no navegador</div><div style={{fontSize:12,color:K.dim,marginTop:2}}>Receba alertas mesmo com a aba em background</div></div>
+        <button onClick={function(){if(typeof Notification!=="undefined"){Notification.requestPermission().then(function(p){setNotifStatus(p);});}}} style={{...btnPrim,padding:"8px 16px",color:notifStatus==="granted"?"var(--cj-su)":"var(--cj-ac)",borderColor:notifStatus==="granted"?"rgba(var(--cj-surgb),.4)":"rgba(var(--cj-acrgb),.4)"}}>
           {notifStatus==="granted"?"✅ Ativadas":notifStatus==="denied"?"❌ Bloqueadas":"🔔 Ativar"}
         </button>
       </div>
@@ -6840,13 +7086,13 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
     {/* ═══ TEMPO REAL — RESUMO ═══ */}
     <Bx style={{marginBottom:16}}>
       <SH icon={Timer} title="Tempo Real Registrado"/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12}}>
         {(function(){var all=[...(st||{}).adm||[],...(st||{}).jud||[]];var totalMin=all.reduce(function(s,p){return s+(p.tempoReal||0);},0);var totalEst=all.reduce(function(s,p){var h=parseFloat(p.estTempo)||0;return s+h*60;},0);return[
           {l:"Total registrado",v:Math.floor(totalMin/60)+"h"+String(totalMin%60).padStart(2,"0"),c:K.ac},
           {l:"Total estimado",v:Math.floor(totalEst/60)+"h",c:K.wa},
           {l:"Eficiência",v:totalEst>0?Math.round(totalMin/totalEst*100)+"%":"—",c:totalEst>0&&totalMin<=totalEst?K.su:K.cr}
-        ];})().map(function(m,i){return React.createElement("div",{key:i,style:{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd,textAlign:"center"}},
-          React.createElement("div",{style:{fontSize:10,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:700}},m.l),
+        ];})().map(function(m,i){return React.createElement("div",{key:i,style:{padding:"12px 14px",borderRadius:12,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid "+K.brd,textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:12,color:K.dim,marginBottom:4,textTransform:"uppercase",fontWeight:700}},m.l),
           React.createElement("div",{style:{fontSize:22,fontWeight:800,color:m.c,fontFamily:"Orbitron,monospace"}},m.v)
         );})}
       </div>
@@ -6854,11 +7100,11 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
     {/* ═══ CUSTAS ATUALIZÁVEIS ═══ */}
     <Bx style={{marginBottom:16}}>
       <SH icon={DollarSign} title="Valores de Custas Judiciais"/>
-      <div style={{fontSize:12,color:K.dim,marginBottom:12,lineHeight:1.6}}>Valores baseados no Ato 51/TST e tabelas TRFs (2025/2026). Edite diretamente no código-fonte ou solicite atualização quando houver novo Ato.</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,maxHeight:200,overflowY:"auto"}}>
-        {Object.entries(CUSTAS_VALORES).slice(0,8).map(function(entry){return React.createElement("div",{key:entry[0],style:{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd}},
-          React.createElement("div",{style:{fontSize:10,color:K.ac,fontWeight:700,fontFamily:"Orbitron,monospace"}},entry[0]),
-          React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2}},entry[1].valor.substring(0,50)+"...")
+      <div style={{fontSize:13,color:K.dim,marginBottom:12,lineHeight:1.6}}>Valores baseados no Ato 51/TST e tabelas TRFs (2025/2026). Edite diretamente no código-fonte ou solicite atualização quando houver novo Ato.</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:8,maxHeight:200,overflowY:"auto"}}>
+        {Object.entries(CUSTAS_VALORES).slice(0,8).map(function(entry){return React.createElement("div",{key:entry[0],style:{padding:"8px 10px",borderRadius:8,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid "+K.brd}},
+          React.createElement("div",{style:{fontSize:12,color:K.ac,fontWeight:700,fontFamily:"Orbitron,monospace"}},entry[0]),
+          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},entry[1].valor.substring(0,50)+"...")
         );})}
       </div>
     </Bx>
@@ -6868,17 +7114,17 @@ const SettPg=({dp,st})=>{const[conf,sConf]=useState(false);const[notifStatus,set
       <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={function(){exportState(st);}} style={{...btnPrim,padding:"9px 16px"}}><Download size={14}/>Exportar JSON</button>
         <button onClick={function(){exportCSV(st);}} style={{...btnGhost,padding:"9px 16px",color:K.su,borderColor:K.su+"33"}}><Download size={14}/>Exportar CSV</button>
-        {React.createElement(function(){var ref=useRef(null);return React.createElement(React.Fragment,null,
+        {React.createElement(CjInline,{fn:function(){var ref=useRef(null);return React.createElement(React.Fragment,null,
           React.createElement("input",{ref:ref,type:"file",accept:".json",style:{display:"none"},onChange:function(e){importState(e.target.files[0],dp,function(r){if(r==="ok")alert("✅ Dados restaurados!");else alert("❌ Erro ao importar.");});}}),
           React.createElement("button",{onClick:function(){ref.current&&ref.current.click();},style:{...btnGhost,padding:"9px 16px",color:K.wa,borderColor:K.wa+"33"}},React.createElement(Upload,{size:14}),"Importar JSON")
-        );},null)}
+        );}})}
       </div>
     <div style={{padding:"10px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      {!conf?(<><span style={{fontSize:13,color:K.txt}}>Resetar todos os dados</span><button style={btnDanger} onClick={()=>sConf(true)}><Trash2 size={14}/>Resetar</button></>):(
-        <><span style={{fontSize:13,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
+      {!conf?(<><span style={{fontSize:14,color:K.txt}}>Resetar todos os dados</span><button style={btnDanger} onClick={()=>sConf(true)}><Trash2 size={14}/>Resetar</button></>):(
+        <><span style={{fontSize:14,color:K.cr}}>Tem certeza? Todos os dados serão perdidos.</span><div style={{display:"flex",gap:8}}><button style={btnDanger} onClick={()=>{dp({type:"RST"});sConf(false);try{storage.delete(STORE_KEY).catch(()=>{})}catch(e){}}}>Sim, resetar</button><button style={btnGhost} onClick={()=>sConf(false)}>Cancelar</button></div></>
       )}
     </div>
-    <div style={{fontSize:13,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v42</strong> · <span style={{color:"#00ff88"}}>Hardening crítico</span>: bizDiff agora conta dias úteis reais (com feriados + recesso forense), rehydrate preserva auditLog, dp estável (sem cascata de re-renders), AudioContext singleton (sem leak), sync com bloqueio de race condition, RECALC_ALL só em mudança de dia, debounce de save 1500ms com skip de payload idêntico, snapshot do processo em DEL_P para auditoria, syncJudicialLinks condicional. Atalho novo: <strong style={{color:K.ac}}>G</strong> abre ForceGraph.</div>
+    <div style={{fontSize:14,color:K.dim,marginTop:16,lineHeight:1.8}}><strong style={{color:K.txt}}>COJUR Nexus v44</strong> · <span style={{color:"var(--cj-su)"}}>Correções v44</span>: datas em fuso local (toISOString deslocava −3h), feriados para anos ≤ 2024, IDs sem colisão de N### no reload, sanitização XSS em campos livres e em texto gerado por IA, links javascript:/data: bloqueados, CSV protegido contra injeção (= + - @ e TAB/CR iniciais), FileReader validado (tipo/tamanho/onerror), filtro e ordenação memoizados, flag 🔥 corrigida (processo sem prazo não fica crítico), pull preserva itens criados offline. <span style={{color:K.dim}}>v43.1 · Hardening crítico</span>: bizDiff agora conta dias úteis reais (com feriados + recesso forense), rehydrate preserva auditLog, dp estável (sem cascata de re-renders), AudioContext singleton (sem leak), sync com bloqueio de race condition, RECALC_ALL só em mudança de dia, debounce de save 1500ms com skip de payload idêntico, snapshot do processo em DEL_P para auditoria, syncJudicialLinks condicional. Atalho novo: <strong style={{color:K.ac}}>G</strong> abre ForceGraph. <span style={{color:"var(--cj-su)"}}>v43.1</span>: importação blindada contra arquivo inválido, feriados algorítmicos pós-2027 (Páscoa de Gauss), recesso forense só em prazos judiciais, datas em fuso local, retry offline real (flag dirty + poll/online), flush ao fechar a aba, 24 blocos inline com estado estável (CjInline), CSV protegido contra injeção de fórmula, badge "Sem prazo" para processos sem data.</div>
   </Bx></div>
 )};
 
@@ -6921,24 +7167,24 @@ function CommandPalette({st, dp, sPg, ss, onClose, setShowGmail, setShowDecisao,
   var execute=function(i){if(filtered[i])filtered[i].action();};
   var onKey=function(e){if(e.key==="ArrowDown"){e.preventDefault();sIdx(function(n){return Math.min(n+1,filtered.length-1);});}else if(e.key==="ArrowUp"){e.preventDefault();sIdx(function(n){return Math.max(n-1,0);});}else if(e.key==="Enter"){e.preventDefault();execute(idx);}};
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(14px)",zIndex:3000,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"80px 16px"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
-    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.35)",borderRadius:20,width:"100%",maxWidth:640,padding:0,position:"relative",boxShadow:"0 0 60px rgba(0,229,255,.15),0 28px 70px rgba(0,0,0,.8)",overflow:"hidden"}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.35)",borderRadius:20,width:"100%",maxWidth:640,padding:0,position:"relative",boxShadow:"0 0 60px rgba(var(--cj-acrgb),.15),0 28px 70px rgba(0,0,0,.8)",overflow:"hidden"}},
       React.createElement("div",{style:{padding:"16px 20px",borderBottom:"1px solid "+K.brd,display:"flex",alignItems:"center",gap:12}},
         React.createElement("span",{style:{fontSize:18}},"⌘"),
         React.createElement("input",{ref:inputRef,value:q,onChange:function(e){sQ(e.target.value);sIdx(0);},onKeyDown:onKey,placeholder:"Buscar processo, navegar, executar ação...",style:{flex:1,background:"transparent",border:"none",outline:"none",color:K.txt,fontSize:15,fontFamily:"inherit"}}),
-        React.createElement("span",{style:{fontSize:10,color:K.dim,border:"1px solid "+K.brd,borderRadius:4,padding:"2px 6px",fontFamily:"'JetBrains Mono',monospace"}},"esc")
+        React.createElement("span",{style:{fontSize:12,color:K.dim,border:"1px solid "+K.brd,borderRadius:4,padding:"2px 6px",fontFamily:"'JetBrains Mono',monospace"}},"esc")
       ),
       React.createElement("div",{style:{maxHeight:440,overflowY:"auto"}},
         filtered.length===0?React.createElement("div",{style:{padding:40,textAlign:"center",color:K.dim}},"Nenhum resultado"):
         (function(){var lastCat="";return filtered.map(function(it,i){var showCat=it.cat!==lastCat;lastCat=it.cat;return React.createElement(React.Fragment,{key:i},
-          showCat&&React.createElement("div",{style:{padding:"10px 20px 4px",fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",fontFamily:"Orbitron,sans-serif"}},it.cat),
-          React.createElement("div",{onMouseEnter:function(){sIdx(i);},onClick:function(){execute(i);},style:{padding:"10px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:idx===i?"rgba(0,229,255,.1)":"transparent",borderLeft:"3px solid "+(idx===i?"#00e5ff":"transparent"),transition:"all .1s"}},
+          showCat&&React.createElement("div",{style:{padding:"10px 20px 4px",fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",fontFamily:"Orbitron,sans-serif"}},it.cat),
+          React.createElement("div",{onMouseEnter:function(){sIdx(i);},onClick:function(){execute(i);},style:{padding:"10px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:idx===i?"rgba(var(--cj-acrgb),.1)":"transparent",borderLeft:"3px solid "+(idx===i?"var(--cj-ac)":"transparent"),transition:"all .1s"}},
             React.createElement("span",{style:{fontSize:16}},it.icon),
-            React.createElement("span",{style:{fontSize:13,color:idx===i?"#00e5ff":K.txt,flex:1}},it.label),
-            idx===i&&React.createElement("span",{style:{fontSize:10,color:"#00e5ff",fontFamily:"'JetBrains Mono',monospace"}},"↵")
+            React.createElement("span",{style:{fontSize:14,color:idx===i?"var(--cj-ac)":K.txt,flex:1}},it.label),
+            idx===i&&React.createElement("span",{style:{fontSize:12,color:"var(--cj-ac)",fontFamily:"'JetBrains Mono',monospace"}},"↵")
           )
         );});})()
       ),
-      React.createElement("div",{style:{padding:"8px 16px",borderTop:"1px solid "+K.brd,fontSize:10,color:K.dim,display:"flex",gap:16,alignItems:"center"}},
+      React.createElement("div",{style:{padding:"8px 16px",borderTop:"1px solid "+K.brd,fontSize:12,color:K.dim,display:"flex",gap:16,alignItems:"center"}},
         React.createElement("span",null,"↑↓ navegar"),
         React.createElement("span",null,"↵ selecionar"),
         React.createElement("span",null,"esc fechar")
@@ -6955,21 +7201,21 @@ function ShortcutsModal({onClose}){
     {cat:"Cmd Shift",items:[["Cmd/Ctrl + Shift + K","Modo Comando (HUD overlay)"]]},
   ];
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:2500,display:"flex",justifyContent:"center",alignItems:"center",padding:"40px 20px"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
-    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:20,maxWidth:540,width:"100%",padding:28,position:"relative",boxShadow:"0 0 40px rgba(0,229,255,.1),0 24px 60px rgba(0,0,0,.7)"}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.3)",borderRadius:20,maxWidth:540,width:"100%",padding:28,position:"relative",boxShadow:"0 0 40px rgba(var(--cj-acrgb),.1),0 24px 60px rgba(0,0,0,.7)"}},
       React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}},React.createElement(X,{size:20})),
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
         React.createElement("span",{style:{fontSize:24}},"⌨️"),
         React.createElement("div",null,
-          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Atalhos de Teclado"),
-          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2}},"Domine o COJUR Nexus sem tirar a mão do teclado")
+          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}},"Atalhos de Teclado"),
+          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},"Domine o COJUR Nexus sem tirar a mão do teclado")
         )
       ),
       shortcuts.map(function(sec,i){return React.createElement("div",{key:i,style:{marginBottom:i<shortcuts.length-1?18:0}},
-        React.createElement("div",{style:{fontSize:10,color:"#00e5ff",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",marginBottom:10,fontFamily:"Orbitron,sans-serif"}},sec.cat),
+        React.createElement("div",{style:{fontSize:12,color:"var(--cj-ac)",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",marginBottom:10,fontFamily:"Orbitron,sans-serif"}},sec.cat),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-          sec.items.map(function(sc,j){return React.createElement("div",{key:j,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderRadius:10,background:"rgba(255,255,255,.025)",border:"1px solid "+K.brd}},
-            React.createElement("span",{style:{fontSize:12,color:K.txt}},sc[1]),
-            React.createElement("kbd",{style:{fontSize:10,color:"#00e5ff",background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.25)",borderRadius:5,padding:"3px 8px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}},sc[0])
+          sec.items.map(function(sc,j){return React.createElement("div",{key:j,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderRadius:10,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid "+K.brd}},
+            React.createElement("span",{style:{fontSize:13,color:K.txt}},sc[1]),
+            React.createElement("kbd",{style:{fontSize:12,color:"var(--cj-ac)",background:"rgba(var(--cj-acrgb),.08)",border:"1px solid rgba(var(--cj-acrgb),.25)",borderRadius:5,padding:"3px 8px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}},sc[0])
           );})
         )
       );})
@@ -6999,8 +7245,8 @@ var detectConflicts=function(st){
     (st.reun||[]).forEach(function(r2,j){
       if(j<=i)return;
       if(toISO(toD(r1.data))===toISO(toD(r2.data))&&r1.hora&&r2.hora){
-        var h1=parseInt(r1.hora.split(":")[0]);
-        var h2=parseInt(r2.hora.split(":")[0]);
+        var h1=parseInt(String(r1.hora).split(":")[0],10);
+        var h2=parseInt(String(r2.hora).split(":")[0],10);
         if(Math.abs(h1-h2)<=1){
           conflicts.push({type:"reun_reun",severity:"warn",date:toD(r1.data),label:"Reuniões sobrepostas",msg:r1.titulo+" ("+r1.hora+") e "+r2.titulo+" ("+r2.hora+")"});
         }
@@ -7036,21 +7282,21 @@ function ConflictAlert({st,sp}){
   if(!conflicts.length)return null;
   var crit=conflicts.filter(function(c){return c.severity==="crit";});
   var warn=conflicts.filter(function(c){return c.severity==="warn";});
-  return React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{marginBottom:16,padding:"14px 18px",borderRadius:16,background:crit.length?"linear-gradient(135deg,rgba(255,46,91,.12),rgba(255,46,91,.04))":"linear-gradient(135deg,rgba(255,184,0,.1),rgba(255,184,0,.03))",border:"1px solid "+(crit.length?"rgba(255,46,91,.5)":"rgba(255,184,0,.4)"),cursor:"pointer"},onClick:function(){sp("calendar");}},
+  return React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{marginBottom:16,padding:"14px 18px",borderRadius:16,background:crit.length?"linear-gradient(135deg,rgba(var(--cj-crrgb),.12),rgba(var(--cj-crrgb),.04))":"linear-gradient(135deg,rgba(var(--cj-wargb),.1),rgba(var(--cj-wargb),.03))",border:"1px solid "+(crit.length?"rgba(var(--cj-crrgb),.5)":"rgba(var(--cj-wargb),.4)"),cursor:"pointer"},onClick:function(){sp("calendar");}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
       React.createElement("span",{style:{fontSize:20,animation:crit.length?"textBlink .9s ease-in-out infinite":"none"}},"⚠️"),
       React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:11,color:crit.length?"#ff2e5b":"#ffb800",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".8px",textTransform:"uppercase"}},"Conflitos de Agenda Detectados"),
-        React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2}},conflicts.length+" conflito"+(conflicts.length>1?"s":"")+" identificado"+(conflicts.length>1?"s":"")+" — clique para ver no calendário")
+        React.createElement("div",{style:{fontSize:12,color:crit.length?"var(--cj-cr)":"var(--cj-wa)",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".8px",textTransform:"uppercase"}},"Conflitos de Agenda Detectados"),
+        React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},conflicts.length+" conflito"+(conflicts.length>1?"s":"")+" identificado"+(conflicts.length>1?"s":"")+" — clique para ver no calendário")
       ),
-      React.createElement("div",{style:{marginLeft:"auto",fontSize:24,fontWeight:800,color:crit.length?"#ff2e5b":"#ffb800",fontFamily:"Orbitron,monospace"}},conflicts.length)
+      React.createElement("div",{style:{marginLeft:"auto",fontSize:24,fontWeight:800,color:crit.length?"var(--cj-cr)":"var(--cj-wa)",fontFamily:"Orbitron,monospace"}},conflicts.length)
     ),
     React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-      conflicts.slice(0,3).map(function(c,i){return React.createElement("div",{key:i,style:{padding:"6px 10px",borderRadius:8,background:c.severity==="crit"?"rgba(255,46,91,.08)":"rgba(255,184,0,.06)",border:"1px solid "+(c.severity==="crit"?"rgba(255,46,91,.2)":"rgba(255,184,0,.2)"),fontSize:11,color:c.severity==="crit"?"#ff2e5b":"#ffb800",display:"flex",gap:8,alignItems:"center"}},
-        React.createElement("span",{style:{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:4,background:c.severity==="crit"?"rgba(255,46,91,.2)":"rgba(255,184,0,.15)",fontFamily:"Orbitron,monospace",flexShrink:0}},fmtS(c.date)),
+      conflicts.slice(0,3).map(function(c,i){return React.createElement("div",{key:i,style:{padding:"6px 10px",borderRadius:8,background:c.severity==="crit"?"rgba(var(--cj-crrgb),.08)":"rgba(var(--cj-wargb),.06)",border:"1px solid "+(c.severity==="crit"?"rgba(var(--cj-crrgb),.2)":"rgba(var(--cj-wargb),.2)"),fontSize:12,color:c.severity==="crit"?"var(--cj-cr)":"var(--cj-wa)",display:"flex",gap:8,alignItems:"center"}},
+        React.createElement("span",{style:{fontSize:11,fontWeight:800,padding:"2px 6px",borderRadius:4,background:c.severity==="crit"?"rgba(var(--cj-crrgb),.2)":"rgba(var(--cj-wargb),.15)",fontFamily:"Orbitron,monospace",flexShrink:0}},fmtS(c.date)),
         React.createElement("span",{style:{flex:1}},c.msg)
       );}),
-      conflicts.length>3&&React.createElement("div",{style:{fontSize:10,color:K.dim,marginTop:2,textAlign:"right"}},"+"+(conflicts.length-3)+" mais")
+      conflicts.length>3&&React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2,textAlign:"right"}},"+"+(conflicts.length-3)+" mais")
     )
   );
 }
@@ -7070,8 +7316,8 @@ function Autocomplete({value,onChange,suggestions,placeholder,style}){
   return React.createElement("div",{ref:ref,style:{position:"relative"}},
     React.createElement("input",{type:"text",value:value||"",onChange:function(e){onChange(e.target.value);sShow(true);sHover(-1);},onFocus:function(){sShow(true);},placeholder:placeholder,style:style}),
     show&&filtered.length>0&&React.createElement("div",{style:{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:K.modal,border:"1px solid "+K.brd,borderRadius:10,padding:4,zIndex:100,maxHeight:180,overflowY:"auto",boxShadow:"0 12px 32px rgba(0,0,0,.5)"}},
-      filtered.map(function(s,i){return React.createElement("div",{key:i,onMouseEnter:function(){sHover(i);},onClick:function(){onChange(s);sShow(false);},style:{padding:"7px 10px",fontSize:12,color:K.txt,cursor:"pointer",background:hover===i?K.acG:"transparent",borderRadius:7,display:"flex",alignItems:"center",gap:6}},
-        React.createElement("span",{style:{fontSize:10,color:K.dim}},"↵"),s
+      filtered.map(function(s,i){return React.createElement("div",{key:i,onMouseEnter:function(){sHover(i);},onClick:function(){onChange(s);sShow(false);},style:{padding:"7px 10px",fontSize:13,color:K.txt,cursor:"pointer",background:hover===i?K.acG:"transparent",borderRadius:7,display:"flex",alignItems:"center",gap:6}},
+        React.createElement("span",{style:{fontSize:12,color:K.dim}},"↵"),s
       );})
     )
   );
@@ -7101,21 +7347,21 @@ function ComparadorModal({ids,st,onClose,onRemove}){
     ["Responsável",function(p){return p.responsavel||"—";}],
   ];
   return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(10px)",zIndex:1400,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 16px",overflowY:"auto"},onClick:function(e){if(e.target===e.currentTarget)onClose();}},
-    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,maxWidth:1100,width:"100%",padding:28,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}},
+    React.createElement("div",{className:"cj-hud-tl cj-hud-br",style:{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.3)",borderRadius:22,maxWidth:1100,width:"100%",padding:28,position:"relative",boxShadow:"0 28px 70px rgba(0,0,0,.8)"}},
       React.createElement("button",{onClick:onClose,style:{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}},React.createElement(X,{size:20})),
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
         React.createElement("span",{style:{fontSize:24}},"⚖️"),
         React.createElement("div",null,
-          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}},"Comparador de Processos"),
-          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2}},procs.length+" processo"+(procs.length>1?"s":"")+" em comparação")
+          React.createElement("h3",{style:{margin:0,fontSize:18,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}},"Comparador de Processos"),
+          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},procs.length+" processo"+(procs.length>1?"s":"")+" em comparação")
         )
       ),
       React.createElement("div",{style:{overflowX:"auto"}},
-        React.createElement("table",{style:{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:12}},
+        React.createElement("table",{style:{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:13}},
           React.createElement("thead",null,
             React.createElement("tr",null,
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"left",color:K.dim,fontSize:10,textTransform:"uppercase",fontWeight:700,borderBottom:"1px solid "+K.brd,width:160}},"Campo"),
-              procs.map(function(p){return React.createElement("th",{key:p.id,style:{padding:"10px 12px",textAlign:"left",color:K.ac,fontSize:11,fontWeight:700,borderBottom:"1px solid "+K.brd,minWidth:200,fontFamily:"'JetBrains Mono',monospace"}},
+              React.createElement("th",{style:{padding:"10px 12px",textAlign:"left",color:K.dim,fontSize:12,textTransform:"uppercase",fontWeight:700,borderBottom:"1px solid "+K.brd,width:160}},"Campo"),
+              procs.map(function(p){return React.createElement("th",{key:p.id,style:{padding:"10px 12px",textAlign:"left",color:K.ac,fontSize:12,fontWeight:700,borderBottom:"1px solid "+K.brd,minWidth:200,fontFamily:"'JetBrains Mono',monospace"}},
                 React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,justifyContent:"space-between"}},
                   React.createElement("span",null,p.num||"Sem nº"),
                   React.createElement("button",{onClick:function(){onRemove(p.id);},style:{background:"none",border:"none",color:K.dim,cursor:"pointer",padding:2}},React.createElement(X,{size:12}))
@@ -7125,8 +7371,8 @@ function ComparadorModal({ids,st,onClose,onRemove}){
           ),
           React.createElement("tbody",null,
             rows.map(function(r,i){return React.createElement("tr",{key:i,style:{borderBottom:"1px solid "+K.brd}},
-              React.createElement("td",{style:{padding:"10px 12px",color:K.dim,fontSize:11,fontWeight:700,background:"rgba(255,255,255,.02)"}},r[0]),
-              procs.map(function(p){return React.createElement("td",{key:p.id,style:{padding:"10px 12px",color:K.txt,fontSize:12,lineHeight:1.4,verticalAlign:"top"}},r[1](p));})
+              React.createElement("td",{style:{padding:"10px 12px",color:K.dim,fontSize:12,fontWeight:700,background:"rgba(var(--cj-fgrgb),.02)"}},r[0]),
+              procs.map(function(p){return React.createElement("td",{key:p.id,style:{padding:"10px 12px",color:K.txt,fontSize:13,lineHeight:1.4,verticalAlign:"top"}},r[1](p));})
             );})
           )
         )
@@ -7167,40 +7413,40 @@ function InsightsPg({st}){
   };
   return React.createElement("div",{className:"cj-pg"},
     React.createElement("div",{className:"cj-up",style:{display:"flex",alignItems:"center",gap:14,marginBottom:24}},
-      React.createElement("div",{style:{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(184,77,255,.22),rgba(0,229,255,.08))",border:"1px solid rgba(184,77,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(184,77,255,.25)"}},
+      React.createElement("div",{style:{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(var(--cj-purgb),.22),rgba(var(--cj-acrgb),.08))",border:"1px solid rgba(var(--cj-purgb),.4)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 18px rgba(var(--cj-purgb),.25)"}},
         React.createElement("span",{style:{fontSize:22}},"🧠")
       ),
       React.createElement("div",null,
-        React.createElement("h2",{style:{margin:0,fontSize:22,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}},"Insights IA Agregados"),
-        React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},"Análise do acervo completo por Claude Sonnet")
+        React.createElement("h2",{style:{margin:0,fontSize:22,fontWeight:800,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif"}},"Insights IA Agregados"),
+        React.createElement("div",{style:{fontSize:13,color:K.dim,marginTop:2}},"Análise do acervo completo por Claude Sonnet")
       )
     ),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}},
       [{l:"Ativos",v:st.adm.length+st.jud.length,c:K.ac},{l:"Realizados",v:(st.realizados||[]).length,c:K.su},{l:"Administrativos",v:st.adm.length,c:K.ac},{l:"Judiciais",v:st.jud.length,c:K.pu}].map(function(m,i){return React.createElement(Bx,{key:i,style:{padding:14}},
-        React.createElement("div",{style:{fontSize:10,color:K.dim,marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}},m.l),
+        React.createElement("div",{style:{fontSize:12,color:K.dim,marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}},m.l),
         React.createElement("div",{style:{fontSize:26,fontWeight:800,color:m.c,fontFamily:"Orbitron,monospace"}},m.v)
       );})
     ),
     !insights&&!loading&&React.createElement(Bx,{style:{textAlign:"center",padding:40}},
       React.createElement("div",{style:{fontSize:42,marginBottom:16}},"🧠"),
       React.createElement("div",{style:{fontSize:15,fontWeight:700,color:K.txt,marginBottom:8}},"Gerar análise IA do acervo"),
-      React.createElement("div",{style:{fontSize:12,color:K.dim,marginBottom:20,maxWidth:420,margin:"0 auto 20px"}},"A IA analisará todos os processos e retornará 5 insights acionáveis: gargalos, padrões, recomendações de priorização."),
+      React.createElement("div",{style:{fontSize:13,color:K.dim,marginBottom:20,maxWidth:420,margin:"0 auto 20px"}},"A IA analisará todos os processos e retornará 5 insights acionáveis: gargalos, padrões, recomendações de priorização."),
       React.createElement("button",{onClick:gerar,style:{...btnPrim,padding:"13px 26px",fontSize:14}},"⚡ Analisar acervo")
     ),
     loading&&React.createElement(Bx,{style:{textAlign:"center",padding:40}},
       React.createElement("div",{className:"cj-pulse",style:{fontSize:38,marginBottom:14}},"🧠"),
-      React.createElement("div",{style:{fontSize:13,color:"#b84dff",fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}},"Analisando acervo..."),
+      React.createElement("div",{style:{fontSize:14,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}},"Analisando acervo..."),
       React.createElement(SkeletonBlock,{lines:6,h:20})
     ),
-    error&&React.createElement(Bx,{style:{padding:20,background:"rgba(255,46,91,.1)",border:"1px solid rgba(255,46,91,.3)"}},
-      React.createElement("div",{style:{fontSize:12,color:"#ff2e5b"}},error)
+    error&&React.createElement(Bx,{style:{padding:20,background:"rgba(var(--cj-crrgb),.1)",border:"1px solid rgba(var(--cj-crrgb),.3)"}},
+      React.createElement("div",{style:{fontSize:13,color:"var(--cj-cr)"}},error)
     ),
     insights&&React.createElement(Bx,null,
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
-        React.createElement("div",{style:{fontSize:11,color:"#b84dff",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}},"Insights gerados"),
-        React.createElement("button",{onClick:gerar,style:{...btnGhost,padding:"6px 14px",fontSize:11}},"Regenerar")
+        React.createElement("div",{style:{fontSize:12,color:"var(--cj-pu)",fontWeight:700,fontFamily:"Orbitron,sans-serif",textTransform:"uppercase",letterSpacing:".5px"}},"Insights gerados"),
+        React.createElement("button",{onClick:gerar,style:{...btnGhost,padding:"6px 14px",fontSize:12}},"Regenerar")
       ),
-      React.createElement("div",{style:{fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"inherit"}},insights)
+      React.createElement("div",{style:{fontSize:14,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"inherit"}},insights)
     )
   );
 }
@@ -7260,23 +7506,23 @@ function PomodoroTimer({proc, dp}) {
   var min = Math.floor(seconds / 60);
   var sec = seconds % 60;
   var pct = mode === "focus" ? ((25 * 60 - seconds) / (25 * 60)) * 100 : ((5 * 60 - seconds) / (5 * 60)) * 100;
-  var cor = mode === "focus" ? "#00e5ff" : "#00ff88";
+  var cor = mode === "focus" ? "var(--cj-ac)" : "var(--cj-su)";
 
   return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 14, background: "rgba(" + (mode === "focus" ? "0,229,255" : "0,255,136") + ",.06)", border: "1px solid rgba(" + (mode === "focus" ? "0,229,255" : "0,255,136") + ",.25)" } },
     React.createElement("div", { style: { position: "relative", width: 48, height: 48 } },
       React.createElement("svg", { width: 48, height: 48, viewBox: "0 0 48 48" },
-        React.createElement("circle", { cx: 24, cy: 24, r: 20, fill: "none", stroke: "rgba(255,255,255,.08)", strokeWidth: 3 }),
+        React.createElement("circle", { cx: 24, cy: 24, r: 20, fill: "none", stroke: "rgba(var(--cj-fgrgb),.08)", strokeWidth: 3 }),
         React.createElement("circle", { cx: 24, cy: 24, r: 20, fill: "none", stroke: cor, strokeWidth: 3, strokeLinecap: "round", strokeDasharray: 2 * Math.PI * 20, strokeDashoffset: 2 * Math.PI * 20 * (1 - pct / 100), transform: "rotate(-90 24 24)", style: { transition: "stroke-dashoffset 1s" } })
       ),
-      React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: cor, fontFamily: "Orbitron,monospace" } }, String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0"))
+      React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize:12, fontWeight: 800, color: cor, fontFamily: "Orbitron,monospace" } }, String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0"))
     ),
     React.createElement("div", { style: { flex: 1 } },
-      React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: cor, textTransform: "uppercase", letterSpacing: ".5px", fontFamily: "Orbitron,sans-serif" } }, mode === "focus" ? "Foco" : "Pausa"),
-      totalMin > 0 && React.createElement("div", { style: { fontSize: 10, color: K.dim, marginTop: 2 } }, totalMin + " min registrados")
+      React.createElement("div", { style: { fontSize:12, fontWeight: 700, color: cor, textTransform: "uppercase", letterSpacing: ".5px", fontFamily: "Orbitron,sans-serif" } }, mode === "focus" ? "Foco" : "Pausa"),
+      totalMin > 0 && React.createElement("div", { style: { fontSize:12, color: K.dim, marginTop: 2 } }, totalMin + " min registrados")
     ),
     React.createElement("div", { style: { display: "flex", gap: 6 } },
-      React.createElement("button", { onClick: function() { setRunning(!running); if (!running) requestNotifPermission(); }, style: { padding: "6px 14px", borderRadius: 10, border: "1px solid " + cor + "44", background: running ? "rgba(255,46,91,.15)" : cor + "20", color: running ? "#ff2e5b" : cor, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, running ? "⏸ Pausar" : "▶ Iniciar"),
-      React.createElement("button", { onClick: function() { setRunning(false); setSeconds(mode === "focus" ? 25 * 60 : 5 * 60); }, style: { padding: "6px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,.1)", background: "transparent", color: K.dim, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "↺")
+      React.createElement("button", { onClick: function() { setRunning(!running); if (!running) requestNotifPermission(); }, style: { padding: "6px 14px", borderRadius: 10, border: "1px solid " + cor + "44", background: running ? "rgba(var(--cj-crrgb),.15)" : cor + "20", color: running ? "var(--cj-cr)" : cor, fontSize:12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, running ? "⏸ Pausar" : "▶ Iniciar"),
+      React.createElement("button", { onClick: function() { setRunning(false); setSeconds(mode === "focus" ? 25 * 60 : 5 * 60); }, style: { padding: "6px 10px", borderRadius: 10, border: "1px solid rgba(var(--cj-fgrgb),.1)", background: "transparent", color: K.dim, fontSize:12, cursor: "pointer", fontFamily: "inherit" } }, "↺")
     )
   );
 }
@@ -7306,9 +7552,9 @@ function WeeklyEvolutionChart({st}) {
     React.createElement(SH, { icon: TrendingUp, title: "Evolução Semanal (8 semanas)" }),
     React.createElement(ResponsiveContainer, { width: "100%", height: 180 },
       React.createElement(BarChart, { data: data, barSize: 16 },
-        React.createElement(XAxis, { dataKey: "sem", tick: { fill: K.dim2, fontSize: 9 }, axisLine: false, tickLine: false }),
-        React.createElement(YAxis, { tick: { fill: K.dim2, fontSize: 10 }, axisLine: false, tickLine: false, allowDecimals: false }),
-        React.createElement(Tooltip, { contentStyle: { background: K.modal, border: "1px solid " + K.brd, borderRadius: 8, color: K.txt, fontSize: 12 } }),
+        React.createElement(XAxis, { dataKey: "sem", tick: { fill: K.dim2, fontSize:11 }, axisLine: false, tickLine: false }),
+        React.createElement(YAxis, { tick: { fill: K.dim2, fontSize:12 }, axisLine: false, tickLine: false, allowDecimals: false }),
+        React.createElement(Tooltip, { contentStyle: { background: K.modal, border: "1px solid " + K.brd, borderRadius: 8, color: K.txt, fontSize:13 } }),
         React.createElement(Bar, { dataKey: "criados", fill: K.ac, name: "Criados", radius: [4, 4, 0, 0] }),
         React.createElement(Bar, { dataKey: "concluidos", fill: K.su, name: "Concluídos", radius: [4, 4, 0, 0] })
       )
@@ -7335,16 +7581,16 @@ function LembretePg(props) {
     var titulo=bProps.titulo,cor=bProps.cor,items=bProps.items;
     if(!items.length)return null;
     return React.createElement("div",{style:{marginBottom:20}},
-      React.createElement("div",{style:{fontSize:11,color:cor,fontWeight:700,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif"}},[bProps.emoji," ",titulo]),
+      React.createElement("div",{style:{fontSize:12,color:cor,fontWeight:700,letterSpacing:".8px",textTransform:"uppercase",marginBottom:8,fontFamily:"Orbitron,sans-serif"}},[bProps.emoji," ",titulo]),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         items.map(function(l){return(
-          React.createElement("div",{key:l.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:14,background:l.done?"rgba(255,255,255,.02)":"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid "+(l.done?"rgba(255,255,255,.05)":cor+"33"),boxShadow:l.done?"none":"0 0 14px "+cor+"12",transition:"all .2s"}},
+          React.createElement("div",{key:l.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:14,background:l.done?"rgba(var(--cj-fgrgb),.02)":"linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99))",border:"1px solid "+(l.done?"rgba(var(--cj-fgrgb),.05)":cor+"33"),boxShadow:l.done?"none":"0 0 14px "+cor+"12",transition:"all .2s"}},
             React.createElement("button",{onClick:function(){dp({type:"UPD_LEMBRETE",id:l.id,ch:{done:!l.done}});},style:{width:20,height:20,borderRadius:6,border:"1.5px solid "+cor,background:l.done?cor:"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},
-              l.done&&React.createElement(CheckCircle,{size:12,color:"#fff"})
+              l.done&&React.createElement(CheckCircle,{size:12,color:"var(--cj-tx0)"})
             ),
             React.createElement("div",{style:{flex:1,minWidth:0}},
-              React.createElement("div",{style:{fontSize:13,fontWeight:700,color:l.done?K.dim2:K.txt,textDecoration:l.done?"line-through":"none",lineHeight:1.4}},[l.texto]),
-              l.data&&React.createElement("div",{style:{fontSize:10,color:l.done?K.dim2:cor,marginTop:3,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}},
+              React.createElement("div",{style:{fontSize:14,fontWeight:700,color:l.done?K.dim2:K.txt,textDecoration:l.done?"line-through":"none",lineHeight:1.4}},[l.texto]),
+              l.data&&React.createElement("div",{style:{fontSize:12,color:l.done?K.dim2:cor,marginTop:3,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}},
                 l.data<=hoje&&!l.done?"⚠️ "+new Date(l.data+"T12:00:00").toLocaleDateString("pt-BR"):"📅 "+new Date(l.data+"T12:00:00").toLocaleDateString("pt-BR")
               )
             ),
@@ -7360,9 +7606,9 @@ function LembretePg(props) {
         React.createElement("span",{style:{fontSize:24}},"⏰"),
         React.createElement("div",null,
           React.createElement("h2",{style:{margin:0,fontSize:20,fontWeight:800,color:K.txt,fontFamily:"Orbitron,sans-serif"}},"Lembretes"),
-          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2}},"Atividades e compromissos a lembrar")
+          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2}},"Atividades e compromissos a lembrar")
         ),
-        venc.length>0&&React.createElement("div",{className:"cj-pulse",style:{marginLeft:"auto",padding:"4px 14px",borderRadius:999,background:"rgba(255,46,91,.15)",border:"1px solid rgba(255,46,91,.4)",color:"#ff2e5b",fontSize:12,fontWeight:800,fontFamily:"Orbitron,monospace"}},venc.length+" vencido"+(venc.length>1?"s":""))
+        venc.length>0&&React.createElement("div",{className:"cj-pulse",style:{marginLeft:"auto",padding:"4px 14px",borderRadius:999,background:"rgba(var(--cj-crrgb),.15)",border:"1px solid rgba(var(--cj-crrgb),.4)",color:"var(--cj-cr)",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}},venc.length+" vencido"+(venc.length>1?"s":""))
       ),
       React.createElement(Bx,{style:{marginBottom:20}},
         React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}},
@@ -7384,7 +7630,7 @@ function LembretePg(props) {
         !lembs.length&&React.createElement("div",{style:{textAlign:"center",padding:40,color:K.dim2}},
           React.createElement("div",{style:{fontSize:36,marginBottom:10}},"⏰"),
           React.createElement("div",{style:{fontSize:14,color:K.txt,fontWeight:700}},"Nenhum lembrete cadastrado"),
-          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:6}},"Adicione lembretes para não esquecer atividades importantes")
+          React.createElement("div",{style:{fontSize:13,color:K.dim,marginTop:6}},"Adicione lembretes para não esquecer atividades importantes")
         )
       )
     )
@@ -7479,7 +7725,7 @@ function IAPainel({st,ss,sp}){
   var EST={"Parecer Jurídico":2.5,"Agravo Interno":2,"Contraminuta":2,"Manifestação":1.5,"Embargos de Declaração":0.75,"Informações em MS":1.5,"Ofício":0.5,"Despacho de Andamento":0.25};
   var hTotal=all.slice(0,15).reduce(function(acc,p){return acc+(EST[p.tipoPeca]||1.5);},0);
   var cargaStatus=hTotal<=20?"OK":hTotal<=40?"ALTO":"CRÍTICO";
-  var cargaCor=cargaStatus==="OK"?"#00ff88":cargaStatus==="ALTO"?"#ffb800":"#ff2e5b";
+  var cargaCor=cargaStatus==="OK"?"var(--cj-su)":cargaStatus==="ALTO"?"var(--cj-wa)":"var(--cj-cr)";
 
   return(
     <div className="cj-pg">
@@ -7487,42 +7733,42 @@ function IAPainel({st,ss,sp}){
         <span style={{fontSize:28}}>🧠</span>
         <div>
           <h2 style={{margin:0,fontSize:22,fontWeight:800,background:"linear-gradient(135deg,#00e5ff,#b84dff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron,sans-serif"}}>IA NEXUS</h2>
-          <div style={{fontSize:11,color:K.dim,marginTop:2}}>Centro de Inteligência · COJUR/CFM · {H_INI}–{H_FIM} · Seg–Sex</div>
+          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Centro de Inteligência · COJUR/CFM · {H_INI}–{H_FIM} · Seg–Sex</div>
         </div>
-        <div style={{marginLeft:"auto",padding:"6px 14px",borderRadius:10,background:cargaCor+"18",border:"1px solid "+cargaCor+"44",fontSize:11,fontWeight:700,color:cargaCor,fontFamily:"Orbitron,monospace"}}>
+        <div style={{marginLeft:"auto",padding:"6px 14px",borderRadius:10,background:cargaCor+"18",border:"1px solid "+cargaCor+"44",fontSize:12,fontWeight:700,color:cargaCor,fontFamily:"Orbitron,monospace"}}>
           Carga: {cargaStatus} · {hTotal.toFixed(1)}h pendentes
         </div>
       </div>
 
       {/* Plano do dia */}
-      <div className="cj-ia-card" style={{marginBottom:20,borderColor:"rgba(0,229,255,.25)"}}>
+      <div className="cj-ia-card" style={{marginBottom:20,borderColor:"rgba(var(--cj-acrgb),.25)"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
           <span style={{fontSize:22}}>📅</span>
           <div>
-            <div style={{fontSize:14,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>PLANO DO DIA COM IA</div>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>{H_INI}–{H_FIM} · {H_DIA}h/dia · gerado por Claude Sonnet</div>
+            <div style={{fontSize:14,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px"}}>PLANO DO DIA COM IA</div>
+            <div style={{fontSize:12,color:K.dim,marginTop:2}}>{H_INI}–{H_FIM} · {H_DIA}h/dia · gerado por Claude Sonnet</div>
           </div>
-          {!loading&&<button onClick={gerarPlano} style={{...btnPrim,marginLeft:"auto",padding:"9px 18px",fontSize:12}}>{plano?"🔄 Replanejar":"⚡ Gerar Plano do Dia"}</button>}
+          {!loading&&<button onClick={gerarPlano} style={{...btnPrim,marginLeft:"auto",padding:"9px 18px",fontSize:13}}>{plano?"🔄 Replanejar":"⚡ Gerar Plano do Dia"}</button>}
         </div>
-        {loading&&<div style={{textAlign:"center",padding:"24px 0",color:"#00e5ff"}}><div className="cj-pulse" style={{fontSize:34,marginBottom:10}}>🧠</div><div style={{fontSize:13,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Analisando e montando seu plano...</div><div style={{fontSize:11,color:K.dim,marginTop:6}}>Considerando prazos, tipos de peça e janela {H_INI}–{H_FIM}</div></div>}
+        {loading&&<div style={{textAlign:"center",padding:"24px 0",color:"var(--cj-ac)"}}><div className="cj-pulse" style={{fontSize:34,marginBottom:10}}>🧠</div><div style={{fontSize:14,fontFamily:"Orbitron,sans-serif",letterSpacing:"1px"}}>Analisando e montando seu plano...</div><div style={{fontSize:12,color:K.dim,marginTop:6}}>Considerando prazos, tipos de peça e janela {H_INI}–{H_FIM}</div></div>}
         {plano&&!loading&&<div>
-          <div style={{padding:"16px",borderRadius:13,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.1)",fontSize:12,color:K.txt,lineHeight:1.85,whiteSpace:"pre-wrap",fontFamily:"inherit",maxHeight:380,overflowY:"auto",marginBottom:12}}>{plano}</div>
+          <div style={{padding:"16px",borderRadius:13,background:"rgba(var(--cj-acrgb),.04)",border:"1px solid rgba(var(--cj-acrgb),.1)",fontSize:13,color:K.txt,lineHeight:1.85,whiteSpace:"pre-wrap",fontFamily:"inherit",maxHeight:380,overflowY:"auto",marginBottom:12}}>{plano}</div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={copiarPlano} style={{...btnPrim,padding:"9px 18px",fontSize:12,color:copied?"#00ff88":"#00e5ff",borderColor:copied?"rgba(0,255,136,.4)":"rgba(0,229,255,.35)",background:copied?"rgba(0,255,136,.1)":"rgba(0,229,255,.1)"}}>{copied?"✅ Copiado!":"📋 Copiar Plano"}</button>
-            <button onClick={function(){var w=window.open("","_blank");if(w){w.document.write("<html><head><title>Plano COJUR</title><style>body{font-family:Arial;max-width:700px;margin:40px auto;line-height:1.8;font-size:13px;}pre{white-space:pre-wrap;}</style></head><body><pre>"+plano.replace(/</g,"&lt;")+"</pre><scr"+"ipt>window.print();</"+"script></body></html>");w.document.close();}}} style={{...btnGhost,padding:"9px 12px",fontSize:12}}>🖨️</button>
-            <button onClick={gerarPlano} style={{...btnGhost,padding:"9px 14px",fontSize:12}}>🔄 Replanejar</button>
+            <button onClick={copiarPlano} style={{...btnPrim,padding:"9px 18px",fontSize:13,color:copied?"var(--cj-su)":"var(--cj-ac)",borderColor:copied?"rgba(var(--cj-surgb),.4)":"rgba(var(--cj-acrgb),.35)",background:copied?"rgba(var(--cj-surgb),.1)":"rgba(var(--cj-acrgb),.1)"}}>{copied?"✅ Copiado!":"📋 Copiar Plano"}</button>
+            <button onClick={function(){var w=window.open("","_blank");if(w){w.document.write("<html><head><title>Plano COJUR</title><style>body{font-family:Arial;max-width:700px;margin:40px auto;line-height:1.8;font-size:14px;}pre{white-space:pre-wrap;}</style></head><body><pre>"+plano.replace(/</g,"&lt;")+"</pre><scr"+"ipt>window.print();</"+"script></body></html>");w.document.close();}}} style={{...btnGhost,padding:"9px 12px",fontSize:13}}>🖨️</button>
+            <button onClick={gerarPlano} style={{...btnGhost,padding:"9px 14px",fontSize:13}}>🔄 Replanejar</button>
           </div>
         </div>}
-        {!plano&&!loading&&<div style={{textAlign:"center",padding:"18px 0",color:K.dim,fontSize:12}}>Clique em "Gerar Plano do Dia" para que a IA organize suas {H_DIA}h considerando prazos, tipos de peça e eventos do dia.</div>}
+        {!plano&&!loading&&<div style={{textAlign:"center",padding:"18px 0",color:K.dim,fontSize:13}}>Clique em "Gerar Plano do Dia" para que a IA organize suas {H_DIA}h considerando prazos, tipos de peça e eventos do dia.</div>}
       </div>
 
       {/* Score band */}
-      <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      <div className="cj-st" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12,marginBottom:20}}>
         {[{emoji:"🔥",lbl:"Críticos",val:crit.length,col:K.cr,cls:"cj-neon-cr"},{emoji:"⚡",lbl:"Urgentes",val:urg.length,col:K.wa,cls:"cj-neon-wa"},{emoji:"🟡",lbl:"Atenção",val:atenc.length,col:"#eab308",cls:""},{emoji:"🧊",lbl:"Normal",val:norm.length,col:K.ac,cls:""}].map(function(it){return(
           <div key={it.lbl} className={"cj-ia-card "+it.cls} style={{textAlign:"center",padding:"18px 12px"}}>
             <div style={{fontSize:26,marginBottom:6}}>{it.emoji}</div>
             <div style={{fontSize:30,fontWeight:800,color:it.col,fontFamily:"Orbitron,monospace",lineHeight:1}}>{it.val}</div>
-            <div style={{fontSize:10,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:4}}>{it.lbl}</div>
+            <div style={{fontSize:12,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:4}}>{it.lbl}</div>
           </div>
         );})}
       </div>
@@ -7533,68 +7779,68 @@ function IAPainel({st,ss,sp}){
           <span style={{fontSize:18}}>📊</span>
           <span style={{fontSize:14,fontWeight:800,color:K.txt}}>Carga de Trabalho · Próximas 4 Semanas</span>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10,marginBottom:10}}>
           {[1,2,3,4].map(function(sem){
             var ini=(sem-1)*5+1,fim=sem*5;
             var procs=all.filter(function(p){return p.diasRestantes>=ini&&p.diasRestantes<=fim;});
             var horas=procs.reduce(function(acc,p){return acc+(EST[p.tipoPeca]||1.5);},0);
             var cap=20;var pct=Math.min(100,(horas/cap)*100);
-            var cor=pct>90?"#ff2e5b":pct>65?"#ffb800":"#00ff88";
+            var cor=pct>90?"var(--cj-cr)":pct>65?"var(--cj-wa)":"var(--cj-su)";
             return(
-              <div key={sem} style={{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.1)"}}>
-                <div style={{fontSize:10,color:K.dim,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Semana {sem}</div>
+              <div key={sem} style={{padding:"12px 14px",borderRadius:12,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-acrgb),.1)"}}>
+                <div style={{fontSize:12,color:K.dim,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Semana {sem}</div>
                 <div style={{fontSize:22,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{horas.toFixed(0)}h</div>
-                <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,.06)",marginTop:6,overflow:"hidden"}}>
+                <div style={{height:4,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",marginTop:6,overflow:"hidden"}}>
                   <div style={{height:"100%",borderRadius:999,background:cor,width:pct+"%",boxShadow:"0 0 6px "+cor,transition:"width .5s"}}/>
                 </div>
-                <div style={{fontSize:9,color:K.dim,marginTop:4}}>{procs.length} proc. · cap.{cap}h</div>
+                <div style={{fontSize:11,color:K.dim,marginTop:4}}>{procs.length} proc. · cap.{cap}h</div>
               </div>
             );
           })}
         </div>
-        <div style={{fontSize:10,color:K.dim,padding:"6px 10px",borderRadius:8,background:"rgba(0,229,255,.03)",border:"1px solid rgba(0,229,255,.08)"}}>
+        <div style={{fontSize:12,color:K.dim,padding:"6px 10px",borderRadius:8,background:"rgba(var(--cj-acrgb),.03)",border:"1px solid rgba(var(--cj-acrgb),.08)"}}>
           Parecer=2.5h · Agravo/Contraminuta=2h · Manifestação=1.5h · Embargos=45min · Ofício=30min · Despacho=15min
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:20,marginBottom:20}}>
+      <div className="cj-rgrid" style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:20,marginBottom:20}}>
         <div className="cj-ia-card">
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}><span style={{fontSize:18}}>🏆</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>TOP 5 HOJE</span><span style={{marginLeft:"auto",fontSize:11,color:K.dim}}>Score IA</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}><span style={{fontSize:18}}>🏆</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>TOP 5 HOJE</span><span style={{marginLeft:"auto",fontSize:12,color:K.dim}}>Score IA</span></div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {all.slice(0,5).map(function(p,i){var b=iaBadge(p.iaS);var sug=iaSugestao(p);return(
               <div key={p.id} className="cj-rank-item" onClick={function(){ss(p);}}>
-                <div style={{width:26,height:26,borderRadius:8,background:i===0?"linear-gradient(135deg,#ff2e5b,#b91c1c)":i<3?"linear-gradient(135deg,#ffb800,#b45309)":"rgba(0,229,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>{i+1}</div>
+                <div style={{width:26,height:26,borderRadius:8,background:i===0?"linear-gradient(135deg,#ff2e5b,#b91c1c)":i<3?"linear-gradient(135deg,#ffb800,#b45309)":"rgba(var(--cj-acrgb),.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"var(--cj-tx0)",flexShrink:0}}>{i+1}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span className={b.cls}>{b.emoji} {b.txt}</span><span style={{fontSize:10,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginLeft:"auto"}}>{p.iaS}pts</span></div>
-                  <div style={{fontSize:12,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto||p.num||"—"}</div>
-                  <div style={{fontSize:10,color:K.dim,marginTop:1}}>{sug.emoji} {sug.txt}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span className={b.cls}>{b.emoji} {b.txt}</span><span style={{fontSize:12,color:K.dim,fontFamily:"'JetBrains Mono',monospace",marginLeft:"auto"}}>{p.iaS}pts</span></div>
+                  <div style={{fontSize:13,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto||p.num||"—"}</div>
+                  <div style={{fontSize:12,color:K.dim,marginTop:1}}>{sug.emoji} {sug.txt}</div>
                 </div>
-                <div style={{fontSize:11,fontWeight:700,color:uC(p.diasRestantes),fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{p.diasRestantes}du</div>
+                <div style={{fontSize:12,fontWeight:700,color:uC(p.diasRestantes),fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{p.diasRestantes}du</div>
               </div>
             );})}
           </div>
         </div>
         <div className="cj-ia-card">
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:18}}>🚨</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>Alertas</span>{alertas.length>0&&<span style={{marginLeft:"auto",background:K.cr,color:"#fff",borderRadius:999,fontSize:10,fontWeight:800,padding:"1px 8px"}}>{alertas.length}</span>}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:18}}>🚨</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>Alertas</span>{alertas.length>0&&<span style={{marginLeft:"auto",background:K.cr,color:"var(--cj-tx0)",borderRadius:999,fontSize:12,fontWeight:800,padding:"1px 8px"}}>{alertas.length}</span>}</div>
           <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:240,overflowY:"auto"}}>
-            {alertas.length?alertas.map(function(a,i){return(<div key={i} style={{padding:"7px 10px",borderRadius:9,background:a.cor+"12",borderLeft:"3px solid "+a.cor,fontSize:11,color:K.txt,lineHeight:1.4}}><span style={{marginRight:5}}>{a.emoji}</span>{a.txt}</div>);}):(<div style={{padding:14,textAlign:"center",color:K.dim2,fontSize:12}}>✅ Nenhum alerta crítico</div>)}
+            {alertas.length?alertas.map(function(a,i){return(<div key={i} style={{padding:"7px 10px",borderRadius:9,background:a.cor+"12",borderLeft:"3px solid "+a.cor,fontSize:12,color:K.txt,lineHeight:1.4}}><span style={{marginRight:5}}>{a.emoji}</span>{a.txt}</div>);}):(<div style={{padding:14,textAlign:"center",color:K.dim2,fontSize:13}}>✅ Nenhum alerta crítico</div>)}
           </div>
         </div>
       </div>
 
       <div className="cj-ia-card">
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}><span style={{fontSize:16}}>📋</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>Ranking Completo</span><span style={{fontSize:11,color:K.dim,marginLeft:"auto"}}>por score IA</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}><span style={{fontSize:16}}>📋</span><span style={{fontSize:14,fontWeight:800,color:K.txt}}>Ranking Completo</span><span style={{fontSize:12,color:K.dim,marginLeft:"auto"}}>por score IA</span></div>
         <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:340,overflowY:"auto"}}>
           {all.map(function(p,i){var b=iaBadge(p.iaS);var sug=iaSugestao(p);return(
             <div key={p.id} className="cj-rank-item" onClick={function(){ss(p);}} style={{borderLeft:"2px solid "+(i<3?K.cr:i<8?K.wa:K.brd)}}>
-              <div style={{width:22,fontSize:10,fontWeight:800,color:i<3?K.cr:i<8?K.wa:K.dim,fontFamily:"'JetBrains Mono',monospace",flexShrink:0,textAlign:"center"}}>#{i+1}</div>
+              <div style={{width:22,fontSize:12,fontWeight:800,color:i<3?K.cr:i<8?K.wa:K.dim,fontFamily:"'JetBrains Mono',monospace",flexShrink:0,textAlign:"center"}}>#{i+1}</div>
               <div style={{flex:1,minWidth:0,display:"flex",gap:8,alignItems:"center"}}>
                 <div style={{minWidth:0,flex:1}}>
-                  <div style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"} <span style={{color:K.dim}}>· {p.tipoPeca}</span></div>
-                  <div style={{fontSize:12,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
+                  <div style={{fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:K.ac}}>{p.num||"—"} <span style={{color:K.dim}}>· {p.tipoPeca}</span></div>
+                  <div style={{fontSize:13,fontWeight:600,color:K.txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.assunto}</div>
                 </div>
                 <span className={b.cls} style={{flexShrink:0}}>{b.emoji} {b.txt}</span>
-                <span style={{fontSize:11,color:uC(p.diasRestantes),fontFamily:"'JetBrains Mono',monospace",flexShrink:0,fontWeight:700}}>{p.diasRestantes}du</span>
+                <span style={{fontSize:12,color:uC(p.diasRestantes),fontFamily:"'JetBrains Mono',monospace",flexShrink:0,fontWeight:700}}>{p.diasRestantes}du</span>
               </div>
             </div>
           );})}
@@ -7613,40 +7859,40 @@ function ProtocolarPg({st,dp,ss}){
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:14,marginBottom:24,flexWrap:"wrap"}}>
         <div style={{fontSize:28}}>📤</div>
         <div>
-          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 12px rgba(0,255,136,.6)"}}>PROTOCOLAR NO TRIBUNAL</h2>
-          <div style={{fontSize:12,color:K.dim,marginTop:3}}>Peças aprovadas pelo chefe do contencioso — protocolo pendente</div>
+          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"var(--cj-su)",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 12px rgba(var(--cj-surgb),.6)"}}>PROTOCOLAR NO TRIBUNAL</h2>
+          <div style={{fontSize:13,color:K.dim,marginTop:3}}>Peças aprovadas pelo chefe do contencioso — protocolo pendente</div>
         </div>
-        <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"#00ff88",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(0,255,136,.8)"}}>{items.length}</div>
+        <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"var(--cj-su)",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(var(--cj-surgb),.8)"}}>{items.length}</div>
       </div>
       {!items.length&&<EmptyState icon="done" color={K.su} title="Nenhum processo pendente de protocolo" sub="Quando o chefe do contencioso aprovar uma peça, ela aparecerá aqui"/>}
       <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:12}}>
         {items.map((p,i)=>{var sys=getTribSistema(p.tribunal);return(
-          <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(0,255,136,.08),rgba(2,5,20,.97))",border:"1px solid rgba(0,255,136,.35)",boxShadow:"0 0 20px rgba(0,255,136,.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjProtocolar 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
+          <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(var(--cj-surgb),.08),rgba(var(--cj-panelrgb),.97))",border:"1px solid rgba(var(--cj-surgb),.35)",boxShadow:"0 0 20px rgba(var(--cj-surgb),.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjProtocolar 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
-              <div style={{width:44,height:44,borderRadius:14,background:"rgba(0,255,136,.15)",border:"1px solid rgba(0,255,136,.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 12px rgba(0,255,136,.3)"}}>
-                <Upload size={20} color="#00ff88" style={{filter:"drop-shadow(0 0 5px rgba(0,255,136,.8))"}}/>
+              <div style={{width:44,height:44,borderRadius:14,background:"rgba(var(--cj-surgb),.15)",border:"1px solid rgba(var(--cj-surgb),.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 12px rgba(var(--cj-surgb),.3)"}}>
+                <Upload size={20} color="var(--cj-su)" style={{filter:"drop-shadow(0 0 5px rgba(var(--cj-surgb),.8))"}}/>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6,alignItems:"center"}}>
-                  <span style={{fontSize:10,color:"#00ff88",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",textShadow:"0 0 6px rgba(0,255,136,.6)"}}>📤 PROTOCOLAR</span>
-                  <span className="cj-badge-ok" style={{fontSize:9}}>#{i+1} PRIORIDADE</span>
+                  <span style={{fontSize:12,color:"var(--cj-su)",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",textShadow:"0 0 6px rgba(var(--cj-surgb),.6)"}}>📤 PROTOCOLAR</span>
+                  <span className="cj-badge-ok" style={{fontSize:11}}>#{i+1} PRIORIDADE</span>
                   {p.tipo==="jud"&&<Bd color={K.pu}><Scale size={9}/>{p.tribunal}</Bd>}
-                  {hasCustas(p)&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:999,background:"rgba(255,184,0,.15)",color:"#ffb800",border:"1px solid rgba(255,184,0,.35)",fontWeight:700}}>💰 EXIGE CUSTAS</span>}
+                  {hasCustas(p)&&<span style={{fontSize:11,padding:"2px 8px",borderRadius:999,background:"rgba(var(--cj-wargb),.15)",color:"var(--cj-wa)",border:"1px solid rgba(var(--cj-wargb),.35)",fontWeight:700}}>💰 EXIGE CUSTAS</span>}
                 </div>
-                <div style={{fontSize:13,fontFamily:"'JetBrains Mono',monospace",color:"#00e5ff",marginBottom:4}}>{p.num||"Sem nº"}</div>
+                <div style={{fontSize:14,fontFamily:"'JetBrains Mono',monospace",color:"var(--cj-ac)",marginBottom:4}}>{p.num||"Sem nº"}</div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,lineHeight:1.4,marginBottom:8}}>{p.assunto}</div>
-                <div style={{fontSize:11,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
+                <div style={{fontSize:12,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0}} onClick={function(e){e.stopPropagation();}}>
                 <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
-                {sys&&<button onClick={function(){window.open(sys.url,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:12,border:"1px solid rgba(0,255,136,.4)",background:"linear-gradient(135deg,rgba(0,255,136,.18),rgba(0,255,136,.06))",color:"#00ff88",fontSize:11,fontWeight:800,cursor:"pointer",boxShadow:"0 0 14px rgba(0,255,136,.25)",textShadow:"0 0 6px rgba(0,255,136,.7)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",whiteSpace:"nowrap"}}>
+                {sys&&<button onClick={function(){window.open(sys.url,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:12,border:"1px solid rgba(var(--cj-surgb),.4)",background:"linear-gradient(135deg,rgba(var(--cj-surgb),.18),rgba(var(--cj-surgb),.06))",color:"var(--cj-su)",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 0 14px rgba(var(--cj-surgb),.25)",textShadow:"0 0 6px rgba(var(--cj-surgb),.7)",fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",whiteSpace:"nowrap"}}>
                   {sys.icone} Abrir {sys.sistema}
                 </button>}
-                {sys&&sys.url1g&&sys.url1g!==sys.url&&<button onClick={function(){window.open(sys.url1g,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:12,border:"1px solid rgba(168,85,247,.35)",background:"linear-gradient(135deg,rgba(168,85,247,.12),rgba(168,85,247,.05))",color:"#b84dff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Orbitron,sans-serif",whiteSpace:"nowrap"}}>
+                {sys&&sys.url1g&&sys.url1g!==sys.url&&<button onClick={function(){window.open(sys.url1g,"_blank","noopener,noreferrer");}} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:12,border:"1px solid rgba(var(--cj-purgb),.35)",background:"linear-gradient(135deg,rgba(var(--cj-purgb),.12),rgba(var(--cj-purgb),.05))",color:"var(--cj-pu)",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Orbitron,sans-serif",whiteSpace:"nowrap"}}>
                   {sys.icone} 1º Grau
                 </button>}
-                {React.createElement(function(){var[ck,sCk]=useState(false);return React.createElement("button",{onClick:function(){copyText(DESPACHO_PROTOCOLO,function(){sCk(true);setTimeout(function(){sCk(false);},2500);});},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:10,border:ck?"1px solid rgba(0,255,136,.5)":"1px solid rgba(0,229,255,.25)",background:ck?"rgba(0,255,136,.08)":"rgba(0,229,255,.06)",color:ck?"#00ff88":"#00e5ff",fontSize:10,fontWeight:700,cursor:"pointer",transition:"all .3s",whiteSpace:"nowrap",fontFamily:"inherit"}},ck?"✅ Copiado!":"📋 Despacho Protocolo");},null)}
-                <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Concluído"}});dp({type:"COMPLETE_P",id:p.id});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.06)",color:"#00e5ff",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+                {React.createElement(CjInline,{fn:function(){var[ck,sCk]=useState(false);return React.createElement("button",{onClick:function(){copyText(DESPACHO_PROTOCOLO,function(){sCk(true);setTimeout(function(){sCk(false);},2500);});},style:{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:10,border:ck?"1px solid rgba(var(--cj-surgb),.5)":"1px solid rgba(var(--cj-acrgb),.25)",background:ck?"rgba(var(--cj-surgb),.08)":"rgba(var(--cj-acrgb),.06)",color:ck?"var(--cj-su)":"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .3s",whiteSpace:"nowrap",fontFamily:"inherit"}},ck?"✅ Copiado!":"📋 Despacho Protocolo");}})}
+                <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Concluído"}});dp({type:"COMPLETE_P",id:p.id});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(var(--cj-acrgb),.2)",background:"rgba(var(--cj-acrgb),.06)",color:"var(--cj-ac)",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                   <CheckCircle size={12}/>Protocolado
                 </button>
               </div>
@@ -7666,36 +7912,36 @@ function CorrecaoPg({st,dp,ss}){
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:14,marginBottom:24,flexWrap:"wrap"}}>
         <div style={{fontSize:28}}>✏️</div>
         <div>
-          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 12px rgba(255,184,0,.6)"}}>EM CORREÇÃO</h2>
-          <div style={{fontSize:12,color:K.dim,marginTop:3}}>Retornadas pelo chefe do contencioso — revisar antes de protocolar</div>
+          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"var(--cj-wa)",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 12px rgba(var(--cj-wargb),.6)"}}>EM CORREÇÃO</h2>
+          <div style={{fontSize:13,color:K.dim,marginTop:3}}>Retornadas pelo chefe do contencioso — revisar antes de protocolar</div>
         </div>
-        <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"#ffb800",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(255,184,0,.8)"}}>{items.length}</div>
+        <div className="cj-pulse" style={{marginLeft:"auto",fontSize:32,fontWeight:800,color:"var(--cj-wa)",fontFamily:"Orbitron,monospace",textShadow:"0 0 18px rgba(var(--cj-wargb),.8)"}}>{items.length}</div>
       </div>
       {!items.length&&<EmptyState icon="done" color={K.wa} title="Nenhuma peça em fase de correção" sub="Quando uma peça for retornada pelo chefe, ela aparecerá aqui"/>}
       <div className="cj-st" style={{display:"flex",flexDirection:"column",gap:12}}>
         {items.map((p,i)=>(
-          <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(255,184,0,.08),rgba(2,5,20,.97))",border:"1px solid rgba(255,184,0,.38)",boxShadow:"0 0 20px rgba(255,184,0,.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjCorrecao 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
+          <div key={p.id} className="cj-hud-tl cj-hud-br" style={{padding:"16px 20px",borderRadius:18,background:"linear-gradient(135deg,rgba(var(--cj-wargb),.08),rgba(var(--cj-panelrgb),.97))",border:"1px solid rgba(var(--cj-wargb),.38)",boxShadow:"0 0 20px rgba(var(--cj-wargb),.08),0 16px 40px rgba(0,0,0,.4)",animation:"cjCorrecao 2s ease-in-out infinite",cursor:"pointer",transition:"transform .2s"}} onClick={()=>ss(p)} onMouseEnter={function(e){e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={function(e){e.currentTarget.style.transform="none";}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
-              <div style={{width:44,height:44,borderRadius:14,background:"rgba(255,184,0,.15)",border:"1px solid rgba(255,184,0,.38)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 12px rgba(255,184,0,.3)"}}>
-                <PenLine size={20} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>
+              <div style={{width:44,height:44,borderRadius:14,background:"rgba(var(--cj-wargb),.15)",border:"1px solid rgba(var(--cj-wargb),.38)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 12px rgba(var(--cj-wargb),.3)"}}>
+                <PenLine size={20} color="var(--cj-wa)" style={{filter:"drop-shadow(0 0 5px rgba(var(--cj-wargb),.8))"}}/>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6,alignItems:"center"}}>
-                  <span style={{fontSize:10,color:"#ffb800",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",textShadow:"0 0 6px rgba(255,184,0,.6)"}}>✏️ CORRIGIR</span>
-                  <span className="cj-badge-zap" style={{fontSize:9}}>#{i+1} PRIORIDADE</span>
+                  <span style={{fontSize:12,color:"var(--cj-wa)",fontWeight:800,fontFamily:"Orbitron,sans-serif",letterSpacing:".5px",textShadow:"0 0 6px rgba(var(--cj-wargb),.6)"}}>✏️ CORRIGIR</span>
+                  <span className="cj-badge-zap" style={{fontSize:11}}>#{i+1} PRIORIDADE</span>
                   {p.tipo==="jud"&&<Bd color={K.pu}><Scale size={9}/>{p.tribunal}</Bd>}
                 </div>
-                <div style={{fontSize:13,fontFamily:"'JetBrains Mono',monospace",color:"#00e5ff",marginBottom:4}}>{p.num||"Sem nº"}</div>
+                <div style={{fontSize:14,fontFamily:"'JetBrains Mono',monospace",color:"var(--cj-ac)",marginBottom:4}}>{p.num||"Sem nº"}</div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,lineHeight:1.4,marginBottom:8}}>{p.assunto}</div>
-                {p.obs&&<div style={{fontSize:11,color:"#ffb800",padding:"6px 10px",borderRadius:8,background:"rgba(255,184,0,.08)",border:"1px solid rgba(255,184,0,.2)",marginBottom:6}}>📝 {p.obs}</div>}
-                <div style={{fontSize:11,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
+                {p.obs&&<div style={{fontSize:12,color:"var(--cj-wa)",padding:"6px 10px",borderRadius:8,background:"rgba(var(--cj-wargb),.08)",border:"1px solid rgba(var(--cj-wargb),.2)",marginBottom:6}}>📝 {p.obs}</div>}
+                <div style={{fontSize:12,color:K.dim}}>{p.tipoPeca} · {p.responsavel} · Prazo: {fmt(p.prazoFinal)}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0}} onClick={function(e){e.stopPropagation();}}>
                 <UB d={p.diasRestantes} prazoFinal={p.prazoFinal}/>
-                <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Pronto p/ Protocolo"}});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:11,border:"1px solid rgba(0,255,136,.35)",background:"rgba(0,255,136,.08)",color:"#00ff88",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                <button onClick={function(){dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{status:"Pronto p/ Protocolo"}});}} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:11,border:"1px solid rgba(var(--cj-surgb),.35)",background:"rgba(var(--cj-surgb),.08)",color:"var(--cj-su)",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                   <Upload size={12}/>Mover p/ Protocolar
                 </button>
-                <button onClick={()=>ss(p)} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(255,184,0,.25)",background:"rgba(255,184,0,.06)",color:"#ffb800",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+                <button onClick={()=>ss(p)} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:10,border:"1px solid rgba(var(--cj-wargb),.25)",background:"rgba(var(--cj-wargb),.06)",color:"var(--cj-wa)",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                   <PenLine size={12}/>Ver processo
                 </button>
               </div>
@@ -7718,7 +7964,7 @@ const MuralPg=({st,dp})=>{
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:14,marginBottom:24,flexWrap:"wrap"}}>
         <StickyNote size={24} color={K.wa}/>
         <h2 style={{margin:0,fontSize:22,fontWeight:800,color:K.txt}}>Mural de Post-its</h2>
-        <span style={{fontSize:13,color:K.dim}}>Lembretes rápidos e notas importantes</span>
+        <span style={{fontSize:14,color:K.dim}}>Lembretes rápidos e notas importantes</span>
       </div>
       <Bx className="cj-up" style={{marginBottom:24,padding:"16px 20px"}}>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
@@ -7746,11 +7992,11 @@ const MuralPg=({st,dp})=>{
             <div key={n.id} className="cj-postit" style={{background:n.cor,borderRadius:4,padding:"18px 14px 26px",boxShadow:"4px 8px 20px rgba(0,0,0,.35),inset 0 -2px 0 rgba(0,0,0,.12)",transform:`rotate(${rot}deg)`,position:"relative",minHeight:130}}>
               <div style={{position:"absolute",top:-7,left:"50%",transform:"translateX(-50%)",width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,.22)",boxShadow:"0 2px 4px rgba(0,0,0,.3)"}}/>
               {editId===n.id
-                ?<textarea autoFocus style={{width:"100%",background:"transparent",border:"none",outline:"none",fontSize:13,color:"#1a1a1a",fontFamily:"inherit",resize:"none",minHeight:70,fontWeight:600}} defaultValue={n.texto} onBlur={e=>{dp({type:"UPD_NOTA",id:n.id,ch:{texto:e.target.value}});sEditId(null);}}/>
-                :<div onClick={()=>sEditId(n.id)} style={{fontSize:13,color:"#1a1a1a",fontWeight:600,lineHeight:1.6,minHeight:60,cursor:"text",wordBreak:"break-word"}}>{n.texto}</div>
+                ?<textarea autoFocus style={{width:"100%",background:"transparent",border:"none",outline:"none",fontSize:14,color:"#1a1a1a",fontFamily:"inherit",resize:"none",minHeight:70,fontWeight:600}} defaultValue={n.texto} onBlur={e=>{dp({type:"UPD_NOTA",id:n.id,ch:{texto:e.target.value}});sEditId(null);}}/>
+                :<div onClick={()=>sEditId(n.id)} style={{fontSize:14,color:"#1a1a1a",fontWeight:600,lineHeight:1.6,minHeight:60,cursor:"text",wordBreak:"break-word"}}>{n.texto}</div>
               }
               <div style={{position:"absolute",bottom:6,right:8,display:"flex",gap:6,alignItems:"center"}}>
-                <span style={{fontSize:9,color:"rgba(0,0,0,.4)",fontWeight:600}}>{n.criadoEm?fmt(toD(n.criadoEm)):""}</span>
+                <span style={{fontSize:11,color:"rgba(0,0,0,.4)",fontWeight:600}}>{n.criadoEm?fmt(toD(n.criadoEm)):""}</span>
                 <button onClick={()=>dp({type:"DEL_NOTA",id:n.id})} style={{background:"rgba(0,0,0,.18)",border:"none",borderRadius:"50%",width:16,height:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(0,0,0,.5)",padding:0}}><X size={9}/></button>
               </div>
             </div>
@@ -7809,35 +8055,35 @@ function EmailAlertModal({st, onClose}) {
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(12px)",zIndex:1600,display:"flex",justifyContent:"center",alignItems:"center",padding:24}}
       onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"linear-gradient(135deg,rgba(2,5,22,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.3)",borderRadius:22,width:"100%",maxWidth:460,padding:24,position:"relative"}}>
+      <div style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.3)",borderRadius:22,width:"100%",maxWidth:460,padding:24,position:"relative"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:"#4e6a8a",cursor:"pointer",fontSize:18}}>✕</button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
           <span style={{fontSize:22}}>📧</span>
           <div>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Alerta de Prazos por Email</h3>
-            <div style={{fontSize:11,color:"#4e6a8a"}}>Enviar resumo dos {urgentes.length} processos críticos (≤5du)</div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Alerta de Prazos por Email</h3>
+            <div style={{fontSize:12,color:"#4e6a8a"}}>Enviar resumo dos {urgentes.length} processos críticos (≤5du)</div>
           </div>
         </div>
         <div style={{maxHeight:200,overflowY:"auto",marginBottom:14}}>
-          {urgentes.length===0&&<div style={{textAlign:"center",padding:16,color:"#4e6a8a",fontSize:13}}>Nenhum processo com prazo crítico no momento.</div>}
-          {urgentes.map(function(p){var cor=p.diasRestantes<=2?"#ff2e5b":"#ffb800"; return(
-            <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,marginBottom:4,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
-              <span style={{fontSize:12,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",flexShrink:0,minWidth:32}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
-              <span style={{fontSize:11,color:"#e2e8f0",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
-              <span style={{fontSize:10,color:"#4e6a8a",flexShrink:0}}>{p.tipoPeca}</span>
+          {urgentes.length===0&&<div style={{textAlign:"center",padding:16,color:"#4e6a8a",fontSize:14}}>Nenhum processo com prazo crítico no momento.</div>}
+          {urgentes.map(function(p){var cor=p.diasRestantes<=2?"var(--cj-cr)":"var(--cj-wa)"; return(
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,marginBottom:4,background:"rgba(var(--cj-fgrgb),.03)",border:"1px solid rgba(var(--cj-fgrgb),.06)"}}>
+              <span style={{fontSize:13,fontWeight:900,color:cor,fontFamily:"Orbitron,monospace",flexShrink:0,minWidth:32}}>{p.diasRestantes===0?"HOJE":p.diasRestantes+"du"}</span>
+              <span style={{fontSize:12,color:"#e2e8f0",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.assunto}</span>
+              <span style={{fontSize:12,color:"#4e6a8a",flexShrink:0}}>{p.tipoPeca}</span>
             </div>
           );})}
         </div>
         <div style={{marginBottom:12}}>
-          <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4e6a8a",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Seu email</label>
+          <label style={{display:"block",fontSize:12,fontWeight:600,color:"#4e6a8a",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Seu email</label>
           <input style={{...inpSt}} value={email} onChange={function(e){setEmail(e.target.value);}} type="email" placeholder="joao@cfm.org.br" onKeyDown={function(e){if(e.key==="Enter")enviar();}}/>
         </div>
-        {!loading&&!result&&<button onClick={enviar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",fontSize:13}}>📧 Enviar alerta agora</button>}
-        {loading&&<div style={{textAlign:"center",padding:16,color:"#00e5ff",fontSize:12,fontFamily:"Orbitron,monospace"}}>Enviando...</div>}
-        {result&&<div style={{padding:"10px 14px",borderRadius:10,background:result.ok||result.preview?"rgba(0,255,136,.08)":"rgba(255,46,91,.08)",border:"1px solid "+(result.ok||result.preview?"rgba(0,255,136,.25)":"rgba(255,46,91,.25)"),fontSize:12,color:result.ok||result.preview?"#00ff88":"#ff2e5b"}}>
+        {!loading&&!result&&<button onClick={enviar} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"11px",fontSize:14}}>📧 Enviar alerta agora</button>}
+        {loading&&<div style={{textAlign:"center",padding:16,color:"var(--cj-ac)",fontSize:13,fontFamily:"Orbitron,monospace"}}>Enviando...</div>}
+        {result&&<div style={{padding:"10px 14px",borderRadius:10,background:result.ok||result.preview?"rgba(var(--cj-surgb),.08)":"rgba(var(--cj-crrgb),.08)",border:"1px solid "+(result.ok||result.preview?"rgba(var(--cj-surgb),.25)":"rgba(var(--cj-crrgb),.25)"),fontSize:13,color:result.ok||result.preview?"var(--cj-su)":"var(--cj-cr)"}}>
           {result.ok?"✅ Email enviado!":result.preview?"✅ Função ativa. Configure RESEND_API_KEY no Supabase para ativar envio real.":result.error||"Erro ao enviar"}
         </div>}
-        <div style={{marginTop:12,fontSize:10,color:"#4e6a8a",lineHeight:1.5}}>
+        <div style={{marginTop:12,fontSize:12,color:"#4e6a8a",lineHeight:1.5}}>
           Para envio automático diário às 7h30, configure RESEND_API_KEY + ALERT_EMAIL nos secrets do Supabase Edge Functions.
         </div>
       </div>
@@ -7862,16 +8108,16 @@ function SyncBadge(){
   };
   var config={
     idle:{cor:"#64748b",bg:"rgba(100,116,139,.08)",brd:"rgba(100,116,139,.25)",icon:"○",label:"Aguardando"},
-    syncing:{cor:"#00e5ff",bg:"rgba(0,229,255,.08)",brd:"rgba(0,229,255,.35)",icon:"⟳",label:"Sincronizando"},
-    synced:{cor:"#00ff88",bg:"rgba(0,255,136,.08)",brd:"rgba(0,255,136,.3)",icon:"✓",label:"Sincronizado"},
-    offline:{cor:"#ffb800",bg:"rgba(255,184,0,.08)",brd:"rgba(255,184,0,.35)",icon:"◌",label:"Offline (cache local)"},
-    error:{cor:"#ff2e5b",bg:"rgba(255,46,91,.08)",brd:"rgba(255,46,91,.35)",icon:"!",label:"Erro"}
+    syncing:{cor:"var(--cj-ac)",bg:"rgba(var(--cj-acrgb),.08)",brd:"rgba(var(--cj-acrgb),.35)",icon:"⟳",label:"Sincronizando"},
+    synced:{cor:"var(--cj-su)",bg:"rgba(var(--cj-surgb),.08)",brd:"rgba(var(--cj-surgb),.3)",icon:"✓",label:"Sincronizado"},
+    offline:{cor:"var(--cj-wa)",bg:"rgba(var(--cj-wargb),.08)",brd:"rgba(var(--cj-wargb),.35)",icon:"◌",label:"Offline (cache local)"},
+    error:{cor:"var(--cj-cr)",bg:"rgba(var(--cj-crrgb),.08)",brd:"rgba(var(--cj-crrgb),.35)",icon:"!",label:"Erro"}
   };
   var c=config[status]||config.idle;
   var tooltip="Status: "+c.label+(lastTime?" · Última sync: "+lastTime.toLocaleTimeString("pt-BR"):"")+" · Clique para forçar";
-  return React.createElement("button",{onClick:forceSync,title:tooltip,style:{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:10,border:"1px solid "+c.brd,background:c.bg,color:c.cor,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px",transition:"all .2s"}},
+  return React.createElement("button",{onClick:forceSync,title:tooltip,style:{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:10,border:"1px solid "+c.brd,background:c.bg,color:c.cor,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px",transition:"all .2s"}},
     React.createElement("span",{style:{animation:status==="syncing"?"spin 1s linear infinite":"none",display:"inline-block"}},c.icon),
-    React.createElement("span",{style:{textTransform:"uppercase",fontSize:9}},status==="synced"&&lastTime?"synced "+Math.max(0,Math.floor((Date.now()-lastTime.getTime())/1000))+"s":c.label)
+    React.createElement("span",{style:{textTransform:"uppercase",fontSize:11}},status==="synced"&&lastTime?"synced "+Math.max(0,Math.floor((Date.now()-lastTime.getTime())/1000))+"s":c.label)
   );
 }
 
@@ -7944,6 +8190,7 @@ export default function App() {
   useEffect(() => {
     document.body.style.background = K.bg;
     document.body.style.color = K.txt;
+    document.body.classList.toggle("cj-light", !darkMode);
   }, [darkMode]);
 
   // Load persisted state on mount
@@ -7966,6 +8213,7 @@ export default function App() {
   const [showRevisao, setShowRevisao] = useState(false);
   const [checklistProc, setChecklistProc] = useState(null);
   const [minutaProc, setMinutaProc] = useState(null);
+  __setMinutaProc = setMinutaProc; /* v43: expõe setter ao PC (módulo) */
   const [undoStack, setUndoStack] = useState([]);
   const [showStats, setShowStats] = useState(false);
   const [showSemanal, setShowSemanal] = useState(false);
@@ -7994,6 +8242,13 @@ export default function App() {
   }, []);
   useEffect(() => {
     let cancelled = false;
+    try {
+      if (typeof localStorage !== "undefined" && !localStorage.getItem("cojur_seed_v4")) {
+        localStorage.removeItem(STORE_KEY);
+        localStorage.removeItem(STORE_KEY + ":ts");
+        localStorage.setItem("cojur_seed_v4", "1");
+      }
+    } catch (e) {}
     (async () => {
       try {
         /* Timeout maior (5s) para permitir fetch da nuvem; cache local é fallback instantâneo */
@@ -8015,6 +8270,27 @@ export default function App() {
     return function(){ cancelled = true; };
   }, []);
 
+  /* v43.1 A2: flush sincrono ao fechar/ocultar a aba. Sem isso, edicoes dos
+     ultimos 1,5s (debounce) eram perdidas ate localmente. */
+  useEffect(function(){
+    var flush=function(){
+      try{
+        if(!loaded) return;
+        localStorage.setItem(STORE_KEY, serialize(stRef.current));
+        localStorage.setItem(STORE_KEY+":ts", String(Date.now()));
+      }catch(e){}
+    };
+    var onOnline=function(){ try{ storage.pushLocal(STORE_KEY); }catch(e){} };
+    window.addEventListener("pagehide",flush);
+    window.addEventListener("beforeunload",flush);
+    window.addEventListener("online",onOnline);
+    return function(){
+      window.removeEventListener("pagehide",flush);
+      window.removeEventListener("beforeunload",flush);
+      window.removeEventListener("online",onOnline);
+    };
+  },[loaded]);
+
   /* ═══ v11 — SYNC CHECK a cada 30s (detecta alterações feitas em outro navegador) ═══ */
   /* v42 FIX: respeita __saveInFlight (nao aplica versao remota durante save local).
      v42 PERF: pausa quando aba esta em background (document.hidden). */
@@ -8023,6 +8299,8 @@ export default function App() {
       /* Skip se aba inativa OU se ha save local em andamento */
       try { if (typeof document!=="undefined" && document.hidden) return; } catch(e){}
       if (__saveInFlight) return;
+      /* v43.1 A3: prioridade do poll e empurrar pendencia local, nao puxar */
+      if (__dirty) { try{ await storage.pushLocal(STORE_KEY); }catch(e){} return; }
       try {
         var cloudResult = await supaFetchState();
         if (!cloudResult) return;
@@ -8039,6 +8317,21 @@ export default function App() {
           if (cloudUpdated > localUpdated) {
             var restored = rehydrate(cloudResult.value);
             if (restored) {
+              /* v44 FIX: o pull substituia TODO o estado local; itens criados
+                 localmente que ainda nao tinham subido para a nuvem eram perdidos.
+                 Aqui mesclamos por id, preservando os pendentes locais. (Solucao
+                 completa de concorrencia exige coluna `version` no servidor.) */
+              try {
+                var __local = stRef.current || {};
+                var __keys = ["adm","jud","reun","sust","viag","inbox","realizados","notas","lembretes"];
+                __keys.forEach(function(k){
+                  var cloudArr = Array.isArray(restored[k]) ? restored[k] : [];
+                  var localArr = Array.isArray(__local[k]) ? __local[k] : [];
+                  var ids = {}; cloudArr.forEach(function(it){ if(it&&it.id!=null) ids[it.id]=true; });
+                  var pend = localArr.filter(function(it){ return it&&it.id!=null&&!ids[it.id]; });
+                  if (pend.length) restored[k] = cloudArr.concat(pend);
+                });
+              } catch(e){ logErr("[sync] merge pull falhou:", e); }
               try {
                 localStorage.setItem(STORE_KEY, cloudResult.value);
                 localStorage.setItem(STORE_KEY+":ts", String(cloudUpdated.getTime()));
@@ -8100,12 +8393,18 @@ export default function App() {
     if (!sel) return;
     const all = [...st.adm, ...st.jud];
     const u = all.find(p => p.id === sel.id);
-    if (u) sSel(u);
-  }, [st]);
+    /* v44 FIX: `sel` era lido mas faltava nas deps (stale closure). Alem disso
+       so atualizamos quando o objeto realmente mudou, evitando re-render do
+       modal de detalhe a cada mudanca de estado nao relacionada. */
+    if (u && u !== sel) sSel(u);
+  }, [st, sel]);
 
   /* A1: NOW refresh agora unificado no setTick de 60s acima (que tambem dispatcha RECALC_ALL) */
 
   // Keyboard shortcuts
+  /* v44 PERF: `pg` ia para as deps so por causa do atalho 'n', fazendo o listener
+     ser removido/re-adicionado a CADA navegacao. Lemos `pg` por ref e assinamos 1x. */
+  const pgRef = useRef(pg); useEffect(function(){ pgRef.current = pg; }, [pg]);
   useEffect(() => {
     const handler = function(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
@@ -8150,13 +8449,13 @@ export default function App() {
         case 't': case 'T': sPg('timeline'); break;
         case 'g': case 'G': setShowForceGraph(function(v){return !v;}); break;
         case 'f': case 'F': setFocusMode(function(v){return !v;}); break;
-        case 'n': case 'N': sPg(pg === 'judicial' ? 'judicial' : 'admin'); break;
+        case 'n': case 'N': sPg(pgRef.current === 'judicial' ? 'judicial' : 'admin'); break;
         default: break;
       }
     };
     window.addEventListener('keydown', handler);
     return function(){ window.removeEventListener('keydown', handler); };
-  }, [pg]);
+  }, []);
 
   const all = useMemo(() => [...st.adm, ...st.jud], [st.adm, st.jud]);
   const cn = useMemo(() => all.filter(p => p.diasRestantes <= 10).length, [all]);
@@ -8291,51 +8590,51 @@ export default function App() {
       {/* ═══ CONFETTI HOST (renders on triggerConfetti) ═══ */}
       <ConfettiHost/>
       {/* Ambient glow — 4 radial orbs like the finance app */}
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"radial-gradient(ellipse at 15% 0%, rgba(0,255,136,.08), transparent 45%), radial-gradient(ellipse at 85% 5%, rgba(184,77,255,.07), transparent 40%), radial-gradient(ellipse at 50% 95%, rgba(0,229,255,.06), transparent 45%), radial-gradient(ellipse at 0% 50%, rgba(0,170,255,.04), transparent 35%)"}} />
+      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"radial-gradient(ellipse at 15% 0%, rgba(var(--cj-surgb),.08), transparent 45%), radial-gradient(ellipse at 85% 5%, rgba(var(--cj-purgb),.07), transparent 40%), radial-gradient(ellipse at 50% 95%, rgba(var(--cj-acrgb),.06), transparent 45%), radial-gradient(ellipse at 0% 50%, rgba(0,170,255,.04), transparent 35%)"}} />
       {/* Neon grid */}
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,backgroundImage:"linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px)",backgroundSize:"44px 44px",WebkitMaskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)",maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)"}} />
+      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,backgroundImage:"linear-gradient(rgba(var(--cj-acrgb),.03) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--cj-acrgb),.03) 1px, transparent 1px)",backgroundSize:"44px 44px",WebkitMaskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)",maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)"}} />
       {/* Scan line — only in dark mode */}
-      {showAutoBackup&&<div style={{position:"fixed",bottom:28,left:240,zIndex:2500,padding:"12px 18px",borderRadius:14,background:"rgba(0,255,136,.12)",border:"1px solid rgba(0,255,136,.4)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 0 20px rgba(0,255,136,.15)"}}>
-        <span style={{fontSize:12,fontWeight:700,color:"#00ff88"}}>Backup semanal recomendado</span>
-        <button onClick={function(){handleExport();localStorage.setItem("cojur_last_backup",new Date().toISOString());setShowAutoBackup(false);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(0,255,136,.4)",background:"rgba(0,255,136,.1)",color:"#00ff88",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exportar JSON</button>
-        <button onClick={function(){setShowAutoBackup(false);}} style={{background:"none",border:"none",color:"rgba(0,255,136,.6)",cursor:"pointer",fontSize:14}}>x</button>
+      {showAutoBackup&&<div style={{position:"fixed",bottom:28,left:240,zIndex:2500,padding:"12px 18px",borderRadius:14,background:"rgba(var(--cj-surgb),.12)",border:"1px solid rgba(var(--cj-surgb),.4)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 0 20px rgba(var(--cj-surgb),.15)"}}>
+        <span style={{fontSize:13,fontWeight:700,color:"var(--cj-su)"}}>Backup semanal recomendado</span>
+        <button onClick={function(){handleExport();localStorage.setItem("cojur_last_backup",new Date().toISOString());setShowAutoBackup(false);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(var(--cj-surgb),.4)",background:"rgba(var(--cj-surgb),.1)",color:"var(--cj-su)",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exportar JSON</button>
+        <button onClick={function(){setShowAutoBackup(false);}} style={{background:"none",border:"none",color:"rgba(var(--cj-surgb),.6)",cursor:"pointer",fontSize:14}}>x</button>
       </div>}
-      {prazoUrgente&&prazoUrgente.length>0&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:3000,padding:"9px 20px",background:"rgba(200,20,60,.95)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 20px rgba(255,46,91,.4)"}}><span style={{fontSize:12,fontWeight:800,color:"#fff",flex:1,fontFamily:"Orbitron,sans-serif"}}>PRAZO CRITICO: {prazoUrgente[0].assunto} — {prazoUrgente[0].diasRestantes===0?"VENCE HOJE":prazoUrgente[0].diasRestantes+"du"}</span><button onClick={function(){sSel(prazoUrgente[0]);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.15)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ver</button></div>}
-      {darkMode&&<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1,overflow:"hidden"}}><div style={{position:"absolute",left:0,right:0,height:"1px",background:"linear-gradient(90deg, transparent 10%, rgba(0,229,255,.28) 50%, transparent 90%)",animation:"scanLine 5s linear infinite"}} /></div>}
+      {prazoUrgente&&prazoUrgente.length>0&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:3000,padding:"9px 20px",background:"rgba(200,20,60,.95)",display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 20px rgba(var(--cj-crrgb),.4)"}}><span style={{fontSize:13,fontWeight:800,color:"var(--cj-tx0)",flex:1,fontFamily:"Orbitron,sans-serif"}}>PRAZO CRITICO: {prazoUrgente[0].assunto} — {prazoUrgente[0].diasRestantes===0?"VENCE HOJE":prazoUrgente[0].diasRestantes+"du"}</span><button onClick={function(){sSel(prazoUrgente[0]);}} style={{padding:"4px 10px",borderRadius:7,border:"1px solid rgba(var(--cj-fgrgb),.4)",background:"rgba(var(--cj-fgrgb),.15)",color:"var(--cj-tx0)",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ver</button></div>}
+      {darkMode&&<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1,overflow:"hidden"}}><div style={{position:"absolute",left:0,right:0,height:"1px",background:"linear-gradient(90deg, transparent 10%, rgba(var(--cj-acrgb),.28) 50%, transparent 90%)",animation:"scanLine 5s linear infinite"}} /></div>}
       <input ref={importRef} type="file" accept=".json" onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleImport(f); e.target.value = ""; }} style={{ display: "none" }} />
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       {/* SIDEBAR */}
-      <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(2,5,16,.99), rgba(3,7,22,.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(0,229,255,.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, position:"relative" }}>
-        <div style={{ padding: col ? "18px 10px" : "18px 18px", borderBottom: "1px solid rgba(0,212,255,.1)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background:"linear-gradient(135deg, rgba(0,229,255,.06), rgba(168,85,247,.04))" }} onClick={() => sCol(!col)}>
+      <div style={{ width: focusMode ? 0 : col ? 64 : 220, overflow:"hidden", background: "linear-gradient(180deg, rgba(var(--cj-panelrgb),.99), rgba(var(--cj-panelrgb),.99))", borderRight: focusMode ? "none" : "1px solid rgba(0,212,255,.1)", boxShadow:"2px 0 24px rgba(0,0,0,.5), 1px 0 0 rgba(var(--cj-acrgb),.06)", display: "flex", flexDirection: "column", transition: "width .3s ease", flexShrink: 0, position:"relative" }}>
+        <div style={{ padding: col ? "18px 10px" : "18px 18px", borderBottom: "1px solid rgba(0,212,255,.1)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background:"linear-gradient(135deg, rgba(var(--cj-acrgb),.06), rgba(var(--cj-purgb),.04))" }} onClick={() => sCol(!col)}>
           <CFMMark size={38} />
           {!col && <div style={{minWidth:0}}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, textShadow:"0 0 12px rgba(0,229,255,.5)",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px" }}>COJUR</div>
-            <div style={{ fontSize: 9, color: "#00d4ff", fontWeight: 700, letterSpacing: "1.6px", textTransform: "uppercase", textShadow:"0 0 8px rgba(0,229,255,.7)",fontFamily:"Orbitron, sans-serif" }}>CFM · NEXUS</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: K.txt, textShadow:"0 0 12px rgba(var(--cj-acrgb),.5)",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px" }}>COJUR</div>
+            <div style={{ fontSize:11, color: "#00d4ff", fontWeight: 700, letterSpacing: "1.6px", textTransform: "uppercase", textShadow:"0 0 8px rgba(var(--cj-acrgb),.7)",fontFamily:"Orbitron, sans-serif" }}>CFM · NEXUS</div>
           </div>}
         </div>
         <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
           {NAV.map(({ id, icon: I, label: l }) => {
             const isAct = pg === id, isCrit = id === "priorities" && cn > 0;
             return (
-              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, border: "1px solid transparent", background: isAct ? "linear-gradient(90deg, rgba(0,212,255,.12), rgba(0,212,255,.04))" : "transparent", color: isAct ? "#00d4ff" : K.dim, fontSize: 13, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
+              <button key={id} onClick={() => sPg(id)} className={isAct ? "cj-nav-active" : ""} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: col ? "10px 0" : "10px 12px", borderRadius: 10, border: "1px solid transparent", background: isAct ? "linear-gradient(90deg, rgba(0,212,255,.12), rgba(0,212,255,.04))" : "transparent", color: isAct ? "#00d4ff" : K.dim, fontSize:14, fontWeight: isAct ? 700 : 400, cursor: "pointer", marginBottom: 2, transition: "all .2s", justifyContent: col ? "center" : "flex-start", position: "relative", fontFamily:"inherit" }}
                 onMouseEnter={e => { if (!isAct) { e.currentTarget.style.background = "rgba(0,212,255,.05)"; e.currentTarget.style.color = K.txt; e.currentTarget.style.borderColor = "rgba(0,212,255,.12)"; } }}
                 onMouseLeave={e => { if (!isAct) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = K.dim; e.currentTarget.style.borderColor = "transparent"; } }}>
-                <I size={16} style={{filter:isAct?"drop-shadow(0 0 5px #00e5ff)":"none"}} />{!col && <span style={{fontFamily:isAct?"Orbitron,sans-serif":"inherit",fontSize:isAct?11:13,letterSpacing:isAct?".5px":"normal",textShadow:isAct?"0 0 8px rgba(0,229,255,.7)":"none"}}>{l}</span>}
-                {isCrit && <div className="cj-pulse" style={{ position: "absolute", top: col ? 6 : 8, right: col ? 12 : 10, width: 18, height: 18, borderRadius: "50%", background: K.cr, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>{cn}</div>}
+                <I size={16} style={{filter:isAct?"drop-shadow(0 0 5px #00e5ff)":"none"}} />{!col && <span style={{fontFamily:isAct?"Orbitron,sans-serif":"inherit",fontSize:isAct?11:13,letterSpacing:isAct?".5px":"normal",textShadow:isAct?"0 0 8px rgba(var(--cj-acrgb),.7)":"none"}}>{l}</span>}
+                {isCrit && <div className="cj-pulse" style={{ position: "absolute", top: col ? 6 : 8, right: col ? 12 : 10, width: 18, height: 18, borderRadius: "50%", background: K.cr, display: "flex", alignItems: "center", justifyContent: "center", fontSize:12, fontWeight: 700, color: "#fff" }}>{cn}</div>}
               </button>
             );
           })}
         </nav>
-        {!col && <div style={{ padding: "14px 16px", borderTop: `1px solid ${K.brd}`, display: "flex", alignItems: "center", gap: 10, background:"linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0))" }}>
-          <div style={{ width: 34, height: 34, borderRadius: 12, background: "linear-gradient(135deg, rgba(0,212,255,.25), rgba(168,85,247,.25))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#00d4ff", boxShadow:"0 0 12px rgba(0,212,255,.3), inset 0 1px 0 rgba(255,255,255,.1)", border:"1px solid rgba(0,212,255,.2)" }}>JG</div>
-          <div><div style={{ fontSize: 12, fontWeight: 700, color: K.txt }}>João Gabriel</div><div style={{ fontSize: 10, color: K.dim2 }}>Workspace jurídico · COJUR · CFM</div></div>
+        {!col && <div style={{ padding: "14px 16px", borderTop: `1px solid ${K.brd}`, display: "flex", alignItems: "center", gap: 10, background:"linear-gradient(180deg,rgba(var(--cj-fgrgb),.02),rgba(var(--cj-fgrgb),0))" }}>
+          <div style={{ width: 34, height: 34, borderRadius: 12, background: "linear-gradient(135deg, rgba(0,212,255,.25), rgba(var(--cj-purgb),.25))", display: "flex", alignItems: "center", justifyContent: "center", fontSize:13, fontWeight: 800, color: "#00d4ff", boxShadow:"0 0 12px rgba(0,212,255,.3), inset 0 1px 0 rgba(var(--cj-fgrgb),.1)", border:"1px solid rgba(0,212,255,.2)" }}>JG</div>
+          <div><div style={{ fontSize:13, fontWeight: 700, color: K.txt }}>João Gabriel</div><div style={{ fontSize:12, color: K.dim2 }}>Workspace jurídico · COJUR · CFM</div></div>
         </div>}
       </div>
 
       {/* MAIN */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ minHeight: 68, borderBottom: "1px solid rgba(0,212,255,.12)", display: "flex", alignItems: "center", padding: "10px 22px", gap: 16, flexShrink: 0, background: "linear-gradient(180deg, rgba(2,5,16,.97), rgba(2,5,14,.88))", backdropFilter: "blur(24px)", boxShadow:"0 1px 0 rgba(0,212,255,.15), 0 4px 28px rgba(0,0,0,.5)", position:"relative", zIndex:1, flexWrap:"wrap" }}>
+        <div style={{ minHeight: 68, borderBottom: "1px solid rgba(0,212,255,.12)", display: "flex", alignItems: "center", padding: "10px 22px", gap: 16, flexShrink: 0, background: "linear-gradient(180deg, rgba(var(--cj-panelrgb),.97), rgba(var(--cj-panelrgb),.88))", backdropFilter: "blur(24px)", boxShadow:"0 1px 0 rgba(0,212,255,.15), 0 4px 28px rgba(0,0,0,.5)", position:"relative", zIndex:1, flexWrap:"wrap" }}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginRight:4}}>
             <CFMMark size={34}/>
             <div style={{display:"flex",flexDirection:"column"}}>
@@ -8343,38 +8642,38 @@ export default function App() {
                 <span style={{fontSize:14,fontWeight:800,background:"linear-gradient(90deg, #e2e8f0, #00d4ff, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontFamily:"Orbitron, sans-serif",letterSpacing:"1px"}}>COJUR NEXUS v11</span>
                 <SyncBadge/>
               </div>
-              <span style={{fontSize:9,color:"#00e5ff",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
+              <span style={{fontSize:11,color:"var(--cj-ac)",fontWeight:700,letterSpacing:"1.8px",textTransform:"uppercase",textShadow:"0 0 8px rgba(0,212,255,.6)"}}>CFM · Centro de Comando Jurídico</span>
             </div>
           </div>
           <div style={{ position: "relative", flex: 1, maxWidth: 520 }}>
             <Search size={16} color={K.dim2} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
             <input style={{ ...inpSt, paddingLeft: 40, paddingRight: 80, height: 44, borderRadius: 14 }} value={sq} onChange={e => { sSq(e.target.value); sSo(true); }} onFocus={() => sSo(true)} placeholder="Buscar processos, prazos, SEI, parte, órgão..." onBlur={() => setTimeout(() => sSo(false), 200)} />
             {/* ═══ CMD+K INDICATOR ═══ */}
-            <button onClick={function(){setShowPalette(true);}} title="Command Palette (Cmd+K / Ctrl+K)" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",padding:"4px 10px",borderRadius:8,border:"1px solid "+K.brd,background:"rgba(0,229,255,.06)",color:K.ac,fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4,letterSpacing:".5px"}}>⌘K</button>
+            <button onClick={function(){setShowPalette(true);}} title="Command Palette (Cmd+K / Ctrl+K)" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",padding:"4px 10px",borderRadius:8,border:"1px solid "+K.brd,background:"rgba(var(--cj-acrgb),.06)",color:K.ac,fontSize:12,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4,letterSpacing:".5px"}}>⌘K</button>
             {so && sq && (
               <div className="cj-sc" style={{ position: "absolute", top: 44, left: 0, right: 0, background: K.modal, border: `1px solid ${K.brd}`, borderRadius: 12, padding: 8, zIndex: 100, maxHeight: 400, overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,.5)" }}>
                 {sr.length > 0 ? (<>
-                  <div style={{padding:"4px 12px 8px",fontSize:10,color:K.dim,fontWeight:700,letterSpacing:".5px",textTransform:"uppercase"}}>{sr.length} resultado{sr.length!==1?"s":""} encontrado{sr.length!==1?"s":""}</div>
+                  <div style={{padding:"4px 12px 8px",fontSize:12,color:K.dim,fontWeight:700,letterSpacing:".5px",textTransform:"uppercase"}}>{sr.length} resultado{sr.length!==1?"s":""} encontrado{sr.length!==1?"s":""}</div>
                   {sr.map(p => {var pcor=getPecaCor(p.tipoPeca);return(
                   <div key={p.id} onClick={() => { sSel(p); sSo(false); sSq(""); }} style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.05)"}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(var(--cj-fgrgb),.05)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                     {p.tipo === "jud" ? <Scale size={14} color={K.pu} /> : <FolderOpen size={14} color={K.ac} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                        <div style={{ fontSize: 12, color: K.ac, fontFamily: "'JetBrains Mono',monospace" }}>{p.num||"Sem nº"}{p.numeroSEI?` · SEI ${p.numeroSEI}`:""}</div>
-                        <div style={{padding:"1px 6px",borderRadius:4,background:pcor+"20",border:"1px solid "+pcor+"44",color:pcor,fontSize:8,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
+                        <div style={{ fontSize:13, color: K.ac, fontFamily: "'JetBrains Mono',monospace" }}>{p.num||"Sem nº"}{p.numeroSEI?` · SEI ${p.numeroSEI}`:""}</div>
+                        <div style={{padding:"1px 6px",borderRadius:4,background:pcor+"20",border:"1px solid "+pcor+"44",color:pcor,fontSize:11,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{getPecaLabel(p.tipoPeca)}</div>
                       </div>
-                      <div style={{ fontSize: 12, color: K.txt, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.assunto}</div>
-                      <div style={{ fontSize: 10, color: K.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.tipo==="jud"?`${p.tribunal||"—"} · ${p.parteContraria||"—"}`:`${p.interessado||"—"} · ${p.orgao||"—"}`}</div>
+                      <div style={{ fontSize:13, color: K.txt, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.assunto}</div>
+                      <div style={{ fontSize:12, color: K.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.tipo==="jud"?`${p.tribunal||"—"} · ${p.parteContraria||"—"}`:`${p.interessado||"—"} · ${p.orgao||"—"}`}</div>
                     </div>
                     <UB d={p.diasRestantes} />
                   </div>);})}
                 </>) : (
                   <div style={{padding:"20px 16px",textAlign:"center"}}>
                     <Search size={24} color={K.dim2} style={{marginBottom:8}}/>
-                    <div style={{fontSize:12,color:K.dim,fontWeight:600}}>Nenhum processo encontrado</div>
-                    <div style={{fontSize:10,color:K.dim2,marginTop:4}}>Tente termos diferentes ou use a busca fuzzy</div>
+                    <div style={{fontSize:13,color:K.dim,fontWeight:600}}>Nenhum processo encontrado</div>
+                    <div style={{fontSize:12,color:K.dim2,marginTop:4}}>Tente termos diferentes ou use a busca fuzzy</div>
                   </div>
                 )}
               </div>
@@ -8382,30 +8681,30 @@ export default function App() {
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap", justifyContent:"flex-end" }}>
             <Bd color={K.ac}><Clock size={10}/>{NOW.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</Bd>
-            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>JSON</button>
-            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.su, borderColor: "rgba(5,150,105,.25)" }} onClick={handleExportCSV}><Download size={14}/>CSV</button>
-            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:12, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar</button>
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:13, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={handleExport}><Download size={14}/>JSON</button>
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:13, color: K.su, borderColor: "rgba(5,150,105,.25)" }} onClick={handleExportCSV}><Download size={14}/>CSV</button>
+            <button style={{ ...btnGhost, padding: "7px 11px", fontSize:13, color: K.ac, borderColor: "rgba(6,182,212,.25)" }} onClick={() => importRef.current && importRef.current.click()}><Upload size={14}/>Importar</button>
             {/* divider */}
             <div style={{width:1,height:22,background:"rgba(127,184,216,.15)",margin:"0 2px"}}/>
             {/* IA cluster */}
-            <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(168,85,247,.18)",background:"rgba(168,85,247,.05)",cursor:"pointer",fontSize:15}}>⚖️</button>
-            <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,255,136,.18)",background:"rgba(0,255,136,.05)",cursor:"pointer",fontSize:15}}>✏️</button>
-            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.2)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📧</button>
-            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>📬</button>
-            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:"rgba(0,229,255,.05)",cursor:"pointer",fontSize:15}}>🤖</button>
+            <button onClick={function(){setShowDecisao(true);}} title="Resumo de Decisão Judicial (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-purgb),.18)",background:"rgba(var(--cj-purgb),.05)",cursor:"pointer",fontSize:15}}>⚖️</button>
+            <button onClick={function(){setShowRevisao(true);}} title="Revisão de Peça (IA)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-surgb),.18)",background:"rgba(var(--cj-surgb),.05)",cursor:"pointer",fontSize:15}}>✏️</button>
+            <button onClick={function(){setShowEmailAlert(true);}} title="Alerta diário por email" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-acrgb),.2)",background:"rgba(var(--cj-acrgb),.05)",cursor:"pointer",fontSize:15}}>📧</button>
+            <button onClick={function(){setShowGmail(true);}} title="Gmail SEI — Buscar e importar processos" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-acrgb),.18)",background:"rgba(var(--cj-acrgb),.05)",cursor:"pointer",fontSize:15}}>📬</button>
+            <button onClick={function(){setShowIANovo(true);}} title="Novo processo via IA" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-acrgb),.18)",background:"rgba(var(--cj-acrgb),.05)",cursor:"pointer",fontSize:15}}>🤖</button>
             {/* v41 · Modo Comando NEXUS (Cmd+Shift+K) */}
-            <button onClick={function(){setShowCommand(true);}} title="Modo Comando NEXUS (Cmd+Shift+K)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.45)",background:"rgba(0,229,255,.10)",cursor:"pointer",fontSize:15,boxShadow:"0 0 12px rgba(0,229,255,.25)"}}>◉</button>
+            <button onClick={function(){setShowCommand(true);}} title="Modo Comando NEXUS (Cmd+Shift+K)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-acrgb),.45)",background:"rgba(var(--cj-acrgb),.10)",cursor:"pointer",fontSize:15,boxShadow:"0 0 12px rgba(var(--cj-acrgb),.25)"}}>◉</button>
             {/* v41 · Force Graph · relacoes entre processos */}
-            <button onClick={function(){setShowForceGraph(true);}} title="Grafo de Relações entre Processos (NEXUS)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(184,77,255,.45)",background:"rgba(184,77,255,.10)",cursor:"pointer",fontSize:15,color:"#b84dff",boxShadow:"0 0 12px rgba(184,77,255,.25)"}}>⌘</button>
+            <button onClick={function(){setShowForceGraph(true);}} title="Grafo de Relações entre Processos (NEXUS)" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-purgb),.45)",background:"rgba(var(--cj-purgb),.10)",cursor:"pointer",fontSize:15,color:"var(--cj-pu)",boxShadow:"0 0 12px rgba(var(--cj-purgb),.25)"}}>⌘</button>
             {/* divider */}
             <div style={{width:1,height:22,background:"rgba(127,184,216,.15)",margin:"0 2px"}}/>
             {/* view cluster */}
-            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(168,85,247,.5)":"1px solid rgba(168,85,247,.2)",background:focusMode?"rgba(168,85,247,.15)":"rgba(168,85,247,.05)",cursor:"pointer",fontSize:15}}>🎯</button>
-            <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(0,229,255,.5)":"1px solid rgba(0,229,255,.15)",background:compactMode?"rgba(0,229,255,.1)":"transparent",cursor:"pointer",fontSize:14}}>☰</button>
-            <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(255,184,0,.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(255,184,0,.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(255,184,0,.22)":"0 0 14px rgba(2,132,199,.22)"}}>
-              {darkMode?<Sun size={15} color="#ffb800" style={{filter:"drop-shadow(0 0 5px rgba(255,184,0,.8))"}}/>:<Moon size={15} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
+            <button onClick={function(){setFocusMode(function(v){return !v;});}} title="Modo Foco (F) — Oculta sidebar" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:focusMode?"1px solid rgba(var(--cj-purgb),.5)":"1px solid rgba(var(--cj-purgb),.2)",background:focusMode?"rgba(var(--cj-purgb),.15)":"rgba(var(--cj-purgb),.05)",cursor:"pointer",fontSize:15}}>🎯</button>
+            <button onClick={function(){setCompactMode(function(c){return !c;});}} title="Modo Compacto" style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:compactMode?"1px solid rgba(var(--cj-acrgb),.5)":"1px solid rgba(var(--cj-acrgb),.15)",background:compactMode?"rgba(var(--cj-acrgb),.1)":"transparent",cursor:"pointer",fontSize:14}}>☰</button>
+            <button onClick={function(){setDarkMode(function(d){return !d;});}} title={darkMode?"Modo Claro":"Modo Escuro"} style={{width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:darkMode?"1px solid rgba(var(--cj-wargb),.3)":"1px solid rgba(2,132,199,.3)",background:darkMode?"rgba(var(--cj-wargb),.08)":"rgba(2,132,199,.08)",cursor:"pointer",boxShadow:darkMode?"0 0 14px rgba(var(--cj-wargb),.22)":"0 0 14px rgba(2,132,199,.22)"}}>
+              {darkMode?<Sun size={15} color="var(--cj-wa)" style={{filter:"drop-shadow(0 0 5px rgba(var(--cj-wargb),.8))"}}/>:<Moon size={15} color="#0284c7" style={{filter:"drop-shadow(0 0 5px rgba(2,132,199,.8))"}}/> }
             </button>
-            {React.createElement(function(){
+            {React.createElement(CjInline,{fn:function(){
               var sOpen=useState(false);var notifOpen=sOpen[0],setNotifOpen=sOpen[1];
               var ref=useRef(null);
               useEffect(function(){var h=function(e){if(ref.current&&!ref.current.contains(e.target))setNotifOpen(false);};document.addEventListener("mousedown",h);return function(){document.removeEventListener("mousedown",h);};},[]);
@@ -8416,31 +8715,31 @@ export default function App() {
               (st.lembretes||[]).filter(function(l){return !l.done&&l.data&&l.data<=NOW.toISOString().slice(0,10);}).forEach(function(l){alerts.push({type:"wa",icon:"⏰",title:"Lembrete vencido",desc:l.texto});});
               all.filter(function(p){return !p.proxProv&&p.status==="Ativo";}).forEach(function(p){alerts.push({type:"dim",icon:"⚠️",title:"Sem próxima providência",desc:p.num||p.assunto,proc:p});});
               return React.createElement("div",{ref:ref,style:{position:"relative"}},
-                React.createElement("div",{onClick:function(){setNotifOpen(!notifOpen);},style:{cursor:"pointer",width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(0,229,255,.18)",background:notifOpen?"rgba(0,229,255,.15)":"rgba(0,229,255,.06)",boxShadow:"0 0 12px rgba(0,229,255,.18)",transition:"all .2s"}},
-                  React.createElement(Bell,{size:16,color:"#00e5ff",style:{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}}),
-                  cn>0&&React.createElement("div",{className:"cj-pulse",style:{position:"absolute",top:-4,right:-2,minWidth:16,height:16,padding:"0 4px",borderRadius:999,background:K.cr,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff"}},cn)
+                React.createElement("div",{onClick:function(){setNotifOpen(!notifOpen);},style:{cursor:"pointer",width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(var(--cj-acrgb),.18)",background:notifOpen?"rgba(var(--cj-acrgb),.15)":"rgba(var(--cj-acrgb),.06)",boxShadow:"0 0 12px rgba(var(--cj-acrgb),.18)",transition:"all .2s"}},
+                  React.createElement(Bell,{size:16,color:"var(--cj-ac)",style:{filter:"drop-shadow(0 0 4px rgba(0,212,255,.7))"}}),
+                  cn>0&&React.createElement("div",{className:"cj-pulse",style:{position:"absolute",top:-4,right:-2,minWidth:16,height:16,padding:"0 4px",borderRadius:999,background:K.cr,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"var(--cj-tx0)"}},cn)
                 ),
                 notifOpen&&React.createElement("div",{className:"cj-sc",style:{position:"absolute",top:48,right:0,width:360,maxHeight:440,overflowY:"auto",background:K.modal,border:"1px solid "+K.brd,borderRadius:16,padding:8,zIndex:200,boxShadow:"0 20px 60px rgba(0,0,0,.7)"}},
                   React.createElement("div",{style:{padding:"8px 12px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid "+K.brd,marginBottom:6}},
-                    React.createElement("span",{style:{fontSize:13,fontWeight:700,color:K.txt}},"Notificações"),
-                    React.createElement("span",{style:{fontSize:11,color:K.dim,fontFamily:"Orbitron,monospace"}},alerts.length)
+                    React.createElement("span",{style:{fontSize:14,fontWeight:700,color:K.txt}},"Notificações"),
+                    React.createElement("span",{style:{fontSize:12,color:K.dim,fontFamily:"Orbitron,monospace"}},alerts.length)
                   ),
                   alerts.length?alerts.slice(0,12).map(function(a,i){
-                    var bc=a.type==="cr"?K.crG:a.type==="su"?K.suG:a.type==="wa"?K.waG:"rgba(255,255,255,.03)";
+                    var bc=a.type==="cr"?K.crG:a.type==="su"?K.suG:a.type==="wa"?K.waG:"rgba(var(--cj-fgrgb),.03)";
                     var tc=a.type==="cr"?K.cr:a.type==="su"?K.su:a.type==="wa"?K.wa:K.dim;
                     return React.createElement("div",{key:i,onClick:function(){if(a.proc){sSel(a.proc);setNotifOpen(false);}},style:{padding:"10px 12px",borderRadius:10,background:bc,border:"1px solid "+tc+"22",marginBottom:4,cursor:a.proc?"pointer":"default",transition:"all .15s"},onMouseEnter:function(e){if(a.proc)e.currentTarget.style.borderColor=tc+"55";},onMouseLeave:function(e){e.currentTarget.style.borderColor=tc+"22";}},
                       React.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-start"}},
                         React.createElement("span",{style:{fontSize:14,flexShrink:0,marginTop:1}},a.icon),
                         React.createElement("div",{style:{flex:1,minWidth:0}},
-                          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:tc}},a.title),
-                          React.createElement("div",{style:{fontSize:11,color:K.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},a.desc)
+                          React.createElement("div",{style:{fontSize:12,fontWeight:700,color:tc}},a.title),
+                          React.createElement("div",{style:{fontSize:12,color:K.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},a.desc)
                         )
                       )
                     );
-                  }):React.createElement("div",{style:{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:12}},"Nenhuma notificação pendente")
+                  }):React.createElement("div",{style:{padding:"24px 16px",textAlign:"center",color:K.dim2,fontSize:13}},"Nenhuma notificação pendente")
                 )
               );
-            },null)}
+            }})}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>{rP()}</div>
@@ -8473,8 +8772,8 @@ export default function App() {
       }} />}
       {!focusMode&&<div style={{position:"fixed",bottom:14,left:col?80:230,zIndex:100,display:"flex",gap:8,flexWrap:"wrap"}}>
         {[["H","Hoje"],["P","Prioridades"],["I","IA Nexus"],["C","Calendário"],["T","Timeline"],["F","Foco"],["⌘Z","Desfazer"],["⌘N","Novo"],["/","Buscar"],["Esc","Fechar"]].map(function(k){return(
-          <div key={k[0]} style={{display:"flex",alignItems:"center",gap:4,fontSize:9,color:K.dim2,background:"rgba(0,0,0,.4)",borderRadius:6,padding:"2px 6px",border:"1px solid rgba(255,255,255,.05)"}}>
-            <kbd style={{fontSize:9,color:K.dim,background:"rgba(255,255,255,.06)",borderRadius:3,padding:"0 3px",fontFamily:"'JetBrains Mono',monospace"}}>{k[0]}</kbd>
+          <div key={k[0]} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:K.dim2,background:"rgba(0,0,0,.4)",borderRadius:6,padding:"2px 6px",border:"1px solid rgba(var(--cj-fgrgb),.05)"}}>
+            <kbd style={{fontSize:11,color:K.dim,background:"rgba(var(--cj-fgrgb),.06)",borderRadius:3,padding:"0 3px",fontFamily:"'JetBrains Mono',monospace"}}>{k[0]}</kbd>
             <span>{k[1]}</span>
           </div>
         );})}
@@ -8482,7 +8781,7 @@ export default function App() {
       {toast && (
         <div style={{position:"fixed",bottom:28,right:28,zIndex:2000,padding:"14px 20px",borderRadius:16,background:toast.type==="ok"?"linear-gradient(135deg,rgba(0,229,160,.14),rgba(0,229,160,.06))":"linear-gradient(135deg,rgba(255,59,107,.14),rgba(255,59,107,.06))",border:"1px solid "+(toast.type==="ok"?"rgba(0,229,160,.5)":"rgba(255,59,107,.5)"),backdropFilter:"blur(20px)",boxShadow:toast.type==="ok"?"0 0 20px rgba(0,229,160,.18),0 16px 40px rgba(0,0,0,.5)":"0 0 20px rgba(255,59,107,.18),0 16px 40px rgba(0,0,0,.5)",display:"flex",alignItems:"center",gap:10,animation:"cjUp .3s ease both"}}>
           <span style={{fontSize:16}}>{toast.type==="ok"?"✅":"❌"}</span>
-          <span style={{fontSize:13,fontWeight:700,color:K.txt}}>{toast.msg}</span>
+          <span style={{fontSize:14,fontWeight:700,color:K.txt}}>{toast.msg}</span>
         </div>
       )}
     </div>
@@ -8526,32 +8825,32 @@ function IATplModal({proc,onClose}){
   };
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(10px)",zIndex:1200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"40px 20px",overflowY:"auto"}} onClick={function(e){if(e.target===e.currentTarget)onClose();}}>
-      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(2,5,20,.99),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.2)",borderRadius:24,width:"100%",maxWidth:680,padding:28,position:"relative",boxShadow:"0 0 60px rgba(0,229,255,.08),0 24px 60px rgba(0,0,0,.8)"}}>
+      <div className="cj-hud-tl cj-hud-br" style={{background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.99),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.2)",borderRadius:24,width:"100%",maxWidth:680,padding:28,position:"relative",boxShadow:"0 0 60px rgba(var(--cj-acrgb),.08),0 24px 60px rgba(0,0,0,.8)"}}>
         <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:K.dim,cursor:"pointer"}}><X size={20}/></button>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
           <div style={{fontSize:24}}>🤖</div>
           <div>
-            <h3 style={{margin:0,fontSize:17,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 10px rgba(0,229,255,.5)"}}>Gerador IA de Estrutura</h3>
-            <div style={{fontSize:11,color:K.dim,marginTop:2}}>Claude Sonnet · {proc.tipoPeca||"Peça"} · {proc.num||"Sem nº"}</div>
+            <h3 style={{margin:0,fontSize:17,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif",textShadow:"0 0 10px rgba(var(--cj-acrgb),.5)"}}>Gerador IA de Estrutura</h3>
+            <div style={{fontSize:12,color:K.dim,marginTop:2}}>Claude Sonnet · {proc.tipoPeca||"Peça"} · {proc.num||"Sem nº"}</div>
           </div>
         </div>
-        <div style={{padding:"12px 16px",borderRadius:14,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.15)",marginBottom:16}}>
-          <div style={{fontSize:11,color:"#00e5ff",fontWeight:700,marginBottom:4}}>Processo selecionado</div>
-          <div style={{fontSize:13,color:K.txt,fontWeight:600}}>{proc.assunto}</div>
-          <div style={{fontSize:11,color:K.dim,marginTop:4}}>{proc.tipoPeca} · {proc.tipoAcao||proc.orgao} · {proc.tribunal||"—"}</div>
+        <div style={{padding:"12px 16px",borderRadius:14,background:"rgba(var(--cj-acrgb),.06)",border:"1px solid rgba(var(--cj-acrgb),.15)",marginBottom:16}}>
+          <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,marginBottom:4}}>Processo selecionado</div>
+          <div style={{fontSize:14,color:K.txt,fontWeight:600}}>{proc.assunto}</div>
+          <div style={{fontSize:12,color:K.dim,marginTop:4}}>{proc.tipoPeca} · {proc.tipoAcao||proc.orgao} · {proc.tribunal||"—"}</div>
         </div>
         {!result&&!loading&&<button onClick={generate} style={{...btnPrim,width:"100%",justifyContent:"center",padding:"12px",fontSize:14,marginBottom:16}}>
           <Zap size={16}/>Gerar estrutura da {proc.tipoPeca||"peça"}
         </button>}
-        {loading&&<div style={{padding:"16px 0"}}><SkeletonBlock lines={5} h={24}/><div style={{textAlign:"center",fontSize:11,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8,letterSpacing:"1px"}}>Gerando estrutura...</div></div>}
-        {error&&<div style={{padding:"12px 16px",borderRadius:12,background:"rgba(255,46,91,.12)",border:"1px solid rgba(255,46,91,.3)",color:"#ff2e5b",fontSize:12,marginBottom:12}}>{error}</div>}
+        {loading&&<div style={{padding:"16px 0"}}><SkeletonBlock lines={5} h={24}/><div style={{textAlign:"center",fontSize:12,color:K.ac,fontFamily:"Orbitron,sans-serif",marginTop:8,letterSpacing:"1px"}}>Gerando estrutura...</div></div>}
+        {error&&<div style={{padding:"12px 16px",borderRadius:12,background:"rgba(var(--cj-crrgb),.12)",border:"1px solid rgba(var(--cj-crrgb),.3)",color:"var(--cj-cr)",fontSize:13,marginBottom:12}}>{error}</div>}
         {result&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:11,color:"#00e5ff",fontWeight:700,fontFamily:"Orbitron,sans-serif"}}>Estrutura gerada</div>
-            <button onClick={generate} style={{...btnGhost,padding:"4px 10px",fontSize:11,color:"#00e5ff"}}>Gerar novamente</button>
+            <div style={{fontSize:12,color:"var(--cj-ac)",fontWeight:700,fontFamily:"Orbitron,sans-serif"}}>Estrutura gerada</div>
+            <button onClick={generate} style={{...btnGhost,padding:"4px 10px",fontSize:12,color:"var(--cj-ac)"}}>Gerar novamente</button>
           </div>
-          <div style={{padding:"16px",borderRadius:14,background:"rgba(255,255,255,.025)",border:"1px solid rgba(0,229,255,.12)",fontSize:12,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",fontFamily:"inherit"}}>{result}</div>
-          <button onClick={function(){try{navigator.clipboard.writeText(result);}catch(e){}}} style={{...btnGhost,marginTop:12,width:"100%",justifyContent:"center",fontSize:12,color:"#00e5ff"}}>📋 Copiar estrutura</button>
+          <div style={{padding:"16px",borderRadius:14,background:"rgba(var(--cj-fgrgb),.025)",border:"1px solid rgba(var(--cj-acrgb),.12)",fontSize:13,color:K.txt,lineHeight:1.8,whiteSpace:"pre-wrap",maxHeight:360,overflowY:"auto",fontFamily:"inherit"}}>{result}</div>
+          <button onClick={function(){try{navigator.clipboard.writeText(result);}catch(e){}}} style={{...btnGhost,marginTop:12,width:"100%",justifyContent:"center",fontSize:13,color:"var(--cj-ac)"}}>📋 Copiar estrutura</button>
         </div>}
       </div>
     </div>
@@ -8567,42 +8866,42 @@ const ExecucaoPg=({st,dp,ss})=>{
   return(
     <div className="cj-pg">
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
-        <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.06))",border:"1px solid rgba(0,229,255,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Zap size={22} color="#00e5ff"/></div>
+        <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(var(--cj-acrgb),.2),rgba(var(--cj-acrgb),.06))",border:"1px solid rgba(var(--cj-acrgb),.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Zap size={22} color="var(--cj-ac)"/></div>
         <div>
-          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"#00e5ff",fontFamily:"Orbitron,sans-serif"}}>Em Execução</h2>
-          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Processos que estou elaborando agora · {items.length} ativo{items.length!==1?"s":""}</div>
+          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"var(--cj-ac)",fontFamily:"Orbitron,sans-serif"}}>Em Execução</h2>
+          <div style={{fontSize:13,color:K.dim,marginTop:2}}>Processos que estou elaborando agora · {items.length} ativo{items.length!==1?"s":""}</div>
         </div>
-        {items.length>0&&<div className="cj-pulse" style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(0,229,255,.1)",border:"1px solid rgba(0,229,255,.4)",color:"#00e5ff",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
+        {items.length>0&&<div className="cj-pulse" style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(var(--cj-acrgb),.1)",border:"1px solid rgba(var(--cj-acrgb),.4)",color:"var(--cj-ac)",fontSize:14,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
       </div>
       {!items.length&&<EmptyState icon="rocket" color={K.ac} title="Nenhum processo em execução" sub="Altere o status de um processo para 'Em Execução'"/>}
       {/* ═══ POMODORO TIMER ═══ */}
       {items.length>0&&React.createElement(PomodoroTimer,{proc:items[0],dp:dp})}
       <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:14}}>
         {items.map(function(p){var cor=getPecaCor(p.tipoPeca);return(
-          <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid rgba(0,229,255,.22)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
-            onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(0,229,255,.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(0,229,255,.22)";}}>
+          <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-acrgb),.22)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
+            onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-acrgb),.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-acrgb),.22)";}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:cor,boxShadow:"0 0 8px "+cor}}/>
             <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
-                  <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
-                  <div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
-                  {p.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",background:"rgba(125,211,252,.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
-                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
+                  <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:11,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
+                  <div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
+                  {p.numeroSEI&&<div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace",background:"rgba(var(--cj-inforgb),.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
+                  <div style={{marginLeft:"auto",fontSize:13,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
                 </div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:6}}>{p.assunto}</div>
-                {p.proxProv&&<div style={{fontSize:12,color:K.ac,background:"rgba(0,229,255,.05)",borderRadius:8,padding:"6px 10px",border:"1px solid rgba(0,229,255,.1)"}}><span style={{fontSize:10,color:K.dim,marginRight:6}}>Próxima:</span>{p.proxProv}</div>}
-                {(function(){var pct=Math.min(100,Math.max(0,Number(p.progresso)||0));var cor=pct>=100?"#00ff88":pct>=60?"#00e5ff":pct>=30?"#ffb800":"#ff2e5b";return(<div style={{marginTop:10}}>
+                {p.proxProv&&<div style={{fontSize:13,color:K.ac,background:"rgba(var(--cj-acrgb),.05)",borderRadius:8,padding:"6px 10px",border:"1px solid rgba(var(--cj-acrgb),.1)"}}><span style={{fontSize:12,color:K.dim,marginRight:6}}>Próxima:</span>{p.proxProv}</div>}
+                {(function(){var pct=Math.min(100,Math.max(0,Number(p.progresso)||0));var cor=pct>=100?"var(--cj-su)":pct>=60?"var(--cj-ac)":pct>=30?"var(--cj-wa)":"var(--cj-cr)";return(<div style={{marginTop:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <div style={{fontSize:9,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Progresso da elaboração</div>
-                    <div style={{fontSize:12,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{pct}%{pct>=100?" ✅":""}</div>
+                    <div style={{fontSize:11,color:K.dim,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Progresso da elaboração</div>
+                    <div style={{fontSize:13,fontWeight:800,color:cor,fontFamily:"Orbitron,monospace"}}>{pct}%{pct>=100?" ✅":""}</div>
                   </div>
-                  <div style={{height:6,borderRadius:999,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+                  <div style={{height:6,borderRadius:999,background:"rgba(var(--cj-fgrgb),.06)",overflow:"hidden"}}>
                     <div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,"+cor+"88,"+cor+")",borderRadius:999,boxShadow:"0 0 8px "+cor,transition:"width .5s"}}/>
                   </div>
                   <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
                     {[0,25,50,75,100].map(function(v){return(
-                      <button key={v} onClick={function(e){e.stopPropagation();dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{progresso:v}});}} style={{padding:"3px 8px",borderRadius:6,border:"1px solid "+(pct===v?cor+"66":"rgba(255,255,255,.1)"),background:pct===v?cor+"20":"transparent",color:pct===v?cor:K.dim,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{v}%</button>
+                      <button key={v} onClick={function(e){e.stopPropagation();dp({type:"UPD",id:p.id,isAdm:p.tipo==="adm",ch:{progresso:v}});}} style={{padding:"3px 8px",borderRadius:6,border:"1px solid "+(pct===v?cor+"66":"rgba(var(--cj-fgrgb),.1)"),background:pct===v?cor+"20":"transparent",color:pct===v?cor:K.dim,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{v}%</button>
                     );})}
                   </div>
                 </div>);})()}
@@ -8622,33 +8921,33 @@ const AcompanhamentoPg=({st,dp,ss})=>{
   return(
     <div className="cj-pg">
       <div className="cj-up" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
-        <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(168,85,247,.2),rgba(168,85,247,.06))",border:"1px solid rgba(168,85,247,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Eye size={22} color="#b84dff"/></div>
+        <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,rgba(var(--cj-purgb),.2),rgba(var(--cj-purgb),.06))",border:"1px solid rgba(var(--cj-purgb),.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Eye size={22} color="var(--cj-pu)"/></div>
         <div>
-          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"#b84dff",fontFamily:"Orbitron,sans-serif"}}>Em Acompanhamento</h2>
-          <div style={{fontSize:12,color:K.dim,marginTop:2}}>Processos monitorados · {items.length} processo{items.length!==1?"s":""}</div>
+          <h2 style={{margin:0,fontSize:22,fontWeight:800,color:"var(--cj-pu)",fontFamily:"Orbitron,sans-serif"}}>Em Acompanhamento</h2>
+          <div style={{fontSize:13,color:K.dim,marginTop:2}}>Processos monitorados · {items.length} processo{items.length!==1?"s":""}</div>
         </div>
-        {items.length>0&&<div style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(168,85,247,.1)",border:"1px solid rgba(168,85,247,.4)",color:"#b84dff",fontSize:13,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
+        {items.length>0&&<div style={{marginLeft:"auto",padding:"5px 14px",borderRadius:10,background:"rgba(var(--cj-purgb),.1)",border:"1px solid rgba(var(--cj-purgb),.4)",color:"var(--cj-pu)",fontSize:14,fontWeight:800,fontFamily:"Orbitron,monospace"}}>{items.length}</div>}
       </div>
       {!items.length&&<EmptyState icon="clock" color={K.pu} title="Nenhum processo em acompanhamento" sub="Altere o status e informe o motivo do acompanhamento"/>}
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {items.map(function(p){var cor=getPecaCor(p.tipoPeca);return(
-          <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(2,5,22,.97),rgba(1,3,12,.99))",border:"1px solid rgba(168,85,247,.2)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
-            onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(168,85,247,.2)";}}>
-            <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"#b84dff",boxShadow:"0 0 8px #b84dff"}}/>
+          <div key={p.id} onClick={function(){ss(p);}} style={{padding:20,borderRadius:18,background:"linear-gradient(135deg,rgba(var(--cj-panelrgb),.97),rgba(var(--cj-panelrgb),.99))",border:"1px solid rgba(var(--cj-purgb),.2)",cursor:"pointer",transition:"all .2s",position:"relative",overflow:"hidden"}}
+            onMouseEnter={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-purgb),.5)";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="rgba(var(--cj-purgb),.2)";}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"var(--cj-pu)",boxShadow:"0 0 8px #b84dff"}}/>
             <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
-                  <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:9,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
-                  <div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
-                  {p.numeroSEI&&<div style={{fontSize:10,color:"#7dd3fc",fontFamily:"'JetBrains Mono',monospace",background:"rgba(125,211,252,.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
-                  <div style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
+                  <div style={{padding:"3px 8px",borderRadius:6,background:cor+"20",border:"1px solid "+cor+"55",color:cor,fontSize:11,fontWeight:900,fontFamily:"Orbitron,monospace",letterSpacing:".8px"}}>{getPecaLabel(p.tipoPeca)}</div>
+                  <div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace"}}>{p.num}</div>
+                  {p.numeroSEI&&<div style={{fontSize:12,color:"var(--cj-info)",fontFamily:"'JetBrains Mono',monospace",background:"rgba(var(--cj-inforgb),.1)",borderRadius:5,padding:"1px 6px"}}>SEI {p.numeroSEI}</div>}
+                  <div style={{marginLeft:"auto",fontSize:13,fontWeight:800,color:uC(p.diasRestantes),fontFamily:"Orbitron,monospace"}}>{p.diasRestantes}du</div>
                 </div>
                 <div style={{fontSize:15,fontWeight:700,color:K.txt,marginBottom:8}}>{p.assunto}</div>
-                {p.motivoAcompanhamento&&<div style={{fontSize:12,color:"#c4b5fd",background:"rgba(168,85,247,.08)",borderRadius:10,padding:"8px 12px",border:"1px solid rgba(168,85,247,.18)",marginBottom:6}}>
-                  <div style={{fontSize:9,color:"#b84dff",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Motivo do acompanhamento</div>
+                {p.motivoAcompanhamento&&<div style={{fontSize:13,color:"#c4b5fd",background:"rgba(var(--cj-purgb),.08)",borderRadius:10,padding:"8px 12px",border:"1px solid rgba(var(--cj-purgb),.18)",marginBottom:6}}>
+                  <div style={{fontSize:11,color:"var(--cj-pu)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Motivo do acompanhamento</div>
                   {p.motivoAcompanhamento}
                 </div>}
-                {p.proxProv&&<div style={{fontSize:12,color:K.dim}}><span style={{color:"#b84dff",marginRight:4}}>Próxima:</span>{p.proxProv}</div>}
+                {p.proxProv&&<div style={{fontSize:13,color:K.dim}}><span style={{color:"var(--cj-pu)",marginRight:4}}>Próxima:</span>{p.proxProv}</div>}
               </div>
             </div>
           </div>
